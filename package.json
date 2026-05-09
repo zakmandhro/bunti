@@ -1,0 +1,19 @@
+{
+  "name": "bunti",
+  "version": "0.1.0",
+  "description": "Bun Terminal Interface (bunti) - A minimalist, utility-first terminal layout engine built for Bun.",
+  "module": "src/index.ts",
+  "type": "module",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "keywords": ["tui", "cli", "terminal", "layout", "bun", "bunti"],
+  "author": "Zak Mandhro <zakmandhro@gmail.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "picocolors": "^1.0.0"
+  }
+}
