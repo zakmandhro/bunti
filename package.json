@@ -2,13 +2,13 @@
   "name": "bunti",
   "version": "0.1.0",
   "description": "Bun Terminal Interface (bunti) - A minimalist, utility-first terminal layout engine built for Bun.",
-  "module": "src/index.ts",
+  "module": "src/index.ts", "exports": { ".": "./src/index.ts", "./icons": "./src/icons.ts", "./layout": "./src/layout.ts", "./render": "./src/render.ts" },
   "type": "module",
   "engines": {
     "bun": ">=1.0.0"
   },
   "scripts": {
-    "test": "bun test"
+    "test": "bun test", "bench": "bun scripts/bench.ts", "demo": "bun scripts/perf-demo.ts", "icons": "bun scripts/icon-demo.ts"
   },
   "keywords": ["tui", "cli", "terminal", "layout", "bun", "bunti"],
   "author": "Zak Mandhro <zakmandhro@gmail.com>",
