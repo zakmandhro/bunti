@@ -101,32 +101,29 @@ export const ICON_MAP: Record<string, IconDefinition> = {
 };
 
 export const EMOJI_MAP: Record<string, string> = {
-  '🌿': '\uf418', '📥': '\uf41d', '📌': '\uf417', '🔀': '\uf419', '🍴': '\uf41a', '🏷️': '\u{f04fc}',
-  '📁': '\uf07b', '📂': '\uf115', '📄': '\uf15b', '💻': '\uf109', '🖥️': '\u{f01c4}', '📝': '\uf044', '📦': '\ue60b', '📜': '\ue6a8',
-  '✅': '\uf00c', '❌': '\uf00d', '⚠️': '\uf071', 'ℹ️': '\uf05a', '⏳': '\uf110', '🚀': '\uf135', '🛰️': '\uef5f', '🪐': '\ue22e', '🌀': '\u{f0065}',
-  '🤖': '\u{f06a9}', '🗑️': '\uf1f8', '⚙️': '\uf423', '🔔': '\uf0f3', '✉️': '\uf0e0', '🖼️': '\uf03e',
-  '🙂': '\uf118', '😊': '\uf118', '😀': '\uf118', '😄': '\uee80', '😉': '\ueda9', '😎': '\ueb54', '😇': '\uf4a2',
+  '🌿': 'branch', '📥': 'pr', '📌': 'commit', '🔀': 'merge', '🍴': 'fork', '🏷️': 'tag',
+  '📁': 'folder', '📂': 'folder-open', '📄': 'file', '💻': 'laptop', '🖥️': 'desktop', '📝': 'edit', '📦': 'json', '📜': 'yaml',
+  '✅': 'success', '❌': 'error', '⚠️': 'warning', 'ℹ️': 'info', '⏳': 'loading', '🚀': 'rocket', '🛰️': 'satellite', '🪐': 'planet', '🌀': 'bunti',
+  '🤖': 'robot', '🗑️': 'trash', '⚙️': 'gear', '🔔': 'bell', '✉️': 'mail', '🖼️': 'image', '❓': 'help-circle',
+  '🙂': 'success', '😊': 'success', '😀': 'success',
 };
 
 const GENERIC_ICON = '\uf0010';
 
+let cachedCaps: TerminalCapabilities = { nerdFont: true, glyphProtocol: false, unicode: true, color: true };
+
 export function replaceEmojis(text: string): string {
   if (!text) return '';
-  const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-  // @ts-ignore
-  return Array.from(segmenter.segment(text)).map(({ segment }) => {
-    // 1. Direct match
-    if (EMOJI_MAP[segment]) return EMOJI_MAP[segment];
-    
-    // 2. Try stripping variation selectors (e.g., U+FE0F)
-    const cleanSegment = segment.replace(/[\uFE00-\uFE0F]/g, '');
-    if (EMOJI_MAP[cleanSegment]) return EMOJI_MAP[cleanSegment];
-
-    return segment;
-  }).join('');
+  if (!cachedCaps.nerdFont) return text; 
+  
+  let out = text;
+  for (const [emoji, name] of Object.entries(EMOJI_MAP)) {
+    const glyph = getIcon(name, cachedCaps);
+    const regex = new RegExp(emoji + '[\uFE00-\uFE0F]?', 'g');
+    out = out.replace(regex, glyph);
+  }
+  return out;
 }
-
-let cachedCaps: TerminalCapabilities = { nerdFont: true, glyphProtocol: false, unicode: true, color: true };
 
 export async function init(options?: { nerdFont?: boolean }): Promise<TerminalCapabilities> {
   if (options?.nerdFont !== undefined) cachedCaps.nerdFont = options.nerdFont;

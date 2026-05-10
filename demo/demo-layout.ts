@@ -10,11 +10,14 @@ export interface DemoBounds {
   centerW: (targetW: number) => number;
 }
 
-export function demo(
+export async function demo(
   title: string,
   contentRender: (ctx: BuntiContext, bounds: DemoBounds) => void,
   options: ScreenOptions = { fps: 10, alternateBuffer: true, hideCursor: true, nerdFont: true }
 ) {
+  // Force the capability sync immediately
+  await bunti.init({ nerdFont: true });
+
   bunti.render((ctx) => {
     const { box, color, width, height, wallpaper } = ctx;
     

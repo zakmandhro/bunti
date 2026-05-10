@@ -4,7 +4,7 @@
  */
 
 import { ScreenState, Cell, RGB } from './state';
-import { visibleWidth, charWidth, truncate, wrapText } from './utils';
+import { visibleWidth, charWidth, truncate, wrapText, stripAnsi } from './utils';
 import { replaceEmojis } from './icons';
 
 // --- Functional Primitives (Buffer Manipulation) ---
@@ -121,7 +121,8 @@ export interface StyleOptions {
   maxHeight?: number;
   padding?: [number, number];
   border?: BorderStyle;
-  borderColor?: ((s: string) => string) | SideColors;
+  borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
+  bgColor?: string | number | RGB | Gradient;
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'middle' | 'bottom';
   wrap?: boolean;
@@ -201,16 +202,17 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
   const { fg } = require('./colors');
   const resolveSide = (color: any) => (typeof color === 'function' ? color : (s: string) => fg(color, s));
   
-  const colors = typeof options.borderColor === 'object' ? {
-    top: resolveSide(options.borderColor.top || options.borderColor.left || options.borderColor.right),
-    bottom: resolveSide(options.borderColor.bottom || options.borderColor.left || options.borderColor.right),
-    left: resolveSide(options.borderColor.left || options.borderColor.top),
-    right: resolveSide(options.borderColor.right || options.borderColor.top)
+  const bc = options.borderColor;
+  const colors = (typeof bc === 'object' && !('r' in bc)) ? {
+    top: resolveSide((bc as SideColors).top || (bc as SideColors).left || (bc as SideColors).right),
+    bottom: resolveSide((bc as SideColors).bottom || (bc as SideColors).left || (bc as SideColors).right),
+    left: resolveSide((bc as SideColors).left || (bc as SideColors).top),
+    right: resolveSide((bc as SideColors).right || (bc as SideColors).top)
   } : {
-    top: resolveSide(options.borderColor || ((s: string) => s)),
-    bottom: resolveSide(options.borderColor || ((s: string) => s)),
-    left: resolveSide(options.borderColor || ((s: string) => s)),
-    right: resolveSide(options.borderColor || ((s: string) => s))
+    top: resolveSide(bc || ((s: string) => s)),
+    bottom: resolveSide(bc || ((s: string) => s)),
+    left: resolveSide(bc || ((s: string) => s)),
+    right: resolveSide(bc || ((s: string) => s))
   };
 
   const hTop = b?.top || b?.h || ' ';
@@ -224,21 +226,72 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
   else if (options.valign === 'bottom') { topS = vSpace; bottomS = 0; }
 
   const out = [];
+
+  const { bg } = require('./colors');
+  const applyLineBg = (line: string, rowIdx: number) => {
+    if (!options.bgColor) return line;
+    if (typeof options.bgColor === 'object' && 'colors' in options.bgColor) {
+      const grad = options.bgColor as Gradient;
+      if (grad.direction === 'vertical') {
+        const idx = Math.floor((rowIdx / finalInnerH) * grad.colors.length);
+        const color = grad.colors[Math.min(idx, grad.colors.length - 1)];
+        return bg(color, line);
+      } else {
+        // Horizontal gradient: apply per character safely
+        const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+        // @ts-ignore
+        const segments = Array.from(segmenter.segment(line));
+        let out = '';
+        let visibleIdx = 0;
+        
+        for (const { segment } of segments) {
+          // If the segment is just ANSI codes, append without advancing width
+          if (segment.startsWith('\x1b[')) {
+             out += segment;
+             continue;
+          }
+
+          const cleanSegment = stripAnsi(segment);
+          const w = charWidth(cleanSegment);
+          
+          if (w > 0) {
+            const gradIdx = Math.floor((visibleIdx / resolvedW) * grad.colors.length);
+            const color = grad.colors[Math.min(gradIdx, grad.colors.length - 1)];
+            
+            // Re-apply any existing ANSI foreground within the background wrap if needed,
+            // but `bg()` wraps the string in a background color and resets at the end.
+            // Since `line` might contain foreground codes, breaking it up means we lose state.
+            // For now, assume pure string or accept reset behavior.
+            out += bg(color, segment);
+            visibleIdx += w;
+          } else {
+            out += segment;
+          }
+        }
+        return out;
+      }
+    }
+    return bg(options.bgColor, line);
+  };
   
   // Top Border
-  if (b) out.push(colors.top(b.tl + hTop.repeat(targetInnerW) + b.tr));
+  if (b) {
+    out.push(applyLineBg(colors.top(b.tl + hTop.repeat(targetInnerW) + b.tr), 0));
+  }
   
   // Top Padding
   for (let i = 0; i < py + topS; i++) {
+    const rowIdx = (b ? 1 : 0) + i;
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(targetInnerW);
     if (b) row += colors.right(vRight);
-    out.push(row);
+    out.push(applyLineBg(row, rowIdx));
   }
 
   // Content Lines
-  for (let line of lines) {
-    line = line.trim(); // Ensure no leading/trailing junk affects centering
+  for (let i = 0; i < lines.length; i++) {
+    const rowIdx = (b ? 1 : 0) + py + topS + i;
+    let line = lines[i].trim(); 
     const lineW = visibleWidth(line);
     const extra = Math.max(0, targetInnerW - lineW - (px * 2));
     let left = 0, right = 0;
@@ -258,19 +311,22 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(Math.max(0, left)) + line + ' '.repeat(Math.max(0, right));
     if (b) row += colors.right(vRight);
-    out.push(row);
+    out.push(applyLineBg(row, rowIdx));
   }
 
   // Bottom Padding
   for (let i = 0; i < py + bottomS; i++) {
+    const rowIdx = (b ? 1 : 0) + py + topS + lines.length + i;
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(targetInnerW);
     if (b) row += colors.right(vRight);
-    out.push(row);
+    out.push(applyLineBg(row, rowIdx));
   }
 
   // Bottom Border
-  if (b) out.push(colors.bottom(b.bl + hBottom.repeat(targetInnerW) + b.br));
+  if (b) {
+    out.push(applyLineBg(colors.bottom(b.bl + hBottom.repeat(targetInnerW) + b.br), finalInnerH + 1));
+  }
 
   return out.join('\n');
 }

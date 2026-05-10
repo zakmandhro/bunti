@@ -37,7 +37,7 @@ export interface DSLBoxOptions extends StyleOptions {
   title?: string;
   titleStyle?: (s: string) => string;
   id?: string;
-  borderColor?: ((s: string) => string) | SideColors;
+  borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
 }
 
 /**
@@ -109,7 +109,7 @@ function createDSLContext(state: ScreenState, dslState: DSLState, availableW: nu
     elapsedTime: Date.now() - state.startTime,
     
     text(str: string | number) {
-      dslState.activeContents.push(String(str));
+      dslState.activeContents.push(replaceEmojis(String(str)));
       return ctx;
     },
 
@@ -336,14 +336,6 @@ export function createScreenContext(state: ScreenState): BuntiContext {
       y = state.height - h;
     }
 
-    if (options.bgColor || options.color) {
-      rect(state, x, y, w, h, { 
-        char: ' ', 
-        bg: options.bgColor, 
-        fg: options.color === 'blank' ? undefined : options.color 
-      });
-    }
-
     layoutBlit(state, x, y, styledBox);
     return base;
   };
@@ -358,8 +350,13 @@ export function createScreenContext(state: ScreenState): BuntiContext {
  * Primary Entry Point
  */
 export async function render(callback: (b: BuntiContext) => void, options: ScreenOptions & { once?: boolean } = {}) {
-  // Start detection in background, don't await!
-  init({ nerdFont: options.nerdFont });
+  // Sync apply forced options first
+  if (options.nerdFont !== undefined) {
+    await init({ nerdFont: options.nerdFont });
+  } else {
+    // Start detection in background, don't await!
+    init();
+  }
   
   const state = createScreenState(options);
   
