@@ -79,8 +79,14 @@ export function blit(state: ScreenState, startX: number, startY: number, content
 // --- High-Level Layout ---
 
 export type BorderStyle = 
-  | 'small' | 'rounded' | 'medium' | 'large' | 'extra-large' | 'double'
-  | 'dashed' | 'dotted' | 'classic' | 'none';
+  | 'default' | 'rounded' | 'double' | 'dashed' | 'dotted' | 'frame' | 'thick-frame' | 'classic' | 'none';
+
+export interface SideColors {
+  top?: any;
+  bottom?: any;
+  left?: any;
+  right?: any;
+}
 
 export interface StyleOptions {
   width?: number;
@@ -91,21 +97,20 @@ export interface StyleOptions {
   maxHeight?: number;
   padding?: [number, number];
   border?: BorderStyle;
-  borderColor?: (s: string) => string;
+  borderColor?: ((s: string) => string) | SideColors;
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'middle' | 'bottom';
   wrap?: boolean;
 }
 
 const BORDERS: Record<string, any> = {
-  small: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '─', v: '│' },
+  default: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '─', v: '│' },
   rounded: { tl: '╭', tr: '╮', bl: '╰', br: '╯', h: '─', v: '│' },
-  medium: { tl: '┏', tr: '┓', bl: '┗', br: '┛', h: '━', v: '┃' },
-  large: { tl: '█', tr: '█', bl: '█', br: '█', top: '▀', bottom: '▄', left: '█', right: '█' },
-  'extra-large': { tl: '█', tr: '█', bl: '█', br: '█', h: '█', v: '█' },
   double: { tl: '╔', tr: '╗', bl: '╚', br: '╝', h: '═', v: '║' },
   dashed: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '╌', v: '╎' },
   dotted: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '┈', v: '┊' },
+  frame: { tl: '█', tr: '█', bl: '█', br: '█', top: '▀', bottom: '▄', left: '█', right: '█' },
+  'thick-frame': { tl: '█', tr: '█', bl: '█', br: '█', h: '█', v: '█' },
   classic: { tl: '+', tr: '+', bl: '+', br: '+', h: '-', v: '|' },
 };
 
@@ -117,7 +122,7 @@ export function box(content: string, options: StyleOptions = {}): string {
   const py = options.padding?.[0] ?? 1;
   const borderOffset = (options.border === 'none') ? 0 : 2;
 
-  // 1. Initial Width Calculation
+  // ... (width calculation remains same)
   let targetInnerW = 0;
   if (options.width) {
     targetInnerW = Math.max(0, options.width - borderOffset);
@@ -125,12 +130,9 @@ export function box(content: string, options: StyleOptions = {}): string {
     const rawLines = content.split('\n');
     targetInnerW = Math.max(...rawLines.map(l => visibleWidth(replaceEmojis(l))), 0) + (px * 2);
   }
-
-  // Apply Min/Max Width constraints
   if (options.minWidth) targetInnerW = Math.max(targetInnerW, options.minWidth - borderOffset);
   if (options.maxWidth) targetInnerW = Math.min(targetInnerW, options.maxWidth - borderOffset);
 
-  // 2. Wrap or Truncate content
   let lines: string[] = [];
   if (options.wrap) {
     lines = wrapText(content, targetInnerW);
@@ -138,15 +140,28 @@ export function box(content: string, options: StyleOptions = {}): string {
     lines = content.split('\n').map(l => truncate(l, targetInnerW, ''));
   }
 
-  // 3. Final Height Calculation
   const contentH = lines.length + (py * 2);
   let finalInnerH = options.height ? (options.height - borderOffset) : contentH;
-  
   if (options.minHeight) finalInnerH = Math.max(finalInnerH, options.minHeight - borderOffset);
   if (options.maxHeight) finalInnerH = Math.min(finalInnerH, options.maxHeight - borderOffset);
 
-  const b = (options.border === 'none') ? null : (BORDERS[options.border as keyof typeof BORDERS] || BORDERS.large);
-  const borderColor = options.borderColor || ((s: string) => s);
+  const b = (options.border === 'none') ? null : (BORDERS[options.border as keyof typeof BORDERS] || BORDERS.default);
+  
+  // Color Resolution
+  const { fg } = require('./colors');
+  const resolveSide = (color: any) => (typeof color === 'function' ? color : (s: string) => fg(color, s));
+  
+  const colors = typeof options.borderColor === 'object' ? {
+    top: resolveSide(options.borderColor.top || options.borderColor.left || options.borderColor.right),
+    bottom: resolveSide(options.borderColor.bottom || options.borderColor.left || options.borderColor.right),
+    left: resolveSide(options.borderColor.left || options.borderColor.top),
+    right: resolveSide(options.borderColor.right || options.borderColor.top)
+  } : {
+    top: options.borderColor || ((s: string) => s),
+    bottom: options.borderColor || ((s: string) => s),
+    left: options.borderColor || ((s: string) => s),
+    right: options.borderColor || ((s: string) => s)
+  };
 
   const hTop = b?.top || b?.h || ' ';
   const hBottom = b?.bottom || b?.h || ' ';
@@ -161,13 +176,13 @@ export function box(content: string, options: StyleOptions = {}): string {
   const out = [];
   
   // Top Border
-  if (b) out.push(borderColor(b.tl + hTop.repeat(targetInnerW) + b.tr));
+  if (b) out.push(colors.top(b.tl + hTop.repeat(targetInnerW) + b.tr));
   
   // Top Padding
   for (let i = 0; i < py + topS; i++) {
-    let row = b ? borderColor(vLeft) : '';
+    let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(targetInnerW);
-    if (b) row += borderColor(vRight);
+    if (b) row += colors.right(vRight);
     out.push(row);
   }
 
@@ -181,22 +196,22 @@ export function box(content: string, options: StyleOptions = {}): string {
     else if (align === 'right') { left = extra; right = 0; }
     else { left = px; right = extra - px; }
 
-    let row = b ? borderColor(vLeft) : '';
+    let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(Math.max(0, left)) + line + ' '.repeat(Math.max(0, right));
-    if (b) row += borderColor(vRight);
+    if (b) row += colors.right(vRight);
     out.push(row);
   }
 
   // Bottom Padding
   for (let i = 0; i < py + bottomS; i++) {
-    let row = b ? borderColor(vLeft) : '';
+    let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(targetInnerW);
-    if (b) row += borderColor(vRight);
+    if (b) row += colors.right(vRight);
     out.push(row);
   }
 
   // Bottom Border
-  if (b) out.push(borderColor(b.bl + hBottom.repeat(targetInnerW) + b.br));
+  if (b) out.push(colors.bottom(b.bl + hBottom.repeat(targetInnerW) + b.br));
 
   return out.join('\n');
 }

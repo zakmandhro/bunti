@@ -27,7 +27,7 @@ bunti.render(({ wallpaper, box, color, width, height, blit, icon }) => {
     width: isSmall ? width - 4 : Math.floor(width * 0.45),
     minWidth: 30,
     wrap: true,
-    border: 'large',
+    border: 'frame',
     borderColor: (s) => color.green(s),
     bgColor: 233,
   }, ({ span, text }) => {
@@ -40,7 +40,7 @@ bunti.render(({ wallpaper, box, color, width, height, blit, icon }) => {
     x: isSmall ? 2 : Math.floor(width * 0.5) + 2,
     y: isSmall ? Math.floor(height * 0.45) + 4 : 4,
     width: isSmall ? width - 4 : Math.floor(width * 0.45),
-    border: 'large',
+    border: 'frame',
     borderColor: (s) => color.red(s),
     bgColor: 233,
   }, ({ span, text }) => {

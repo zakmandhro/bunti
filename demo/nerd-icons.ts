@@ -36,7 +36,7 @@ bunti.render(({ wallpaper, box, color, icon, width, height, blit, joinHorizontal
     bunti.box(color.bold(color.magenta(`  NERD FONT v3 MANIFEST  `)), { 
       width: totalWidth, 
       align: 'center', 
-      border: 'medium', 
+      border: 'small', 
       borderColor: (s: string) => color.magenta(s) 
     }),
     '',

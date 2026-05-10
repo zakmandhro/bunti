@@ -6,12 +6,12 @@
 import { ScreenState, createScreenState, clearBackBuffer, ScreenOptions, Cell, RGB } from './state';
 import { 
   gradient as layoutGradient, wallpaper as layoutWallpaper, rect, blit as layoutBlit, box as layoutBox, viewport as layoutViewport, 
-  joinHorizontal, joinVertical, StyleOptions, list as layoutList, ListOptions
+  joinHorizontal, joinVertical, StyleOptions, list as layoutList, ListOptions, SideColors
 } from './layout';
 import { icon, init } from './icons';
 import { loop, flush } from './render';
 import { visibleWidth } from './utils';
-import { fg, createGradient, rgb, Gradient } from './colors';
+import { fg, createGradient, rgb, Gradient, darken, lighten } from './colors';
 import pc from 'picocolors';
 
 // --- Traits (Contextual Capabilities) ---
@@ -27,21 +27,23 @@ export const KEYS = {
   BACKSPACE: '\x7f',
   SPACE: ' ',
 };
-
 export interface DSLBoxOptions extends StyleOptions {
   bgColor?: string | number | RGB;
   color?: string | number | RGB | 'blank';
   x?: number;
   y?: number;
   size?: 'auto' | number;
+  title?: string;
+  titleStyle?: (s: string) => string;
   id?: string;
+  borderColor?: ((s: string) => string) | SideColors;
 }
 
 /**
  * The interface for the contextual builder provided to closures.
  */
 export interface BuntiContext {
-  color: typeof pc;
+  color: typeof pc & { darken: typeof darken, lighten: typeof lighten, rgb: typeof rgb };
   state: ScreenState;
   width: number;
   height: number;
@@ -92,7 +94,7 @@ interface DSLState {
  */
 function createDSLContext(state: ScreenState, dslState: DSLState): BuntiContext {
   const ctx: BuntiContext = {
-    color: pc,
+    color: { ...pc, darken, lighten, rgb } as any,
     state,
     width: state.width,
     height: state.height,

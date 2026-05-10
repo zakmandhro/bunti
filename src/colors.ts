@@ -171,6 +171,35 @@ function resolveColorToRGB(color: any): RGB {
 }
 
 /**
+ * Adjusts the brightness of a color.
+ */
+export function adjustBrightness(color: any, amount: number): RGB {
+  const rgb = resolveColorToRGB(color);
+  const factor = 1 + (amount / 100);
+  return {
+    r: Math.max(0, Math.min(255, Math.round(rgb.r * factor))),
+    g: Math.max(0, Math.min(255, Math.round(rgb.g * factor))),
+    b: Math.max(0, Math.min(255, Math.round(rgb.b * factor)))
+  };
+}
+
+/**
+ * Returns a function that darkens a color and can be used as a style wrapper.
+ */
+export function darken(color: any, amount: number = 20) {
+  const adjusted = adjustBrightness(color, -amount);
+  return (text: string) => fg(adjusted, text);
+}
+
+/**
+ * Returns a function that lightens a color and can be used as a style wrapper.
+ */
+export function lighten(color: any, amount: number = 20) {
+  const adjusted = adjustBrightness(color, amount);
+  return (text: string) => fg(adjusted, text);
+}
+
+/**
  * Returns an RGB object for TrueColor rendering.
  */
 export function rgb(r: number, g: number, b: number) {

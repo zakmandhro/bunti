@@ -3,18 +3,7 @@
  * Updated for Async API & Core DSL
  */
 
-import { render, box as layoutBox, fg, icon } from '../src/index';
-
-// --- Prototype Viewport Logic ---
-function viewport(content: string, width: number, height: number, scrollY: number = 0): string {
-  const lines = content.split('\n');
-  const visibleLines = lines.slice(scrollY, scrollY + height);
-  
-  return visibleLines.map(line => {
-    // Basic clipping
-    return line.substring(0, width).padEnd(width, ' ');
-  }).join('\n');
-}
+import { render, box as layoutBox, fg, icon, viewport } from '../src/index';
 
 // --- The Experiment ---
 

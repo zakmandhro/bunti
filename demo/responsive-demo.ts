@@ -30,7 +30,7 @@ bunti.render(({ wallpaper, box, color, width, height, blit, icon, joinHorizontal
     y: dashY,
     width: dashW,
     height: dashH,
-    border: 'medium',
+    border: 'frame',
     borderColor: (s) => color.yellow(s),
     bgColor: 233
   }, ({ text, span }) => {
