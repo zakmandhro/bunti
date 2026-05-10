@@ -50,13 +50,27 @@ const RGB_REGISTRY: Record<string, RGB> = {
   cyan:    { r: 50, g: 200, b: 200 },
   white:   { r: 255, g: 255, b: 255 },
   gray:    { r: 128, g: 128, b: 128 },
-  // Palette Mappings
+  // Greyscale
   slate:   { r: 40, g: 44, b: 52 },
   ash:     { r: 75, g: 82, b: 99 },
-  midnight: { r: 10, g: 10, b: 30 },
-  ocean:   { r: 20, g: 40, b: 80 },
+  silver:  { r: 188, g: 192, b: 204 },
+  // Deep Blues & Space
+  midnight: { r: 15, g: 15, b: 35 },
+  ocean:    { r: 20, g: 40, b: 80 },
+  sky:      { r: 0, g: 135, b: 255 },
   'bunti-blue': { r: 0, g: 119, b: 190 },
-  'deep-navy': { r: 0, g: 51, b: 102 }
+  'deep-navy':  { r: 0, g: 51, b: 102 },
+  nebula:   { r: 95, g: 95, b: 175 },
+  plasma:   { r: 135, g: 0, b: 255 },
+  // Semantic
+  success: { r: 0, g: 215, b: 0 },
+  warning: { r: 255, g: 175, b: 0 },
+  error:   { r: 215, g: 0, b: 0 },
+  info:    { r: 0, g: 175, b: 255 },
+  // Accents
+  gold: { r: 255, g: 215, b: 0 },
+  rose: { r: 255, g: 175, b: 175 },
+  mint: { r: 175, g: 255, b: 175 }
 };
 
 // Map standard names to ANSI-256 for basic compat

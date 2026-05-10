@@ -82,7 +82,8 @@ export function blit(state: ScreenState, startX: number, startY: number, content
           else if (code === 49) currentBg = undefined;
         }
       } else if (match[2]) {
-        const chars = Array.from(match[2]);
+        const processedText = replaceEmojis(match[2]);
+        const chars = Array.from(processedText);
         for (const char of chars) {
           const w = charWidth(char);
           if (w === 0) continue;
@@ -159,13 +160,16 @@ export function resolveSize(unit: SizeUnit | undefined, parentDim: number, conte
  * Generates a styled box string with perfect alignment and optional wrapping.
  */
 export function box(content: string, options: StyleOptions = {}, parentW?: number, parentH?: number): string {
+  // Ensure we operate on the swapped glyphs for all layout math
+  content = replaceEmojis(content);
+  
   const px = options.padding?.[1] ?? 0;
   const py = options.padding?.[0] ?? 0;
   const borderStyle = options.border || 'none';
   const borderOffset = (borderStyle === 'none') ? 0 : 2;
 
   const rawLines = content.split('\n');
-  const maxRawW = Math.max(...rawLines.map(l => visibleWidth(replaceEmojis(l))), 0);
+  const maxRawW = Math.max(...rawLines.map(l => visibleWidth(l)), 0);
   const intrinsicW = maxRawW + (px * 2) + borderOffset;
   
   // 1. Resolve Target Width (Outer)
@@ -203,10 +207,10 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
     left: resolveSide(options.borderColor.left || options.borderColor.top),
     right: resolveSide(options.borderColor.right || options.borderColor.top)
   } : {
-    top: options.borderColor || ((s: string) => s),
-    bottom: options.borderColor || ((s: string) => s),
-    left: options.borderColor || ((s: string) => s),
-    right: options.borderColor || ((s: string) => s)
+    top: resolveSide(options.borderColor || ((s: string) => s)),
+    bottom: resolveSide(options.borderColor || ((s: string) => s)),
+    left: resolveSide(options.borderColor || ((s: string) => s)),
+    right: resolveSide(options.borderColor || ((s: string) => s))
   };
 
   const hTop = b?.top || b?.h || ' ';
@@ -236,12 +240,20 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
   for (let line of lines) {
     line = line.trim(); // Ensure no leading/trailing junk affects centering
     const lineW = visibleWidth(line);
-    const extra = Math.max(0, targetInnerW - lineW);
+    const extra = Math.max(0, targetInnerW - lineW - (px * 2));
     let left = 0, right = 0;
     const align = options.align || 'center';
-    if (align === 'center') { left = Math.floor(extra / 2); right = Math.ceil(extra / 2); }
-    else if (align === 'right') { left = extra; right = 0; }
-    else { left = px; right = extra - px; }
+    
+    if (align === 'center') { 
+      left = px + Math.floor(extra / 2); 
+      right = px + Math.ceil(extra / 2); 
+    } else if (align === 'right') { 
+      left = px + extra; 
+      right = px; 
+    } else { 
+      left = px; 
+      right = px + extra; 
+    }
 
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(Math.max(0, left)) + line + ' '.repeat(Math.max(0, right));

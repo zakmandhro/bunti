@@ -1,168 +1,134 @@
-import { bunti, BorderStyle, ICON_MAP } from "../src/index";
+import { demo } from "./demo-layout";
+import { ICON_MAP } from "../src/index";
 
 /**
  * Bunti Visual Gallery
- * THE GOLD STANDARD: Perfectly Aligned industrial columns using rigid layout nodes.
  */
 
-bunti.render(
-  ({
-    wallpaper,
-    box,
-    color,
-    width,
-    height,
-    gradient,
-    joinHorizontal,
-    joinVertical,
-    table
-  }) => {
-    wallpaper(233);
+demo("VISUAL REGISTRY", (ctx, bounds) => {
+  const { box, color, gradient, joinHorizontal } = ctx;
+  
+  const MASTER_WIDTH = 84;
+  const START_X = bounds.centerW(MASTER_WIDTH);
 
-    const MASTER_WIDTH = 84;
-    const START_X = Math.floor((width - MASTER_WIDTH) / 2);
+  // 1. Color Spectrum (Locked to Master Grid)
+  const specGrad = gradient({ 
+    colors: ['midnight', 'ocean', 'sky', 'nebula', 'plasma', 'rose', 'gold'], 
+    direction: 'horizontal', 
+    steps: MASTER_WIDTH 
+  });
 
-    // 1. Header (Centered, Minimalist)
-    box({ 
-      anchor: 'top', 
-      y: 1, 
-      align: 'center', 
-      border: 'none'
+  box({ 
+    x: START_X,
+    y: bounds.y, 
+    width: MASTER_WIDTH, 
+    height: 1, 
+    bgColor: specGrad, 
+    border: 'none',
+    padding: [0, 0]
+  }, () => {});
+
+  // 2. Style Showcase (Rigid Row, 3 boxes)
+  const W = 88;
+  const X = bounds.centerW(W);
+  const boxW = 28;
+  const gapX = 2;
+  const rowH = 7;
+  const currentY = bounds.y + 2;
+
+  const wireStyles = ["default", "rounded", "double"] as const;
+  const industrialStyles = [
+    { name: "FRAME", border: "frame", bg: "midnight", label: "Side Colors" },
+    { name: "THICK-FRAME", border: "thick-frame", bg: "ocean", label: "Ocean" },
+    {
+      name: "WRAPPING",
+      border: "frame",
+      bg: 234,
+      label: "Surgical",
+      wrap: true,
+      content: "LONG TEXT THAT WRAPS SURGICALLY",
+    },
+  ];
+
+  // Showcase Row 1 (Wireframe)
+  wireStyles.forEach((style, i) => {
+    box({
+      x: X + i * (boxW + gapX),
+      y: currentY,
+      width: boxW,
+      height: rowH,
+      border: style as any,
+      borderColor: 'gray',
+      align: 'center',
+      valign: 'middle'
     }, ({ text }) => {
-      text(color.white(color.bold(" BUNTI :: VISUAL REGISTRY ")));
+      text(`${style.toUpperCase()}\n(Wireframe)`);
     });
+  });
 
-    // 2. Color Spectrum (Locked to Master Grid)
-    const specGrad = gradient({ 
-      colors: ['midnight', 'ocean', 'sky', 'nebula', 'plasma', 'rose', 'gold'], 
-      direction: 'horizontal', 
-      steps: MASTER_WIDTH 
+  const row2Y = currentY + rowH + 1;
+
+  // Showcase Row 2 (Industrial)
+  industrialStyles.forEach((cfg, i) => {
+    const borderColor = cfg.label === "Side Colors" ? {
+      top: color.lighten(cfg.bg, 30),
+      bottom: color.darken(cfg.bg, 30),
+      left: color.lighten(cfg.bg, 15),
+      right: color.darken(cfg.bg, 15),
+    } : color.lighten(cfg.bg, 40);
+
+    box({
+      x: X + i * (boxW + gapX),
+      y: row2Y,
+      width: boxW,
+      height: rowH,
+      border: cfg.border as any,
+      borderColor: borderColor,
+      bgColor: cfg.bg,
+      align: 'center',
+      valign: 'middle',
+      wrap: cfg.wrap,
+      padding: [1, 2]
+    }, ({ text }) => {
+      text(cfg.content || `${cfg.name}\n(${cfg.label})`);
     });
+  });
 
-    box({ 
-      x: START_X,
-      y: 4, 
-      width: MASTER_WIDTH, 
-      height: 1, 
-      bgColor: specGrad, 
-      border: 'none',
-      padding: [0, 0]
-    }, () => {});
+  // 3. Icon Manifest (Rigid Grid - THE REFINERY)
+  const allIconNames = Object.keys(ICON_MAP);
+  const ICON_COLS = 4;
+  const rowsCount = Math.ceil(allIconNames.length / ICON_COLS);
+  const colW = Math.floor(W / ICON_COLS);
 
-    // 3. Style Showcase (Rigid Row, 3 boxes)
-    // 26 * 3 + 4 * 2 gaps = 86 (Wait, let's use MASTER_WIDTH = 88)
-    const W = 88;
-    const X = Math.floor((width - W) / 2);
-    const boxW = 28;
-    const gapX = 2;
-    const rowH = 7;
-
-    const wireStyles = ["default", "rounded", "double"] as const;
-    const industrialStyles = [
-      { name: "FRAME", border: "frame", bg: "midnight", label: "Side Colors" },
-      { name: "THICK-FRAME", border: "thick-frame", bg: "ocean", label: "Ocean" },
-      {
-        name: "WRAPPING",
-        border: "frame",
-        bg: 234,
-        label: "Surgical",
-        wrap: true,
-        content: "LONG TEXT THAT WRAPS SURGICALLY",
-      },
-    ];
-
-    // Showcase Row 1 (Wireframe)
-    wireStyles.forEach((style, i) => {
-      box({
-        x: X + i * (boxW + gapX),
-        y: 6,
-        width: boxW,
-        height: rowH,
-        border: style as any,
-        borderColor: color.gray,
-        align: 'center',
-        valign: 'middle'
-      }, ({ text }) => {
-        text(`${style.toUpperCase()}\n(Wireframe)`);
-      });
-    });
-
-    // Showcase Row 2 (Industrial)
-    industrialStyles.forEach((cfg, i) => {
-      const borderColor = cfg.label === "Side Colors" ? {
-        top: color.lighten(cfg.bg, 30),
-        bottom: color.darken(cfg.bg, 30),
-        left: color.lighten(cfg.bg, 15),
-        right: color.darken(cfg.bg, 15),
-      } : color.lighten(cfg.bg, 40);
-
-      box({
-        x: X + i * (boxW + gapX),
-        y: 14,
-        width: boxW,
-        height: rowH,
-        border: cfg.border as any,
-        borderColor: borderColor,
-        bgColor: cfg.bg,
-        align: 'center',
-        valign: 'middle',
-        wrap: cfg.wrap,
-        padding: [1, 2]
-      }, ({ text }) => {
-        text(cfg.content || `${cfg.name}\n(${cfg.label})`);
-      });
-    });
-
-    // 4. Icon Manifest (Rigid Grid - THE REFINERY)
-    const allIconNames = Object.keys(ICON_MAP);
-    const ICON_COLS = 4;
-    const rowsCount = Math.ceil(allIconNames.length / ICON_COLS);
-    const colW = Math.floor(W / ICON_COLS);
-
-    const tableData: string[][] = [];
-    for (let r = 0; r < rowsCount; r++) {
-      const row: string[] = [];
-      for (let c = 0; c < ICON_COLS; c++) {
-        const idx = r * ICON_COLS + c;
-        const name = allIconNames[idx];
-        if (name) {
-          const glyph = bunti.icon(name);
-          // RIGID SLOTS: icon(4) + label(rest)
-          const iconSlot = bunti.box(glyph, { width: 4, border: 'none', padding: [0, 0], align: 'left' });
-          const labelSlot = bunti.box(color.dim(name), { width: colW - 4, border: 'none', padding: [0, 0], align: 'left' });
-          row.push(joinHorizontal(iconSlot, labelSlot));
-        } else {
-          row.push(" ");
-        }
+  const tableData: string[][] = [];
+  for (let r = 0; r < rowsCount; r++) {
+    const row: string[] = [];
+    for (let c = 0; c < ICON_COLS; c++) {
+      const idx = r * ICON_COLS + c;
+      const name = allIconNames[idx];
+      if (name) {
+        const glyph = ctx.icon(name);
+        row.push(glyph + "   " + color.dim(name)); // Simplest for table layout
+      } else {
+        row.push(" ");
       }
-      tableData.push(row);
     }
+    tableData.push(row);
+  }
 
-    // Render the table manifest bound strictly to the same X and W as the boxes above
-    box({ x: X, y: 23, width: W, border: 'none', padding: [0, 0] }, ({ table }) => {
-      table(tableData, { 
-        width: W, 
-        padding: [0, 0], 
-        border: 'none',
-        columns: [
-          { align: 'left' },
-          { align: 'left' },
-          { align: 'left' },
-          { align: 'left' }
-        ]
-      });
-    });
+  const tableY = row2Y + rowH + 2;
 
-    // 5. Footer (Anchored Bottom)
-    box({ 
-      anchor: 'bottom', 
-      color: 'gray', 
-      align: 'center', 
+  box({ x: X, y: tableY, width: W, border: 'none', padding: [0, 0] }, ({ table }) => {
+    table(tableData, { 
+      width: W, 
+      padding: [0, 0], 
       border: 'none',
-      padding: [0, 0]
-    }, ({ text }) => {
-      text(` Bunti Visual Standards: 24-bit Color | ${allIconNames.length} Tactical Icons | Unified Borders `);
+      columns: [
+        { align: 'left' },
+        { align: 'left' },
+        { align: 'left' },
+        { align: 'left' }
+      ]
     });
-  },
-  { fps: 10, mouse: true, alternateBuffer: true, hideCursor: true },
-);
+  });
+});

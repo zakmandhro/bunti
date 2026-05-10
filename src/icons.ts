@@ -115,7 +115,13 @@ export function replaceEmojis(text: string): string {
   const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
   // @ts-ignore
   return Array.from(segmenter.segment(text)).map(({ segment }) => {
+    // 1. Direct match
     if (EMOJI_MAP[segment]) return EMOJI_MAP[segment];
+    
+    // 2. Try stripping variation selectors (e.g., U+FE0F)
+    const cleanSegment = segment.replace(/[\uFE00-\uFE0F]/g, '');
+    if (EMOJI_MAP[cleanSegment]) return EMOJI_MAP[cleanSegment];
+
     return segment;
   }).join('');
 }

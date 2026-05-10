@@ -8,7 +8,7 @@ import {
   gradient as layoutGradient, wallpaper as layoutWallpaper, rect, blit as layoutBlit, box as layoutBox, viewport as layoutViewport, 
   joinHorizontal, joinVertical, StyleOptions, list as layoutList, ListOptions, SideColors, resolveSize, table as layoutTable, TableOptions
 } from './layout';
-import { icon, init } from './icons';
+import { icon, init, replaceEmojis } from './icons';
 import { loop, flush } from './render';
 import { visibleWidth } from './utils';
 import { fg, bg, createGradient, rgb, Gradient, darken, lighten } from './colors';

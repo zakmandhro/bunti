@@ -23,6 +23,8 @@ const registry: Record<string, string> = {
   "dashboard": "./dashboard.ts",
   "engine": "./engine.ts",
   "animation": "./animation.ts",
+  "layout": "./layout.ts",
+  "colors": "./colors.ts",
 };
 
 if (!target || !registry[target]) {
