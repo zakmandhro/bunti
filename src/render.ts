@@ -8,7 +8,6 @@ import { charWidth } from './utils';
 
 /**
  * Diffs back and front buffers surgically.
- * Only sends the "dirty span" of each row to the terminal.
  */
 export function flush(state: ScreenState) {
   const writer = Bun.stdout.writer();
@@ -20,7 +19,6 @@ export function flush(state: ScreenState) {
     let firstDirty = -1;
     let lastDirty = -1;
 
-    // 1. Find the dirty span for this row
     for (let x = 0; x < state.width; x++) {
       const b = state.backBuffer[y][x];
       const f = state.frontBuffer[y][x];
@@ -30,7 +28,6 @@ export function flush(state: ScreenState) {
       }
     }
 
-    // 2. Only render the dirty segment
     if (firstDirty !== -1) {
       renderString += `\x1b[${y + 1};${firstDirty + 1}H`;
       
@@ -38,11 +35,8 @@ export function flush(state: ScreenState) {
         const cell = state.backBuffer[y][x];
         const front = state.frontBuffer[y][x];
 
-        // Skip filler cells
         if (cell.char === '') {
-          front.char = '';
-          front.fg = cell.fg;
-          front.bg = cell.bg;
+          front.char = ''; front.fg = cell.fg; front.bg = cell.bg;
           continue;
         }
 
@@ -53,10 +47,12 @@ export function flush(state: ScreenState) {
           if (fg === undefined && bg === undefined) {
             renderString += '\x1b[0m';
           } else {
+            // Foreground
             if (fg !== lastFg) {
               if (fg === undefined) renderString += '\x1b[39m';
               else renderString += (typeof fg === 'string' && fg.startsWith('2;')) ? `\x1b[38;${fg}m` : `\x1b[38;5;${fg}m`;
             }
+            // Background - FIXED: Using 48 for Background TrueColor
             if (bg !== lastBg) {
               if (bg === undefined) renderString += '\x1b[49m';
               else renderString += (typeof bg === 'string' && bg.startsWith('2;')) ? `\x1b[48;${bg}m` : `\x1b[48;5;${bg}m`;
@@ -67,11 +63,7 @@ export function flush(state: ScreenState) {
         }
 
         renderString += cell.char;
-        
-        // Sync front buffer
-        front.char = cell.char;
-        front.fg = cell.fg;
-        front.bg = cell.bg;
+        front.char = cell.char; front.fg = cell.fg; front.bg = cell.bg;
       }
     }
   }

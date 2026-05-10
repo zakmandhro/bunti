@@ -141,11 +141,12 @@ export function box(content: string, options: StyleOptions = {}): string {
     const lineW = visibleWidth(line);
     const extra = Math.max(0, innerW - lineW);
     
+    const align = options.align || 'center';
     let left = 0, right = 0;
-    if (options.align === 'center') {
+    if (align === 'center') {
       left = Math.floor(extra / 2);
       right = Math.ceil(extra / 2);
-    } else if (options.align === 'right') {
+    } else if (align === 'right') {
       left = extra;
       right = 0;
     } else {

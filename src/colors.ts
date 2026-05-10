@@ -2,6 +2,8 @@
  * Bunti Semantic & Palette Color System
  */
 
+export interface RGB { r: number, g: number, b: number }
+
 export const PALETTE = {
   // Greyscale
   slate: '235',
@@ -31,18 +33,40 @@ export const PALETTE = {
 export type PaletteColor = keyof typeof PALETTE;
 
 /**
+ * Parses a hex color string (#RRGGBB or #RGB) to an RGB object.
+ */
+export function hexToRGB(hex: string): RGB {
+  const h = hex.replace('#', '');
+  if (h.length === 3) {
+    return {
+      r: parseInt(h[0] + h[0], 16),
+      g: parseInt(h[1] + h[1], 16),
+      b: parseInt(h[2] + h[2], 16)
+    };
+  }
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16)
+  };
+}
+
+/**
  * Resolves a palette name, color code, or RGB object to a string for ANSI.
  */
-export function resolveColor(color: PaletteColor | string | number | { r: number, g: number, b: number }): string | number {
-  if (typeof color === 'object') {
+export function resolveColor(color: PaletteColor | string | number | RGB): string | number {
+  if (typeof color === 'object' && 'r' in color) {
     return `2;${color.r};${color.g};${color.b}`;
+  }
+  if (typeof color === 'string' && color.startsWith('#')) {
+    const rgb = hexToRGB(color);
+    return `2;${rgb.r};${rgb.g};${rgb.b}`;
   }
   return (PALETTE as any)[color] || color;
 }
 
 /**
  * Creates a multi-stop gradient (array of RGB objects) between multiple colors.
- * Supports both an array of colors OR (start, end, steps).
  */
 export function createGradient(
   arg1: (string | number | RGB)[] | string | number | RGB,
@@ -107,6 +131,7 @@ const RGB_REGISTRY: Record<string, RGB> = {
  */
 function resolveColorToRGB(color: any): RGB {
   if (typeof color === 'object' && 'r' in color) return color;
+  if (typeof color === 'string' && color.startsWith('#')) return hexToRGB(color);
   
   // 1. Check registry
   if (typeof color === 'string' && RGB_REGISTRY[color]) return RGB_REGISTRY[color];
@@ -131,12 +156,12 @@ export function rgb(r: number, g: number, b: number) {
  */
 export function fg(color: any, text: string): string {
   const code = resolveColor(color);
-  const prefix = typeof color === 'object' ? '38' : '38;5';
+  const prefix = (typeof color === 'object' || (typeof color === 'string' && color.startsWith('#'))) ? '38' : '38;5';
   return `\x1b[${prefix};${code}m${text}\x1b[0m`;
 }
 
 export function bg(color: any, text: string): string {
   const code = resolveColor(color);
-  const prefix = typeof color === 'object' ? '48' : '48;5';
+  const prefix = (typeof color === 'object' || (typeof color === 'string' && color.startsWith('#'))) ? '48' : '48;5';
   return `\x1b[${prefix};${code}m${text}\x1b[0m`;
 }
