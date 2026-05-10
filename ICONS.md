@@ -1,56 +1,39 @@
 # 🛰️ Bunti Icon Engine
 
-**High-fidelity, zero-dependency icon orchestration with automatic fallback.**
+**High-fidelity, zero-dependency tactical iconography.**
 
-Bunti features a surgical icon engine designed for the age of parallel engineering. It solves the "Jagged Border" problem by implementing **Elastic Padding**—automatically adjusting box layouts based on character width to ensure perfect alignment.
+Bunti features a surgical icon engine designed for the age of agentic engineering. It solves the "Jagged Border" problem by enforcing a **Width-1 Standard**—ensuring all tactical icons end up as perfectly aligned single-column units.
 
-## 💎 The Two-Tier Fallback
+## 💎 Tactical Stability
 
-Bunti automatically detects your terminal's capabilities and serves the best possible visual signal. Emojis have been dropped to ensure perfect spacing stability in complex layouts.
+Bunti assumes **Nerd Font v3** support by default for instant high-fidelity rendering. 
 
-1.  **Nerd Font (Fidelity)**: High-resolution tactical icons (e.g., `󰡯`, ``). Treated as **width 1**.
-2.  **ASCII (Minimalist)**: Surgical single-character fallbacks for legacy TTYs (e.g., `*`, `v`, `!`). Treated as **width 1**.
+To ensure layout stability across all terminals, Bunti implements a **Nerd-Emoji Swap**: multi-byte emojis provided by the user are automatically transformed into their closest Width-1 Nerd Font equivalent *before* measurement or rendering.
+
+1.  **Nerd Font (Default)**: High-resolution tactical symbols (e.g., `󰡯`, ``).
+2.  **ASCII (Fallback)**: Surgical single-character fallbacks for legacy TTYs (e.g., `S`, `*`).
 
 ## 🚀 Usage
 
-### 1. Opinionated Standards
+### 1. The `icon()` Helper
 Use the built-in `icon()` helper for the "Stable 50" set of tactical dev icons.
 
 ```typescript
-import { bunti } from 'bunti';
-
-await bunti.init(); // Required for capability detection
-
-console.log(bunti.icon('satellite')); // 󰡯 (NF) or S (ASCII)
-console.log(bunti.icon('branch'));    //  (NF) or * (ASCII)
+bunti.render(({ icon, text }) => {
+  text(icon('rocket')); // 󰡯 (NF) or R (ASCII)
+  text(icon('branch')); //  (NF) or * (ASCII)
+});
 ```
 
-### 2. Nerd Font Registry
-Access any of the 50+ curated Nerd Font v3 icons by name.
-
-```typescript
-console.log(bunti.nerd('ts')); //  (TypeScript)
-console.log(bunti.nerd('js')); //  (JavaScript)
-```
-
-### 3. Custom Registration
-Add your own icons to the session registry.
-
-```typescript
-bunti.register('my-icon', '\uF006A');
-console.log(bunti.nerd('my-icon'));
-```
-
-## 📐 Elastic Padding
-
-Traditional TUI libraries often struggle with character alignment, causing borders to overflow or cave in.
-
-**Bunti is different.** Our layout engine calculates the `visibleWidth` of every grapheme cluster. When you put an icon in a `box()`, Bunti automatically adjusts the internal padding to ensure the borders remain pixel-perfect and symmetrical across both tiers.
-
-## 🎬 Technical Showcase
-
-Run the full icon manifest to see the engine in action:
+### 2. Side-by-Side Comparison
+Run the icon showcase to see the mapping in action:
 
 ```bash
 bun demo icons
 ```
+
+## 📐 Spacing Stability
+
+Traditional TUI libraries often struggle with character alignment, causing borders to overflow or cave in when emojis are present.
+
+**Bunti is different.** By mapping complex emojis to fixed-width tactical icons, Bunti guarantees that your layout math is always absolute. A 30-column box will **always** render at exactly 30 columns, regardless of the icons inside.

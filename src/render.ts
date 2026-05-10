@@ -52,7 +52,7 @@ export function flush(state: ScreenState) {
               if (fg === undefined) renderString += '\x1b[39m';
               else renderString += (typeof fg === 'string' && fg.startsWith('2;')) ? `\x1b[38;${fg}m` : `\x1b[38;5;${fg}m`;
             }
-            // Background - FIXED: Using 48 for Background TrueColor
+            // Background
             if (bg !== lastBg) {
               if (bg === undefined) renderString += '\x1b[49m';
               else renderString += (typeof bg === 'string' && bg.startsWith('2;')) ? `\x1b[48;${bg}m` : `\x1b[48;5;${bg}m`;
@@ -92,30 +92,43 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
     if (options.focus) cmd += ANSI.focusEnable;
     if (cmd) process.stdout.write(cmd);
     
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on('data', (data) => handleInput(state, data, stop));
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      process.stdin.on('data', inputHandler);
+    }
   };
+
+  const inputHandler = (data: any) => handleInput(state, data, stop);
 
   const stop = () => {
     if (interval) clearInterval(interval);
+    
+    process.stdin.removeListener('data', inputHandler);
+    process.removeListener('SIGWINCH', resizeHandler);
+    process.removeListener('SIGINT', stop);
+    process.removeListener('SIGTERM', stop);
+
     let cmd = '';
     if (options.mouse) cmd += ANSI.mouseDisable;
     if (options.focus) cmd += ANSI.focusDisable;
     if (options.alternateBuffer) cmd += ANSI.mainBuffer;
     if (options.hideCursor) cmd += ANSI.showCursor;
     cmd += ANSI.reset;
+    
     process.stdout.write(cmd);
     process.exit(0);
   };
 
-  if (options.mouse || options.focus || options.keyboard) setupInput();
-
-  process.on('SIGWINCH', () => {
+  const resizeHandler = () => {
     resizeScreen(state);
     process.stdout.write(ANSI.clear);
     tick();
-  });
+  };
+
+  if (options.mouse || options.focus || options.keyboard) setupInput();
+
+  process.on('SIGWINCH', resizeHandler);
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
 

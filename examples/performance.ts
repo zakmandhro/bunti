@@ -16,7 +16,7 @@ const runBenchmark = async () => {
     bunti.clearBackBuffer(state);
     
     // Complex Scene
-    bunti.gradient(state, ['#0000ff', '#ff0000'], { offset: i });
+    bunti.gradient(state, ['#0000ff', '#ff0000'], { direction: 'vertical' });
     
     const ui = bunti.box(`FRAME: ${i}\nBURST: NOMINAL`, {
       border: 'rounded',

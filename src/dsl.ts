@@ -6,12 +6,12 @@
 import { ScreenState, createScreenState, clearBackBuffer, ScreenOptions, Cell, RGB } from './state';
 import { 
   gradient as layoutGradient, wallpaper as layoutWallpaper, rect, blit as layoutBlit, box as layoutBox, viewport as layoutViewport, 
-  joinHorizontal, joinVertical, StyleOptions, list as layoutList, ListOptions, SideColors
+  joinHorizontal, joinVertical, StyleOptions, list as layoutList, ListOptions, SideColors, resolveSize, table as layoutTable, TableOptions
 } from './layout';
 import { icon, init } from './icons';
 import { loop, flush } from './render';
 import { visibleWidth } from './utils';
-import { fg, createGradient, rgb, Gradient, darken, lighten } from './colors';
+import { fg, bg, createGradient, rgb, Gradient, darken, lighten } from './colors';
 import pc from 'picocolors';
 
 // --- Traits (Contextual Capabilities) ---
@@ -28,10 +28,11 @@ export const KEYS = {
   SPACE: ' ',
 };
 export interface DSLBoxOptions extends StyleOptions {
-  bgColor?: string | number | RGB;
+  bgColor?: string | number | RGB | Gradient;
   color?: string | number | RGB | 'blank';
   x?: number;
   y?: number;
+  anchor?: 'top' | 'bottom';
   size?: 'auto' | number;
   title?: string;
   titleStyle?: (s: string) => string;
@@ -43,7 +44,7 @@ export interface DSLBoxOptions extends StyleOptions {
  * The interface for the contextual builder provided to closures.
  */
 export interface BuntiContext {
-  color: typeof pc & { darken: typeof darken, lighten: typeof lighten, rgb: typeof rgb };
+  color: typeof pc & { darken: typeof darken, lighten: typeof lighten, rgb: typeof rgb, fg: typeof fg, bg: typeof bg };
   state: ScreenState;
   width: number;
   height: number;
@@ -75,6 +76,7 @@ export interface BuntiContext {
   focusNext(): void;
 
   list(id: string, items: string[], options?: ListOptions): BuntiContext;
+  table(rows: string[][], options?: TableOptions): BuntiContext;
 
   // Animation
   animate(duration: number, options?: { loop?: boolean, delay?: number, id?: string }): number;
@@ -92,12 +94,12 @@ interface DSLState {
 /**
  * Common Context Factory: Provided to every closure.
  */
-function createDSLContext(state: ScreenState, dslState: DSLState): BuntiContext {
+function createDSLContext(state: ScreenState, dslState: DSLState, availableW: number, availableH: number): BuntiContext {
   const ctx: BuntiContext = {
-    color: { ...pc, darken, lighten, rgb } as any,
+    color: { ...pc, darken, lighten, rgb, fg, bg } as any,
     state,
-    width: state.width,
-    height: state.height,
+    width: availableW,
+    height: availableH,
     mouseX: state.mouseX,
     mouseY: state.mouseY,
     mouseButton: state.mouseButton,
@@ -175,10 +177,14 @@ function createDSLContext(state: ScreenState, dslState: DSLState): BuntiContext 
       dslState.activeContents.push(content);
       return ctx;
     },
+
+    table(rows: string[][], options: TableOptions = {}) {
+      const content = layoutTable(rows, options, availableW);
+      dslState.activeContents.push(content);
+      return ctx;
+    },
     
     icon(name: string) {
-      // Pushes NOTHING to activeContents, just returns the glyph string.
-      // User must use it in a template or pass to text().
       return icon(name);
     },
     
@@ -213,33 +219,28 @@ function createDSLContext(state: ScreenState, dslState: DSLState): BuntiContext 
     },
 
     box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void) {
-      if (options.size === 'auto') {
-        options.width = undefined;
-      } else if (typeof options.size === 'number') {
-        options.width = options.size;
-      }
+      const borderOffset = (options.border === 'none' || !options.border) ? 0 : 2;
+      const px = options.padding?.[1] ?? 0;
+      const py = options.padding?.[0] ?? 0;
 
-      if (options.id) {
-        const isFocused = this.focusable(options.id);
-        if (isFocused) {
-          if (!options.borderColor) options.borderColor = (s) => pc.cyan(s);
-          if (!options.titleStyle) options.titleStyle = (s) => pc.bold(pc.cyan(s));
-        } else {
-          if (!options.borderColor) options.borderColor = (s) => pc.dim(s);
-          if (!options.titleStyle) options.titleStyle = (s) => pc.dim(s);
-        }
-      }
+      // Measure parent-relative dimensions
+      const resolvedW = resolveSize(options.width, availableW, 0);
+      const innerW = resolvedW ? Math.max(0, resolvedW - borderOffset - (px * 2)) : availableW;
+      
+      const resolvedH = resolveSize(options.height, availableH, 0);
+      const innerH = resolvedH ? Math.max(0, resolvedH - borderOffset - (py * 2)) : availableH;
 
       const subContents: string[] = [];
       dslState.stack.push(dslState.activeContents);
       dslState.activeContents = subContents;
 
-      callback(ctx);
+      const subCtx = createDSLContext(state, dslState, innerW, innerH);
+      callback(subCtx);
       
       dslState.activeContents = dslState.stack.pop()!;
       
       const innerContent = subContents.join('');
-      const styledBox = layoutBox(innerContent, options);
+      const styledBox = layoutBox(innerContent, options, availableW, availableH);
       
       dslState.activeContents.push(styledBox);
       return ctx;
@@ -287,48 +288,53 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     stack: []
   };
 
-  const base = createDSLContext(state, dslState);
+  const base = createDSLContext(state, dslState, state.width, state.height);
   
   if (state.lastKey === KEYS.TAB) {
     base.focusNext();
   }
 
-  // Override box for top-level to handle auto-centering and blitting
+  // Override box for top-level to handle auto-centering and direct-to-buffer rendering
   const boxOverride = (options: DSLBoxOptions, callback: (ctx: BuntiContext) => void) => {
-    if (options.size === 'auto') {
-      options.width = undefined;
-    } else if (typeof options.size === 'number') {
-      options.width = options.size;
+    // 1. Resolve Anchor dimensions
+    if (options.anchor === 'top') {
+      options.x = 0; options.y = 0; options.width = state.width;
+    } else if (options.anchor === 'bottom') {
+      options.x = 0; options.width = state.width;
     }
 
-    if (options.id) {
-      const isFocused = base.focusable(options.id);
-      if (isFocused) {
-        if (!options.borderColor) options.borderColor = (s) => pc.cyan(s);
-        if (!options.titleStyle) options.titleStyle = (s) => pc.bold(pc.cyan(s));
-      } else {
-        if (!options.borderColor) options.borderColor = (s) => pc.dim(s);
-        if (!options.titleStyle) options.titleStyle = (s) => pc.dim(s);
-      }
-    }
+    const borderOffset = (options.border === 'none' || !options.border) ? 0 : 2;
+    const px = options.padding?.[1] ?? 0;
+    const py = options.padding?.[0] ?? 0;
+
+    // 2. Resolve dimensions (top-level uses screen width)
+    const resolvedW = resolveSize(options.width, state.width, 0);
+    const innerW = resolvedW ? Math.max(0, resolvedW - borderOffset - (px * 2)) : state.width;
+    const resolvedH = resolveSize(options.height, state.height, 0);
+    const innerH = resolvedH ? Math.max(0, resolvedH - borderOffset - (py * 2)) : state.height;
 
     const subContents: string[] = [];
     dslState.stack.push(dslState.activeContents);
     dslState.activeContents = subContents;
 
-    callback(base);
+    const subCtx = createDSLContext(state, dslState, innerW, innerH);
+    callback(subCtx);
     
     dslState.activeContents = dslState.stack.pop()!;
     
     const contentStr = subContents.join('');
-    const styledBox = layoutBox(contentStr, options);
+    const styledBox = layoutBox(contentStr, options, state.width, state.height);
 
     const lines = styledBox.split('\n');
     const w = Math.max(...lines.map(visibleWidth));
     const h = lines.length;
 
-    const x = options.x !== undefined ? options.x : Math.max(0, Math.floor((state.width - w) / 2));
-    const y = options.y !== undefined ? options.y : Math.max(0, Math.floor((state.height - h) / 2));
+    let x = options.x !== undefined ? options.x : Math.max(0, Math.floor((state.width - w) / 2));
+    let y = options.y !== undefined ? options.y : Math.max(0, Math.floor((state.height - h) / 2));
+
+    if (options.anchor === 'bottom') {
+      y = state.height - h;
+    }
 
     if (options.bgColor || options.color) {
       rect(state, x, y, w, h, { 

@@ -16,6 +16,7 @@
   "scripts": {
     "test": "bun test",
     "bench": "bun scripts/bench.ts",
+    "type-check": "tsgo --noEmit",
     "demo": "bun demo/runner.ts",
     "example": "bun demo/runner.ts"
   },

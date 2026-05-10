@@ -2,6 +2,8 @@
  * Bunti Functional Screen State & Initialization
  */
 
+import { Gradient } from './colors';
+
 export interface RGB {
   r: number;
   g: number;
@@ -30,100 +32,90 @@ export interface ScreenState {
   focusableIds: string[];
   componentState: Map<string, any>;
   startTime: number;
-  lastFg?: string | number;
-  lastBg?: string | number;
+  lastFg?: any;
+  lastBg?: any;
+  id?: string;
   options: ScreenOptions;
 }
 
 export interface ScreenOptions {
-  alternateBuffer?: boolean;
-  hideCursor?: boolean;
+  fps?: number;
   mouse?: boolean;
   focus?: boolean;
   keyboard?: boolean;
-  fps?: number;
+  alternateBuffer?: boolean;
+  hideCursor?: boolean;
   nerdFont?: boolean;
 }
 
-export const ANSI = {
-  clear: '\x1b[2J\x1b[3J\x1b[H',
-  home: '\x1b[H',
-  hideCursor: '\x1b[?25l',
-  showCursor: '\x1b[?25h',
-  reset: '\x1b[0m',
-  alternateBuffer: '\x1b[?1049h',
-  mainBuffer: '\x1b[?1049l',
-  mouseEnable: '\x1b[?1000h\x1b[?1003h\x1b[?1015h\x1b[?1006h',
-  mouseDisable: '\x1b[?1000l\x1b[?1003l\x1b[?1015l\x1b[?1006l',
-  focusEnable: '\x1b[?1004h',
-  focusDisable: '\x1b[?1004l',
-};
-
 /**
- * Creates a fresh ScreenState object.
+ * Creates a fresh ScreenState based on the terminal dimensions and options.
  */
 export function createScreenState(options: ScreenOptions = {}): ScreenState {
   const width = process.stdout.columns || 80;
   const height = process.stdout.rows || 24;
 
-  const createBuffer = () => 
-    Array.from({ length: height }, () =>
-      Array.from({ length: width }, () => ({ char: ' ', fg: undefined, bg: undefined }))
-    );
-
-  return {
+  const state: ScreenState = {
     width,
     height,
-    frontBuffer: createBuffer(),
-    backBuffer: createBuffer(),
-    mouseX: -1,
-    mouseY: -1,
-    mouseButton: -1,
+    frontBuffer: Array.from({ length: height }, () => 
+      Array.from({ length: width }, () => ({ char: '', fg: undefined, bg: undefined }))
+    ),
+    backBuffer: Array.from({ length: height }, () => 
+      Array.from({ length: width }, () => ({ char: ' ', fg: undefined, bg: undefined }))
+    ),
+    mouseX: 0,
+    mouseY: 0,
+    mouseButton: 0,
     isMouseDown: false,
     hasFocus: true,
-    lastKey: undefined,
-    focusedId: undefined,
     focusableIds: [],
     componentState: new Map(),
     startTime: Date.now(),
-    options: {
-      alternateBuffer: true,
-      hideCursor: true,
-      mouse: false,
-      focus: true,
-      keyboard: true,
-      fps: 60,
-      ...options
-    }
+    options
   };
+
+  return state;
 }
 
 /**
- * Updates the dimensions of the screen state and resizes buffers.
+ * Resizes the front/back buffers to match the new terminal size.
  */
 export function resizeScreen(state: ScreenState) {
-  state.width = process.stdout.columns || 80;
-  state.height = process.stdout.rows || 24;
+  const width = process.stdout.columns || 80;
+  const height = process.stdout.rows || 24;
 
-  const createBuffer = () => 
-    Array.from({ length: state.height }, () =>
-      Array.from({ length: state.width }, () => ({ char: ' ', fg: undefined, bg: undefined }))
-    );
-
-  state.frontBuffer = createBuffer();
-  state.backBuffer = createBuffer();
+  state.width = width;
+  state.height = height;
+  state.frontBuffer = Array.from({ length: height }, () => 
+    Array.from({ length: width }, () => ({ char: '', fg: undefined, bg: undefined }))
+  );
+  state.backBuffer = Array.from({ length: height }, () => 
+    Array.from({ length: width }, () => ({ char: ' ', fg: undefined, bg: undefined }))
+  );
 }
 
 /**
- * Clears the back buffer to a 'transparent' state.
+ * Clears the back buffer to the base wallpaper or a given cell style.
  */
 export function clearBackBuffer(state: ScreenState) {
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
-      const cell = state.backBuffer[y][x];
-      cell.char = ' ';
-      cell.fg = undefined;
-      cell.bg = undefined;
+      state.backBuffer[y][x] = { char: ' ', fg: undefined, bg: undefined };
     }
   }
 }
+
+export const ANSI = {
+  reset: '\x1b[0m',
+  clear: '\x1b[2J',
+  home: '\x1b[H',
+  alternateBuffer: '\x1b[?1049h',
+  mainBuffer: '\x1b[?1049l',
+  hideCursor: '\x1b[?25l',
+  showCursor: '\x1b[?25h',
+  mouseEnable: '\x1b[?1003h\x1b[?1006h',
+  mouseDisable: '\x1b[?1003l\x1b[?1006l',
+  focusEnable: '\x1b[?1004h',
+  focusDisable: '\x1b[?1004l',
+};

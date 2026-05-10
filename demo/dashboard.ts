@@ -1,43 +1,83 @@
-import { render, box as layoutBox, joinHorizontal, joinVertical } from '../src/index';
+import { bunti, KEYS } from '../src/index';
 
 /**
- * Bunti Static Dashboard Showcase
- * A clean, high-fidelity grid for visual validation.
+ * Bunti Mission Control Dashboard
+ * Demonstrating Component Composition, Focus Management, and High-Density Layouts.
  */
 
-render(({ box, color }) => {
-  box({ border: 'none', size: 82 }, ({ text }) => {
-    const header = layoutBox(color.bold("🛰️  MISSION CONTROL :: ORBITAL STATUS"), {
-      align: 'center',
-      border: 'rounded',
-      borderColor: color.magenta,
-      padding: [0, 1],
-      width: 82
-    });
+const PLANETS = [
+  { name: 'Earth', branch: 'main', status: 'Ready' },
+  { name: 'Mars', branch: 'feat/rover', status: 'Active(2)' },
+  { name: 'Venus', branch: 'fix/acid-rain', status: 'In Use' },
+  { name: 'Jupiter', branch: 'chore/gas', status: 'Ready' },
+];
 
-    const panel1 = layoutBox(color.blue("CORE TELEMETRY\n") + "STATUS: NOMINAL\nUPTIME: 14D 2H\nLOAD: 0.12%", {
-      border: 'rounded',
-      borderColor: color.cyan,
-      padding: [1, 2],
-      width: 40
-    });
+const ISSUES = [
+  { number: 42, title: 'Atmosphere leaking on Mars', labels: ['bug', 'critical'] },
+  { number: 101, title: 'Venus rotation too slow', labels: ['feature'] },
+  { number: 202, title: 'Earth needs more trees', labels: ['improvement'] },
+];
 
-    const panel2 = layoutBox(color.magenta("PLANET STATUS\n") + "MERCURY: ACTIVE\nVENUS:   IDLE\nEARTH:   STABLE", {
-      border: 'rounded',
-      borderColor: color.cyan,
-      padding: [1, 2],
-      width: 40
-    });
+bunti.render(({ wallpaper, box, color, width, height, blit, list, lastKey }) => {
+  wallpaper('#0a0a0b');
 
-    const footer = layoutBox(color.dim("Bunti Layout Engine :: Pure TypeScript :: Bun-Native"), { 
-      width: 82, 
-      align: 'center' 
-    });
-
-    text(joinVertical(
-      header,
-      joinHorizontal(panel1, panel2),
-      footer
-    ));
+  // 1. Header
+  box({ border: 'none', padding: [1, 2], x: 2, y: 1 }, ({ span, text }) => {
+    span({ color: color.cyan }, (s) => s.text(' MISSION CONTROL '));
+    span({ color: color.gray }, (s) => s.text(` v1.0 • ${new Date().toLocaleTimeString()}`));
   });
-}, { once: true });
+
+  // 2. Main Layout Grid
+  const panelW = Math.floor(width * 0.45);
+  const panelH = 10;
+
+  // Planets Panel
+  box({
+    id: 'planets',
+    x: 2,
+    y: 5,
+    width: panelW,
+    height: panelH,
+    border: 'frame',
+    title: ' PLANETARY FLEET '
+  }, (sub) => {
+    const planetLines = PLANETS.map(p => 
+      `${color.green('✔')} ${p.name.padEnd(10)} ${color.gray(p.branch.padEnd(15))} ${p.status}`
+    );
+    sub.list('planets', planetLines, {
+      focusStyle: (s) => color.bold(color.cyan(`> ${s.trim()}`))
+    });
+  });
+
+  // Issues Panel
+  box({
+    id: 'issues',
+    x: width - panelW - 2,
+    y: 5,
+    width: panelW,
+    height: panelH,
+    border: 'frame',
+    title: ' CRITICAL TELEMETRY '
+  }, (sub) => {
+    const issueLines = ISSUES.map(i => 
+      `${color.magenta('#' + i.number)} ${i.title} ${color.gray('[' + i.labels.join(',') + ']')}`
+    );
+    sub.list('issues', issueLines, {
+      focusStyle: (s) => color.bold(color.magenta(`! ${s.trim()}`))
+    });
+  });
+
+  // 3. Status Bar
+  const statusX = 4;
+  const statusY = 17;
+  blit(statusX, statusY, color.gray('  Press '));
+  blit(statusX + 8, statusY, color.white('TAB'));
+  blit(statusX + 12, statusY, color.gray(' to switch focus, '));
+  blit(statusX + 30, statusY, color.white('UP/DOWN'));
+  blit(statusX + 38, statusY, color.gray(' to navigate, '));
+  blit(statusX + 52, statusY, color.white('q'));
+  blit(statusX + 54, statusY, color.gray(' to abort mission.'));
+
+  if (lastKey === 'q') process.exit(0);
+
+}, { fps: 60 });

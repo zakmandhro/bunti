@@ -43,68 +43,123 @@ export function truncate(str: string, width: number, tail = '…'): string {
   if (visible <= width) return str;
 
   const targetWidth = width - visibleWidth(tail);
+  if (targetWidth <= 0) return '';
+
   let currentWidth = 0;
   let out = '';
   
-  // Use Intl.Segmenter to iterate over graphemes safely
-  const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-  // @ts-ignore
-  for (const { segment } of segmenter.segment(str)) {
-    const clean = stripAnsi(segment);
-    
-    // If it's a pure ANSI segment, always include it (doesn't add to width)
-    if (clean.length === 0 && segment.length > 0) {
-      out += segment;
-      continue;
+  // Custom parsing loop to isolate ANSI sequences from text
+  const regex = /\x1B\[[0-9;]*[a-zA-Z]/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(str)) !== null) {
+    // 1. Process text before the ANSI code
+    const textSegment = str.substring(lastIndex, match.index);
+    if (textSegment.length > 0) {
+      const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+      // @ts-ignore
+      for (const { segment } of segmenter.segment(textSegment)) {
+        const w = charWidth(segment);
+        if (currentWidth + w > targetWidth) {
+          return out + '\x1b[0m' + tail; // Return immediately upon hitting limit
+        }
+        out += segment;
+        currentWidth += w;
+      }
     }
 
-    const w = charWidth(clean);
-    if (currentWidth + w > targetWidth) break;
-    
-    out += segment;
-    currentWidth += w;
+    // 2. Append the ANSI code itself (zero width)
+    out += match[0];
+    lastIndex = regex.lastIndex;
   }
 
-  // Always append a reset to be safe
-  return out + tail + '\x1b[0m';
+  // 3. Process remaining text after the last ANSI code
+  const remainingText = str.substring(lastIndex);
+  if (remainingText.length > 0) {
+    const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    // @ts-ignore
+    for (const { segment } of segmenter.segment(remainingText)) {
+      const w = charWidth(segment);
+      if (currentWidth + w > targetWidth) {
+        return out + '\x1b[0m' + tail;
+      }
+      out += segment;
+      currentWidth += w;
+    }
+  }
+
+  return out + '\x1b[0m';
 }
 
 /**
  * Wraps text to a specific visible width, preserving ANSI codes.
+ * Implements word-based wrapping with fallback to char-breaking for long tokens.
  */
 export function wrapText(str: string, width: number): string[] {
   if (width <= 0) return [str];
-  const lines: string[] = [];
+  const result: string[] = [];
   const rawLines = str.split('\n');
 
   for (const rawLine of rawLines) {
+    if (visibleWidth(rawLine) <= width) {
+      result.push(rawLine);
+      continue;
+    }
+
+    // Split into tokens: words and whitespaces
+    const tokens = rawLine.split(/(\s+)/).filter(t => t.length > 0);
     let currentLine = '';
     let currentWidth = 0;
-    
-    const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-    // @ts-ignore
-    for (const { segment } of segmenter.segment(rawLine)) {
-      const clean = stripAnsi(segment);
-      const w = charWidth(clean);
 
-      if (clean.length === 0 && segment.length > 0) {
-        currentLine += segment;
+    for (const token of tokens) {
+      const tokenWidth = visibleWidth(token);
+      const isWhitespace = /^\s+$/.test(stripAnsi(token));
+
+      // If token itself is too wide, we MUST break it by character
+      if (tokenWidth > width) {
+        // Flush current line if it exists
+        if (currentLine) {
+          result.push(currentLine + '\x1b[0m');
+          currentLine = '';
+          currentWidth = 0;
+        }
+
+        // Segmented break of the long token
+        const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+        // @ts-ignore
+        for (const { segment } of segmenter.segment(token)) {
+          const sw = charWidth(segment);
+          if (currentWidth + sw > width) {
+            result.push(currentLine + '\x1b[0m');
+            currentLine = segment;
+            currentWidth = sw;
+          } else {
+            currentLine += segment;
+            currentWidth += sw;
+          }
+        }
         continue;
       }
 
-      if (currentWidth + w > width) {
-        lines.push(currentLine + '\x1b[0m');
-        currentLine = segment;
-        currentWidth = w;
+      // Normal word wrap
+      if (currentWidth + tokenWidth > width) {
+        if (isWhitespace) {
+          // Swallow leading whitespace on new lines
+          continue;
+        }
+        result.push(currentLine.trimEnd() + '\x1b[0m');
+        currentLine = token;
+        currentWidth = tokenWidth;
       } else {
-        currentLine += segment;
-        currentWidth += w;
+        currentLine += token;
+        currentWidth += tokenWidth;
       }
     }
-    lines.push(currentLine);
+    if (currentLine) result.push(currentLine.trimEnd());
   }
 
-  return lines;
+  return result;
 }
 
 /**

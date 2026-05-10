@@ -1,45 +1,48 @@
 import { spawn } from "bun";
+import { resolve } from "path";
 
-const command = process.env.npm_lifecycle_event || "demo";
-const isExample = command === "example";
-const target = process.argv[2];
+/**
+ * Bunti Demo Watchdog
+ * Uses `bun --watch` in a child process to provide clean, zero-leak reloads.
+ */
+
+const target = process.argv.find(arg => 
+  !arg.startsWith("--") && 
+  !arg.includes("/") && 
+  arg !== "bun" && 
+  !arg.endsWith(".ts") &&
+  arg !== "node"
+);
+
+const isNoHot = process.argv.includes("--no-hot");
 
 const registry: Record<string, string> = {
-  "icons": "demo/icons.ts",
-  "nerd": "demo/nerd-icons.ts",
-  "dashboard": "demo/dashboard.ts",
-  "loop": "demo/loop-demo.ts",
-  "center": "demo/center-demo.ts",
-  "mouse": "demo/mouse-demo.ts",
-  "color": "demo/spectrum-demo.ts",
-  "box-styles": "demo/box-styles.ts",
-  "responsive": "demo/responsive-demo.ts",
-  "responsive-stress": "demo/responsive-stress.ts",
-  "gradient": "examples/gradient.ts",
-  "gradient-demo": "examples/gradient-demo.ts",
-  "hello": "examples/hello.ts",
-  "perf": "scripts/perf-demo.ts",
-  "bench": "scripts/bench.ts",
-  "namespace": "scripts/namespace-demo.ts"
+  "gallery": "./gallery.ts",
+  "responsive": "./responsive.ts",
+  "interaction": "./interaction.ts",
+  "dashboard": "./dashboard.ts",
+  "engine": "./engine.ts",
+  "animation": "./animation.ts",
 };
 
-// Categorize targets based on their file path
-const available = Object.keys(registry).filter(k => {
-  const path = registry[k];
-  if (isExample) return path.startsWith("examples/");
-  return !path.startsWith("examples/");
-});
-
-if (!target || !registry[target] || (isExample && !registry[target].startsWith("examples/"))) {
-  const label = isExample ? "EXAMPLE" : "DEMO";
-  console.log(`\n🛰️  BUNTI ${label} RUNNER`);
-  console.log(`Usage: bun ${command} <name>\n`);
-  console.log(`Available ${isExample ? "Examples" : "Demos"}:`);
-  available.forEach(k => console.log(`  - ${k}`));
+if (!target || !registry[target]) {
+  console.log(`\n🛰️  BUNTI RUNNER`);
+  console.log(`Usage: bun demo <name>\n`);
+  console.log(`Available Demos:`);
+  Object.keys(registry).forEach(k => console.log(`  - ${k}`));
   process.exit(1);
 }
 
-const proc = spawn(["bun", registry[target]!], {
+const demoPath = resolve(import.meta.dir, registry[target]!);
+
+// Signal to the engine that we are in WATCH mode
+process.env.BUNTI_WATCH = "true";
+
+const args = ["bun"];
+if (!isNoHot) args.push("--watch");
+args.push(demoPath);
+
+const proc = spawn(args, {
   stdin: "inherit",
   stdout: "inherit",
   stderr: "inherit",

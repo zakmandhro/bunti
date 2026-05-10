@@ -14,6 +14,7 @@ export const PALETTE = {
   // Greyscale
   slate: '235',
   ash: '240',
+  gray: '244',
   silver: '247',
   white: '255',
   black: '0',
@@ -22,6 +23,8 @@ export const PALETTE = {
   midnight: '17',
   ocean: '24',
   sky: '33',
+  'bunti-blue': '33',
+  'deep-navy': '17',
   nebula: '61',
   plasma: '129',
 
@@ -46,11 +49,14 @@ const RGB_REGISTRY: Record<string, RGB> = {
   magenta: { r: 200, g: 50, b: 200 },
   cyan:    { r: 50, g: 200, b: 200 },
   white:   { r: 255, g: 255, b: 255 },
+  gray:    { r: 128, g: 128, b: 128 },
   // Palette Mappings
   slate:   { r: 40, g: 44, b: 52 },
   ash:     { r: 75, g: 82, b: 99 },
   midnight: { r: 10, g: 10, b: 30 },
-  ocean:   { r: 20, g: 40, b: 80 }
+  ocean:   { r: 20, g: 40, b: 80 },
+  'bunti-blue': { r: 0, g: 119, b: 190 },
+  'deep-navy': { r: 0, g: 51, b: 102 }
 };
 
 // Map standard names to ANSI-256 for basic compat
@@ -62,7 +68,8 @@ const NAME_TO_ANSI: Record<string, string> = {
   magenta: '165',
   cyan: '39',
   white: '255',
-  black: '0'
+  black: '0',
+  gray: '244'
 };
 
 export type PaletteColor = keyof typeof PALETTE;

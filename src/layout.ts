@@ -3,7 +3,7 @@
  * Strictly functional primitives for buffer manipulation and layout generation.
  */
 
-import { ScreenState, Cell } from './state';
+import { ScreenState, Cell, RGB } from './state';
 import { visibleWidth, charWidth, truncate, wrapText } from './utils';
 import { replaceEmojis } from './icons';
 
@@ -13,24 +13,45 @@ export function setCell(state: ScreenState, x: number, y: number, cell: Partial<
   if (x >= 0 && x < state.width && y >= 0 && y < state.height) {
     let char = cell.char || ' ';
     if (!cell.raw) char = replaceEmojis(char);
-    const width = charWidth(char);
-    if (width === 0) return;
-    state.backBuffer[y][x] = { ...state.backBuffer[y][x], ...cell, char };
-    if (width === 2 && x + 1 < state.width) {
-      state.backBuffer[y][x + 1] = { 
-        ...state.backBuffer[y][x + 1], 
-        char: '', 
-        fg: cell.fg ?? state.backBuffer[y][x].fg, 
-        bg: cell.bg ?? state.backBuffer[y][x].bg 
-      };
-    }
+    state.backBuffer[y][x] = {
+      char,
+      fg: cell.fg,
+      bg: cell.bg
+    };
   }
 }
 
-export function rect(state: ScreenState, x: number, y: number, w: number, h: number, cell: Partial<Cell>) {
+import { Gradient } from './colors';
+
+export interface RectOptions {
+  char?: string;
+  fg?: string | number | RGB;
+  bg?: string | number | RGB | Gradient;
+}
+
+export function rect(state: ScreenState, x: number, y: number, w: number, h: number, style: RectOptions) {
+  const isGradient = style.bg && typeof style.bg === 'object' && 'colors' in style.bg;
+  
   for (let dy = 0; dy < h; dy++) {
     for (let dx = 0; dx < w; dx++) {
-      setCell(state, x + dx, y + dy, cell);
+      let resolvedBg: string | number | RGB | undefined = undefined;
+      
+      if (isGradient) {
+        const grad = style.bg as any;
+        if (grad.direction === 'horizontal') {
+          resolvedBg = grad.colors[Math.floor((dx / w) * grad.colors.length)];
+        } else {
+          resolvedBg = grad.colors[Math.floor((dy / h) * grad.colors.length)];
+        }
+      } else {
+        resolvedBg = style.bg as any;
+      }
+
+      setCell(state, x + dx, y + dy, {
+        char: style.char || ' ',
+        fg: style.fg,
+        bg: resolvedBg
+      });
     }
   }
 }
@@ -88,11 +109,13 @@ export interface SideColors {
   right?: any;
 }
 
+export type SizeUnit = number | string; // e.g. 20, "50%", "1fr"
+
 export interface StyleOptions {
-  width?: number;
+  width?: SizeUnit;
   minWidth?: number;
   maxWidth?: number;
-  height?: number;
+  height?: SizeUnit;
   minHeight?: number;
   maxHeight?: number;
   padding?: [number, number];
@@ -115,37 +138,60 @@ const BORDERS: Record<string, any> = {
 };
 
 /**
+ * Resolves a SizeUnit to an absolute integer based on parent dimensions.
+ */
+export function resolveSize(unit: SizeUnit | undefined, parentDim: number, contentDim: number): number {
+  if (unit === undefined || unit === 'auto') return contentDim;
+  if (typeof unit === 'number') return unit;
+  if (typeof unit === 'string') {
+    if (unit.endsWith('%')) {
+      const pct = parseFloat(unit) / 100;
+      return Math.floor(parentDim * pct);
+    }
+    if (unit.endsWith('fr')) {
+      return parentDim;
+    }
+  }
+  return contentDim;
+}
+
+/**
  * Generates a styled box string with perfect alignment and optional wrapping.
  */
-export function box(content: string, options: StyleOptions = {}): string {
-  const px = options.padding?.[1] ?? 3;
-  const py = options.padding?.[0] ?? 1;
-  const borderOffset = (options.border === 'none') ? 0 : 2;
+export function box(content: string, options: StyleOptions = {}, parentW?: number, parentH?: number): string {
+  const px = options.padding?.[1] ?? 0;
+  const py = options.padding?.[0] ?? 0;
+  const borderStyle = options.border || 'none';
+  const borderOffset = (borderStyle === 'none') ? 0 : 2;
 
-  // ... (width calculation remains same)
-  let targetInnerW = 0;
-  if (options.width) {
-    targetInnerW = Math.max(0, options.width - borderOffset);
-  } else {
-    const rawLines = content.split('\n');
-    targetInnerW = Math.max(...rawLines.map(l => visibleWidth(replaceEmojis(l))), 0) + (px * 2);
-  }
+  const rawLines = content.split('\n');
+  const maxRawW = Math.max(...rawLines.map(l => visibleWidth(replaceEmojis(l))), 0);
+  const intrinsicW = maxRawW + (px * 2) + borderOffset;
+  
+  // 1. Resolve Target Width (Outer)
+  const resolvedW = resolveSize(options.width, parentW || 0, intrinsicW);
+  
+  // 2. Calculate Inner Width (between borders, including padding)
+  let targetInnerW = Math.max(0, resolvedW - borderOffset);
+  
   if (options.minWidth) targetInnerW = Math.max(targetInnerW, options.minWidth - borderOffset);
   if (options.maxWidth) targetInnerW = Math.min(targetInnerW, options.maxWidth - borderOffset);
 
   let lines: string[] = [];
-  if (options.wrap) {
-    lines = wrapText(content, targetInnerW);
+  const contentWidth = Math.max(0, targetInnerW - (px * 2));
+  if (options.wrap && contentWidth > 0) {
+    lines = wrapText(content, contentWidth);
   } else {
-    lines = content.split('\n').map(l => truncate(l, targetInnerW, ''));
+    lines = content.split('\n').map(l => truncate(l, contentWidth, ''));
   }
 
   const contentH = lines.length + (py * 2);
-  let finalInnerH = options.height ? (options.height - borderOffset) : contentH;
+  const resolvedH = resolveSize(options.height, parentH || 0, contentH);
+  let finalInnerH = resolvedH ? (resolvedH - borderOffset) : contentH;
   if (options.minHeight) finalInnerH = Math.max(finalInnerH, options.minHeight - borderOffset);
   if (options.maxHeight) finalInnerH = Math.min(finalInnerH, options.maxHeight - borderOffset);
 
-  const b = (options.border === 'none') ? null : (BORDERS[options.border as keyof typeof BORDERS] || BORDERS.default);
+  const b = (borderStyle === 'none') ? null : (BORDERS[borderStyle as keyof typeof BORDERS] || BORDERS.default);
   
   // Color Resolution
   const { fg } = require('./colors');
@@ -187,7 +233,8 @@ export function box(content: string, options: StyleOptions = {}): string {
   }
 
   // Content Lines
-  for (const line of lines) {
+  for (let line of lines) {
+    line = line.trim(); // Ensure no leading/trailing junk affects centering
     const lineW = visibleWidth(line);
     const extra = Math.max(0, targetInnerW - lineW);
     let left = 0, right = 0;
@@ -216,44 +263,22 @@ export function box(content: string, options: StyleOptions = {}): string {
   return out.join('\n');
 }
 
-export function viewport(content: string, width: number, height: number, scrollY: number = 0): string {
-  const lines = content.split('\n');
-  const visibleLines = lines.slice(scrollY, scrollY + height);
-  return visibleLines.map(line => truncate(line, width, '').padEnd(width, ' ')).join('\n');
-}
-
-export function gradient(state: ScreenState, colors: (string | number | any)[], options: { direction?: 'vertical' | 'horizontal', offset?: number } = {}) {
-  const direction = options.direction || 'vertical';
-  const offset = options.offset || 0;
-  for (let y = 0; y < state.height; y++) {
-    for (let x = 0; x < state.width; x++) {
-      const ratio = direction === 'vertical' ? (y / state.height) : (x / state.width);
-      const idx = Math.floor((ratio * colors.length) + offset) % colors.length;
-      setCell(state, x, y, { char: ' ', bg: colors[idx] });
-    }
-  }
-}
-
-export function wallpaper(state: ScreenState, cell: Partial<Cell>) {
-  for (let y = 0; y < state.height; y++) {
-    for (let x = 0; x < state.width; x++) setCell(state, x, y, cell);
-  }
-}
-
 export function joinHorizontal(...blocks: string[]): string {
-  if (blocks.length === 0) return '';
   const parsed = blocks.map(b => b.split('\n'));
-  const maxH = Math.max(...parsed.map(b => b.length));
-  const widths = parsed.map(b => Math.max(...b.map(visibleWidth), 0));
-  let out = [];
+  const maxH = Math.max(...parsed.map(p => p.length));
+  const widths = parsed.map(p => Math.max(...p.map(visibleWidth)));
+
+  const out = [];
   for (let i = 0; i < maxH; i++) {
     let row = '';
     for (let j = 0; j < parsed.length; j++) {
       const block = parsed[j]!;
       const targetW = widths[j]!;
-      if (parsed[j][i] !== undefined) {
-        row += parsed[j][i]! + ' '.repeat(Math.max(0, targetW - visibleWidth(parsed[j][i]!)));
-      } else { row += ' '.repeat(targetW); }
+      if (block[i] !== undefined) {
+        row += block[i] + ' '.repeat(Math.max(0, targetW - visibleWidth(block[i])));
+      } else { 
+        row += ' '.repeat(targetW); 
+      }
     }
     out.push(row);
   }
@@ -272,6 +297,56 @@ export function createStyle(defaults: StyleOptions) {
 
 export function badge(text: string, colorFn: (s: string) => string = (s) => s): string {
   return colorFn(` ${text.toUpperCase()} `);
+}
+
+export interface TableOptions {
+  width?: SizeUnit;
+  columns?: { width?: SizeUnit; align?: 'left' | 'center' | 'right' }[];
+  border?: BorderStyle;
+  padding?: [number, number];
+}
+
+/**
+ * Renders a data table with perfectly aligned columns and shared borders.
+ */
+export function table(rows: string[][], options: TableOptions = {}, parentW?: number): string {
+  const borderStyle = options.border || 'default';
+  const px = options.padding?.[1] ?? 1;
+  const py = options.padding?.[0] ?? 0;
+  
+  const colCount = rows[0]?.length || 0;
+  if (colCount === 0) return "";
+
+  // 1. Resolve Column Widths
+  const resolvedWidth = resolveSize(options.width, parentW || 0, 80);
+  const gutterW = 1;
+  const colWidth = Math.floor((resolvedWidth - (colCount - 1) * gutterW) / colCount);
+  
+  // 2. Render each cell as a rigid block
+  const renderedRows = rows.map(row => {
+    const cells = row.map((content, i) => {
+      // Explicitly pad empty content to ensure it occupies the full column width
+      const safeContent = content || ' '.repeat(colWidth);
+      const cellAlign = (options.columns && options.columns[i] && options.columns[i].align) ? options.columns[i].align : 'left';
+      
+      return box(safeContent, {
+        width: colWidth,
+        border: 'none',
+        // Strict internal zero-padding; let the gutter handle spacing
+        padding: [0, 0],
+        align: cellAlign as 'left' | 'center' | 'right'
+      }, colWidth, 0);
+    });
+    // Join with gutter
+    return joinHorizontal(...cells.flatMap((c, i) => i < cells.length - 1 ? [c, ' '.repeat(gutterW)] : [c]));
+  });
+
+  return box(joinVertical(...renderedRows), { 
+    border: borderStyle, 
+    padding: [0, 0],
+    width: resolvedWidth,
+    align: 'left'
+  });
 }
 
 export function getWindow<T>(items: T[], selectedIndex: number, maxVisible: number) {
@@ -306,4 +381,23 @@ export function list(items: string[], options: ListOptions = {}): string {
   if (hasMoreAbove) out = `${indent}  ↑ more…\n` + out;
   if (hasMoreBelow) out = out + `\n${indent}  ↓ more…`;
   return out;
+}
+
+export function viewport(content: string, width: number, height: number, scrollY: number = 0): string {
+  const lines = content.split('\n');
+  const visibleLines = lines.slice(scrollY, scrollY + height);
+  
+  return visibleLines.map(line => {
+    return truncate(line, width, '');
+  }).join('\n');
+}
+
+export function wallpaper(state: any, options: { bg: any }) {
+  const { bg } = options;
+  rect(state, 0, 0, state.width, state.height, { char: ' ', bg });
+}
+
+export function gradient(state: any, colors: any[], options: { direction?: 'vertical' | 'horizontal' } = {}) {
+  const { direction = 'vertical' } = options;
+  rect(state, 0, 0, state.width, state.height, { char: ' ', bg: { colors, direction, steps: direction === 'vertical' ? state.height : state.width } });
 }

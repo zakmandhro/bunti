@@ -1,4 +1,4 @@
-import { render } from '../src/index';
+import { bunti } from '../src/index';
 
 const logo = [
   ' ┏━┓ ┏━┓ ┏━┓ ┏━┓ ┏━┓   ┏━┓ ┏┳┓ ┏━┓ ┏┳┓ ┳ ┏━┓ ┏┓┓',
@@ -6,7 +6,7 @@ const logo = [
   ' ┗━┛ ┻   ┻ ┻ ┗━┛ ┗━┛   ┗━┛  ┻  ┻ ┻  ┻  ┻ ┗━┛ ┛┗┛'
 ];
 
-render((ctx) => {
+bunti.render((ctx) => {
   ctx.wallpaper('#000000');
 
   // Space flickers on in the first 1s, then stays on.
@@ -42,7 +42,7 @@ render((ctx) => {
     sub.text('\n');
     if (stationOn) {
       const pulse = Math.sin(ctx.elapsedTime / 200) * 0.5 + 0.5;
-      sub.span({ color: sub.color.rgb(255, Math.floor(255 * pulse), 0) }, (s) => {
+      sub.span({ color: sub.rgb(255, Math.floor(255 * pulse), 0) }, (s) => {
         s.text('  >>> SYSTEMS READY <<<');
       });
     } else {

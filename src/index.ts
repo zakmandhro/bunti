@@ -12,7 +12,7 @@ export { detectCapabilities } from './detect';
 export { init, icon, nerd, register, nerdIcon, replaceEmojis, ICON_MAP, EMOJI_MAP } from './icons';
 export { 
   setCell, rect, blit, box, viewport, gradient, wallpaper, 
-  joinHorizontal, joinVertical, createStyle, badge, getWindow, list 
+  joinHorizontal, joinVertical, createStyle, badge, getWindow, list, table 
 } from './layout';
 export { flush, loop } from './render';
 export { stripAnsi, visibleWidth, charWidth, truncate } from './utils';
@@ -23,7 +23,7 @@ export { render, KEYS } from './dsl';
 // Type Exports
 export type { TerminalCapabilities } from './detect';
 export type { IconDefinition } from './icons';
-export type { StyleOptions, BorderStyle, ListOptions } from './layout';
+export type { StyleOptions, BorderStyle, ListOptions, TableOptions } from './layout';
 export type { ScreenOptions, RGB, Cell, ScreenState } from './state';
 export type { DSLBoxOptions, BuntiContext } from './dsl';
 

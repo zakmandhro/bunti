@@ -1,29 +1,34 @@
 # 🛰️ Bunti (Bun Terminal Interface) Roadmap
 
-This roadmap defines the minimum surgical feature set required to power the **Space Station Mission Control** dashboard.
+This roadmap defines the surgical feature set required to power the **Space Station Mission Control** dashboard.
 
-## 🏁 Phase 1: Core Engine Finesse (Required for SS)
+## ✅ Phase 1: Core Engine Finesse (Complete)
 
-1.  **[ ] Width-Aware Truncation**
-    -   `truncate(str, length)`: Truncates based on visible width while preserving ANSI codes.
-2.  **[ ] List Component**
-    -   `list(items, options)`: Renders a vertical list with consistent indentation and optional focus highlighting.
-3.  **[ ] Max-Width Container**
-    -   `box()` enhancement to support `maxWidth` (percentage of terminal or fixed chars).
-4.  **[ ] Inline Styles & Badges**
-    -   `badge(text, colorFn)`: High-signal inline labels.
-5.  **[ ] Tabular Layout**
+1.  **[x] Width-Aware Truncation**
+    -   `truncate(str, length)`: ANSI-safe and grapheme-aware.
+2.  **[x] Responsive Layouts**
+    -   `minWidth`, `maxWidth`, and `wrap: true` integrated into the core box model.
+3.  **[x] Double-Buffered Engine**
+    -   High-performance surgical span diffing.
+4.  **[x] 24-bit TrueColor**
+    -   Native hex parsing and smooth RGB gradients.
+5.  **[x] Contextual DSL**
+    -   Functional, trait-based scoped closure API.
+6.  **[x] Tactical Iconography**
+    -   Nerd-Emoji Swap for 100% spacing stability.
+
+## 🏁 Phase 2: Open Source Release (Next)
+
+1.  **[ ] Tabular Layout**
     -   `table(rows, options)`: Grid-based layout for column-heavy data (Issues/PRs).
-
-## 🚀 Phase 2: Open Source Release (Tomorrow)
-
-1.  **[ ] README.md**: "Show, don't tell" documentation.
-2.  **[ ] Multi-Line Alignment**: Top/Middle/Bottom alignment for `joinHorizontal`.
-3.  **[ ] Stylesheet Support**: Reusable style objects (Lipgloss-like).
+2.  **[ ] Reusable Components**
+    -   `Card` and `Button` higher-order components.
+3.  **[ ] Multi-Line Alignment**
+    -   Refining `joinHorizontal` for top/middle/bottom alignment.
 4.  **[ ] DirectWriter Performance Benchmarks**.
 
 ## 🛸 Phase 3: Post-Launch
 
-1.  **[ ] Mouse Support**.
+1.  **[ ] Mouse Support** (Events API).
 2.  **[ ] Interactive Inputs** (Select, Text).
 3.  **[ ] Animation Timeline API**.
