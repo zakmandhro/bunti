@@ -13,15 +13,15 @@ const runShowcase = async () => {
   const allIconNames = Object.keys(ICON_MAP);
   const rows = [];
   const COLUMNS = 3;
-  const ENTRY_WIDTH = 36;
+  const ENTRY_WIDTH = 30;
 
   for (let i = 0; i < allIconNames.length; i += COLUMNS) {
     const chunk = allIconNames.slice(i, i + COLUMNS);
     const row = bunti.joinHorizontal(
       ...chunk.map(name => {
         const def = ICON_MAP[name]!;
-        // Triple Variant string: NF (1) + 2 spaces + Emoji (2) + 2 spaces + ASCII (1)
-        const variants = `${pc.blue(def.nf)}  ${pc.yellow(def.emoji)}  ${pc.gray(def.ascii)}`;
+        // Double Variant string: NF (1) + 2 spaces + ASCII (1)
+        const variants = `${pc.blue(def.nf)}    ${pc.gray(def.ascii)}`;
         const iconBox = bunti.box(variants, { 
           border: 'normal', 
           padding: [0, 1],
@@ -36,7 +36,7 @@ const runShowcase = async () => {
 
   const totalWidth = COLUMNS * ENTRY_WIDTH;
   const frame = bunti.joinVertical(
-    bunti.box(pc.bold(pc.magenta(`${bunti.icon('bunti')}  BUNTI :: THE TRIPLE-VARIANT MANIFEST`)), { 
+    bunti.box(pc.bold(pc.magenta(`${bunti.icon('bunti')}  BUNTI :: THE DOUBLE-VARIANT MANIFEST`)), { 
       width: totalWidth, 
       align: 'center', 
       border: 'normal', 
@@ -45,7 +45,7 @@ const runShowcase = async () => {
     '',
     ...rows,
     '',
-    bunti.box(pc.dim(`Total Icons: ${allIconNames.length} | Format: [ NF  EMOJI  ASCII ] name`), { 
+    bunti.box(pc.dim(`Total Icons: ${allIconNames.length} | Format: [ NF    ASCII ] name`), { 
       width: totalWidth, 
       align: 'center' 
     })

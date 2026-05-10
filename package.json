@@ -16,8 +16,8 @@
   "scripts": {
     "test": "bun test",
     "bench": "bun scripts/bench.ts",
-    "icons": "bun scripts/icon-demo.ts",
-    "demo": "bun demo/runner.ts"
+    "demo": "bun demo/runner.ts",
+    "example": "bun demo/runner.ts"
   },
   "keywords": [
     "tui",
