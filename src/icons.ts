@@ -90,6 +90,9 @@ export const ICON_MAP: Record<string, IconDefinition> = {
   'go':     { nf: '\u{E724}', ascii: 'G' },
   'rust':   { nf: '\u{E7A8}', ascii: 'R' },
   'node':   { nf: '\u{E718}', ascii: 'N' },
+  'bullet': { nf: '\u{F0522}', ascii: '•' },
+  'checkbox': { nf: '\u{F0132}', ascii: '[ ]' },
+  'checkbox-check': { nf: '\u{F0133}', ascii: '[x]' },
 };
 
 let cachedCaps: TerminalCapabilities | null = null;

@@ -12,6 +12,7 @@ const registry: Record<string, string> = {
   "center": "demo/center-demo.ts",
   "mouse": "demo/mouse-demo.ts",
   "color": "demo/spectrum-demo.ts",
+  "box-styles": "demo/box-styles.ts",
   "gradient": "examples/gradient.ts",
   "gradient-demo": "examples/gradient-demo.ts",
   "hello": "examples/hello.ts",

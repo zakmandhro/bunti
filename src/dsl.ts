@@ -4,7 +4,7 @@
  */
 
 import { ScreenState, createScreenState, clearBackBuffer } from './state';
-import { gradient, wallpaper, rect, blit, box as layoutBox, StyleOptions } from './layout';
+import { gradient, wallpaper, rect, blit as layoutBlit, box as layoutBox, viewport as layoutViewport, StyleOptions } from './layout';
 import { icon, init } from './icons';
 import { ScreenOptions, loop, flush } from './render';
 import { visibleWidth } from './utils';
@@ -16,6 +16,8 @@ import pc from 'picocolors';
 export interface DSLBoxOptions extends StyleOptions {
   bgColor?: any;
   color?: any;
+  x?: number;
+  y?: number;
 }
 
 /**
@@ -24,6 +26,7 @@ export interface DSLBoxOptions extends StyleOptions {
 function getContext(contents: string[], state: ScreenState): any {
   const ctx = {
     color: pc,
+    state, // Expose raw state for advanced interactive logic
     
     text(str: string) {
       contents.push(str);
@@ -34,6 +37,15 @@ function getContext(contents: string[], state: ScreenState): any {
       return icon(name);
     },
     
+    blit(x: number, y: number, content: string) {
+      layoutBlit(state, x, y, content);
+      return ctx;
+    },
+
+    viewport(content: string, width: number, height: number, scrollY: number = 0) {
+      return layoutViewport(content, width, height, scrollY);
+    },
+
     span(options: { color?: any }, callback: (sub: any) => void) {
       const subContents: string[] = [];
       const subCtx = getContext(subContents, state);
@@ -112,8 +124,9 @@ export function createScreenContext(state: ScreenState) {
       const w = Math.max(...lines.map(visibleWidth));
       const h = lines.length;
 
-      const x = Math.max(0, Math.floor((state.width - w) / 2));
-      const y = Math.max(0, Math.floor((state.height - h) / 2));
+      // Positioning: Use explicit (x,y) if provided, otherwise center
+      const x = options.x !== undefined ? options.x : Math.max(0, Math.floor((state.width - w) / 2));
+      const y = options.y !== undefined ? options.y : Math.max(0, Math.floor((state.height - h) / 2));
 
       // Paint Card Background
       if (options.bgColor || options.color) {
@@ -124,7 +137,7 @@ export function createScreenContext(state: ScreenState) {
         });
       }
 
-      blit(state, x, y, styledBox);
+      layoutBlit(state, x, y, styledBox);
     }
   };
 

@@ -10,6 +10,7 @@ export const PALETTE = {
   ash: '240',
   silver: '247',
   white: '255',
+  black: '0',
 
   // Deep Blues & Space
   midnight: '17',
@@ -29,6 +30,34 @@ export const PALETTE = {
   rose: '211',
   mint: '121'
 } as const;
+
+const RGB_REGISTRY: Record<string, RGB> = {
+  black:   { r: 0, g: 0, b: 0 },
+  red:     { r: 200, g: 50, b: 50 },
+  green:   { r: 50, g: 200, b: 50 },
+  yellow:  { r: 200, g: 200, b: 50 },
+  blue:    { r: 50, g: 50, b: 200 },
+  magenta: { r: 200, g: 50, b: 200 },
+  cyan:    { r: 50, g: 200, b: 200 },
+  white:   { r: 255, g: 255, b: 255 },
+  // Palette Mappings
+  slate:   { r: 40, g: 44, b: 52 },
+  ash:     { r: 75, g: 82, b: 99 },
+  midnight: { r: 10, g: 10, b: 30 },
+  ocean:   { r: 20, g: 40, b: 80 }
+};
+
+// Map standard names to ANSI-256 for basic compat
+const NAME_TO_ANSI: Record<string, string> = {
+  red: '160',
+  green: '40',
+  yellow: '220',
+  blue: '33',
+  magenta: '165',
+  cyan: '39',
+  white: '255',
+  black: '0'
+};
 
 export type PaletteColor = keyof typeof PALETTE;
 
@@ -58,11 +87,14 @@ export function resolveColor(color: PaletteColor | string | number | RGB): strin
   if (typeof color === 'object' && 'r' in color) {
     return `2;${color.r};${color.g};${color.b}`;
   }
-  if (typeof color === 'string' && color.startsWith('#')) {
-    const rgb = hexToRGB(color);
-    return `2;${rgb.r};${rgb.g};${rgb.b}`;
+  if (typeof color === 'string') {
+    if (color.startsWith('#')) {
+      const rgb = hexToRGB(color);
+      return `2;${rgb.r};${rgb.g};${rgb.b}`;
+    }
+    return (PALETTE as any)[color] || NAME_TO_ANSI[color] || color;
   }
-  return (PALETTE as any)[color] || color;
+  return color;
 }
 
 /**
@@ -110,22 +142,6 @@ export function createGradient(
   return result;
 }
 
-const RGB_REGISTRY: Record<string, RGB> = {
-  black:   { r: 0, g: 0, b: 0 },
-  red:     { r: 200, g: 50, b: 50 },
-  green:   { r: 50, g: 200, b: 50 },
-  yellow:  { r: 200, g: 200, b: 50 },
-  blue:    { r: 50, g: 50, b: 200 },
-  magenta: { r: 200, g: 50, b: 200 },
-  cyan:    { r: 50, g: 200, b: 200 },
-  white:   { r: 255, g: 255, b: 255 },
-  // Palette Mappings
-  slate:   { r: 40, g: 44, b: 52 },
-  ash:     { r: 75, g: 82, b: 99 },
-  midnight: { r: 10, g: 10, b: 30 },
-  ocean:   { r: 20, g: 40, b: 80 }
-};
-
 /**
  * Helper to resolve any color type to an RGB object.
  */
@@ -137,8 +153,12 @@ function resolveColorToRGB(color: any): RGB {
   if (typeof color === 'string' && RGB_REGISTRY[color]) return RGB_REGISTRY[color];
   
   // 2. Check Palette
-  const paletteName = Object.keys(PALETTE).find(k => (PALETTE as any)[k] === color.toString());
-  if (paletteName && RGB_REGISTRY[paletteName]) return RGB_REGISTRY[paletteName];
+  const paletteValue = (PALETTE as any)[color];
+  if (paletteValue) {
+    // If palette value is a name, look it up in registry
+    const registered = RGB_REGISTRY[color];
+    if (registered) return registered;
+  }
 
   // Fallback
   return { r: 128, g: 128, b: 128 };
