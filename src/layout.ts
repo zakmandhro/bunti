@@ -101,7 +101,7 @@ const BORDERS: Record<string, any> = {
   small: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '─', v: '│' },
   rounded: { tl: '╭', tr: '╮', bl: '╰', br: '╯', h: '─', v: '│' },
   medium: { tl: '┏', tr: '┓', bl: '┗', br: '┛', h: '━', v: '┃' },
-  large: { tl: '▛', tr: '▜', bl: '▙', br: '▟', top: '▀', bottom: '▄', left: '▌', right: '▐' },
+  large: { tl: '█', tr: '█', bl: '█', br: '█', top: '▀', bottom: '▄', left: '█', right: '█' },
   'extra-large': { tl: '█', tr: '█', bl: '█', br: '█', h: '█', v: '█' },
   double: { tl: '╔', tr: '╗', bl: '╚', br: '╝', h: '═', v: '║' },
   dashed: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '╌', v: '╎' },
