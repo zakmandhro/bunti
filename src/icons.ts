@@ -18,7 +18,7 @@ export const ICON_MAP: Record<string, IconDefinition> = {
   'branch':         { nf: '\uf418', ascii: '*' },
   'bullet':         { nf: '\uf111', ascii: '•' },
   'bun':            { nf: '\ue76f', ascii: 'B' },
-  'bunti':          { nf: '\u{f1101}', ascii: 'B' },
+  'bunti':          { nf: '\u{f0065}', ascii: '@' },
   'check':          { nf: '\uf00c', ascii: 'v' },
   'checkbox':       { nf: '\uf0c8', ascii: '[ ]' },
   'checkbox-check': { nf: '\uf14a', ascii: '[x]' },
@@ -103,7 +103,7 @@ export const ICON_MAP: Record<string, IconDefinition> = {
 export const EMOJI_MAP: Record<string, string> = {
   '🌿': '\uf418', '📥': '\uf41d', '📌': '\uf417', '🔀': '\uf419', '🍴': '\uf41a', '🏷️': '\u{f04fc}',
   '📁': '\uf07b', '📂': '\uf115', '📄': '\uf15b', '💻': '\uf109', '🖥️': '\u{f01c4}', '📝': '\uf044', '📦': '\ue60b', '📜': '\ue6a8',
-  '✅': '\uf00c', '❌': '\uf00d', '⚠️': '\uf071', 'ℹ️': '\uf05a', '⏳': '\uf110', '🚀': '\uf135', '🛰️': '\uef5f', '🪐': '\ue22e',
+  '✅': '\uf00c', '❌': '\uf00d', '⚠️': '\uf071', 'ℹ️': '\uf05a', '⏳': '\uf110', '🚀': '\uf135', '🛰️': '\uef5f', '🪐': '\ue22e', '🌀': '\u{f0065}',
   '🤖': '\u{f06a9}', '🗑️': '\uf1f8', '⚙️': '\uf423', '🔔': '\uf0f3', '✉️': '\uf0e0', '🖼️': '\uf03e',
   '🙂': '\uf118', '😊': '\uf118', '😀': '\uf118', '😄': '\uee80', '😉': '\ueda9', '😎': '\ueb54', '😇': '\uf4a2',
 };
