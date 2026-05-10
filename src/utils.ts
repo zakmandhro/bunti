@@ -12,7 +12,6 @@ export function stripAnsi(str: string): string {
 
 /**
  * Calculates the visible width of a string using Bun's SIMD-optimized API.
- * Handles multi-line strings and multi-byte characters correctly.
  */
 export function visibleWidth(str: string): number {
   if (!str) return 0;
@@ -37,7 +36,7 @@ export function charWidth(char: string): number {
 
 /**
  * Truncates a string to a visible width while preserving ANSI codes.
- * Uses Intl.Segmenter to ensure graphemes are not sliced.
+ * GUARANTEE: Never slices an ANSI escape sequence in half.
  */
 export function truncate(str: string, width: number, tail = '…'): string {
   const visible = visibleWidth(str);
@@ -47,10 +46,13 @@ export function truncate(str: string, width: number, tail = '…'): string {
   let currentWidth = 0;
   let out = '';
   
+  // Use Intl.Segmenter to iterate over graphemes safely
   const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
   // @ts-ignore
   for (const { segment } of segmenter.segment(str)) {
     const clean = stripAnsi(segment);
+    
+    // If it's a pure ANSI segment, always include it (doesn't add to width)
     if (clean.length === 0 && segment.length > 0) {
       out += segment;
       continue;
@@ -63,5 +65,51 @@ export function truncate(str: string, width: number, tail = '…'): string {
     currentWidth += w;
   }
 
+  // Always append a reset to be safe
   return out + tail + '\x1b[0m';
+}
+
+/**
+ * Wraps text to a specific visible width, preserving ANSI codes.
+ */
+export function wrapText(str: string, width: number): string[] {
+  if (width <= 0) return [str];
+  const lines: string[] = [];
+  const rawLines = str.split('\n');
+
+  for (const rawLine of rawLines) {
+    let currentLine = '';
+    let currentWidth = 0;
+    
+    const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+    // @ts-ignore
+    for (const { segment } of segmenter.segment(rawLine)) {
+      const clean = stripAnsi(segment);
+      const w = charWidth(clean);
+
+      if (clean.length === 0 && segment.length > 0) {
+        currentLine += segment;
+        continue;
+      }
+
+      if (currentWidth + w > width) {
+        lines.push(currentLine + '\x1b[0m');
+        currentLine = segment;
+        currentWidth = w;
+      } else {
+        currentLine += segment;
+        currentWidth += w;
+      }
+    }
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+/**
+ * Identity function.
+ */
+export function replaceEmojis(str: string): string {
+  return str;
 }

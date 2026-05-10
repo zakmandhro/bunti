@@ -29,7 +29,7 @@ bunti.render(({ wallpaper, gradient, rgb, box, color }) => {
     });
 
     // Draw blocks for each color in the ramp
-    ramp.forEach((c) => {
+    ramp.forEach((c: any) => {
       // Now span() correctly handles our RGB objects!
       span({ color: c }, ({ text }) => {
         text("█");
@@ -39,7 +39,7 @@ bunti.render(({ wallpaper, gradient, rgb, box, color }) => {
     text("\n ");
     
     // Reverse it for fun
-    ramp.slice().reverse().forEach((c) => {
+    ramp.slice().reverse().forEach((c: any) => {
       span({ color: c }, ({ text }) => {
         text("█");
       });

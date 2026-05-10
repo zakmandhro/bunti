@@ -12,6 +12,7 @@ export interface Cell {
   char: string;
   fg?: string | number | RGB;
   bg?: string | number | RGB;
+  raw?: boolean; // Bypasses automatic emoji-to-NF replacement
 }
 
 export interface ScreenState {
@@ -24,6 +25,11 @@ export interface ScreenState {
   mouseButton: number;
   isMouseDown: boolean;
   hasFocus: boolean;
+  lastKey?: string;
+  focusedId?: string;
+  focusableIds: string[];
+  componentState: Map<string, any>;
+  startTime: number;
   lastFg?: string | number;
   lastBg?: string | number;
   options: ScreenOptions;
@@ -34,7 +40,9 @@ export interface ScreenOptions {
   hideCursor?: boolean;
   mouse?: boolean;
   focus?: boolean;
+  keyboard?: boolean;
   fps?: number;
+  nerdFont?: boolean;
 }
 
 export const ANSI = {
@@ -73,11 +81,17 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
     mouseButton: -1,
     isMouseDown: false,
     hasFocus: true,
+    lastKey: undefined,
+    focusedId: undefined,
+    focusableIds: [],
+    componentState: new Map(),
+    startTime: Date.now(),
     options: {
       alternateBuffer: true,
       hideCursor: true,
       mouse: false,
       focus: true,
+      keyboard: true,
       fps: 60,
       ...options
     }

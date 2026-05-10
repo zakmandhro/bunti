@@ -2,7 +2,13 @@
  * Bunti Semantic & Palette Color System
  */
 
-export interface RGB { r: number, g: number, b: number }
+import { RGB } from './state';
+
+export interface Gradient {
+  colors: RGB[];
+  direction: 'vertical' | 'horizontal';
+  steps: number;
+}
 
 export const PALETTE = {
   // Greyscale

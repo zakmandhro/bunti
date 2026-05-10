@@ -6,8 +6,8 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 
 ## ✨ Features
 
+- 🏗️ **Contextual DSL**: Build complex UIs with a declarative, nested closure API. No manual blitting required for standard layouts.
 - 🏎️ **Double-Buffered Diffing**: Only dirty cells are sent to the terminal. 10x - 50x less ANSI data than standard "full-frame" renderers.
-- 🏗️ **Strictly Functional**: No classes, no `this` context. Manage your entire UI state in a single, plain object.
 - 📐 **Nerd-Native Box Model**: Native support for Nerd Fonts v3. Emojis are automatically swapped for high-fidelity Nerd Font icons to ensure perfect spacing stability.
 - 🌈 **ANSI-Aware Layout**: Composable boxes, padding, and alignment that preserve styles and colors.
 - 🖱️ **Interactive**: Built-in SGR mouse tracking and focus detection with automatic FPS throttling.
@@ -16,33 +16,27 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 
 ```typescript
 import { bunti } from 'bunti';
-import pc from 'picocolors';
 
-// 1. Initialize your screen state
-const state = bunti.createScreenState({ 
-  mouse: true, 
-  fps: 60 
-});
+bunti.render((b) => {
+  // 1. Set a background
+  b.wallpaper({ color: "midnight" });
 
-// 2. Start the high-performance render loop
-bunti.loop(state, (s) => {
-  // Clear the back buffer for the next frame
-  bunti.clearBackBuffer(s);
-
-  // Define a layout using the box model.
-  // Note: The 🛰️ emoji is automatically swapped for its Nerd Font equivalent.
-  const ui = bunti.box(pc.cyan("🛰️  MISSION CONTROL\n") + "STATUS: NOMINAL", {
-    border: 'rounded',
-    padding: [1, 2],
-    align: 'center'
+  // 2. Define a layout using the contextual DSL.
+  // The 🛰️ emoji is automatically swapped for Nerd Font equivalents.
+  b.box({
+    size: "auto",
+    bgColor: "white",
+    color: "blank",
+    padding: [1, 4],
+    border: 'rounded'
+  }, (box) => {
+    b.span({ color: b.color.cyan }, () => {
+      b.text("🛰️ MISSION CONTROL\n");
+    });
+    b.text("STATUS: NOMINAL");
+    b.icon("success");
   });
-
-  // "Blit" the layout into the buffer at specific coordinates
-  bunti.blit(s, 10, 5, ui);
-
-  // Direct cell manipulation
-  bunti.setCell(s, s.mouseX, s.mouseY, { char: '█', fg: 'magenta' });
-});
+}, { fps: 60, mouse: true });
 ```
 
 ## 🏁 Performance

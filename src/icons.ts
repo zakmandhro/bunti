@@ -1,140 +1,166 @@
 /**
  * Bunti Icon Engine
- * Purely tactical: Nerd Fonts or ASCII fallbacks. Emojis dropped for stability.
+ * Purely tactical: Nerd Fonts or ASCII fallbacks.
+ * 
+ * STANDARD: Assumes Nerd Font support by default.
+ * Detection runs in background and only downgrades if forced or highly certain.
  */
 import { detectCapabilities, type TerminalCapabilities } from './detect';
 
 export interface IconDefinition {
-  nf: string;    // Nerd Font
-  ascii: string; // ASCII/Common Unicode fallback (Width 1)
+  nf: string;
+  ascii: string;
 }
 
 export const ICON_MAP: Record<string, IconDefinition> = {
-  // --- Source Control ---
-  'branch':   { nf: '\u{F418}', ascii: '*' },
-  'pr':       { nf: '\u{F41D}', ascii: '!' },
-  'commit':   { nf: '\u{F417}', ascii: '+' },
-  'merge':    { nf: '\u{F419}', ascii: '>' },
-  'fork':     { nf: '\u{F41A}', ascii: 'Y' },
-  'tag':      { nf: '\u{F412}', ascii: 't' },
-  'repo':     { nf: '\u{F401}', ascii: 'R' },
-
-  // --- File/Folder ---
-  'folder':      { nf: '\u{F07B}', ascii: '[' },
-  'folder-open': { nf: '\u{F115}', ascii: '{' },
-  'file':        { nf: '\u{F15B}', ascii: '-' },
-  'code':        { nf: '\u{F121}', ascii: '{' },
-  'markdown':    { nf: '\u{F48A}', ascii: 'M' },
-  'json':        { nf: '\u{E60B}', ascii: 'J' },
-  'yaml':        { nf: '\u{E6A8}', ascii: 'Y' },
-
-  // --- System & Hardware ---
-  'cpu':      { nf: '\u{F2DB}', ascii: 'C' },
-  'memory':   { nf: '\u{F538}', ascii: 'M' },
-  'disk':     { nf: '\u{F0A0}', ascii: 'D' },
-  'network':  { nf: '\u{F0AC}', ascii: 'N' },
-  'terminal': { nf: '\u{F120}', ascii: '$' },
-  'database': { nf: '\u{F1C0}', ascii: 'D' },
-  'server':   { nf: '\u{F233}', ascii: 'S' },
-  'cloud':    { nf: '\u{F0C2}', ascii: 'C' },
-
-  // --- UI & Window Management ---
-  'maximize': { nf: '\u{F2D0}', ascii: '^' },
-  'minimize': { nf: '\u{F2D1}', ascii: 'v' },
-  'close':    { nf: '\u{F00D}', ascii: 'x' },
-  'exit':     { nf: '\u{F08B}', ascii: '<' },
-  'eye':      { nf: '\u{F06E}', ascii: 'v' },
-  'eye-off':  { nf: '\u{F070}', ascii: 'h' },
-  'list':     { nf: '\u{F03A}', ascii: '=' },
-  'grid':     { nf: '\u{F009}', ascii: '#' },
-  'external': { nf: '\u{F08E}', ascii: '>' },
-  'lock':     { nf: '\u{F023}', ascii: 'L' },
-  'settings': { nf: '\u{F013}', ascii: '*' },
-  'search':   { nf: '\u{F002}', ascii: '/' },
-  'home':     { nf: '\u{F015}', ascii: 'H' },
-  'user':     { nf: '\u{F007}', ascii: 'U' },
-
-  // --- Navigation ---
-  'chevron-left':  { nf: '\u{F053}', ascii: '<' },
-  'chevron-right': { nf: '\u{F054}', ascii: '>' },
-  'arrow-left':    { nf: '\u{F060}', ascii: '<' },
-  'arrow-right':   { nf: '\u{F061}', ascii: '>' },
-
-  // --- Status & Actions ---
-  'success':   { nf: '\u{F00C}', ascii: 'v' },
-  'error':     { nf: '\u{F00D}', ascii: 'x' },
-  'warning':   { nf: '\u{F071}', ascii: '!' },
-  'info':      { nf: '\u{F05A}', ascii: 'i' },
-  'loading':   { nf: '\u{F110}', ascii: '~' },
-  'play':      { nf: '\u{F04B}', ascii: '>' },
-  'pause':     { nf: '\u{F04C}', ascii: '|' },
-  'stop':      { nf: '\u{F04D}', ascii: 'X' },
-  'refresh':   { nf: '\u{F021}', ascii: 'R' },
-  'add':       { nf: '\u{F067}', ascii: '+' },
-  'remove':    { nf: '\u{F068}', ascii: '-' },
-  'heart':     { nf: '\u{F004}', ascii: '*' },
-  'star':      { nf: '\u{F005}', ascii: '*' },
-  'rocket':    { nf: '\u{F135}', ascii: 'R' },
-  'satellite': { nf: '\u{EF5F}', ascii: 'S' },
-
-  // --- Branding ---
-  'bunti':  { nf: '\u{F08B5}', ascii: 'B' },
-  'github': { nf: '\u{F09B}', ascii: 'G' },
-  'git':    { nf: '\u{F1D3}', ascii: 'G' },
-  'bun':    { nf: '\u{E76F}', ascii: 'B' },
-  'npm':    { nf: '\u{E71E}', ascii: 'N' },
-  'docker': { nf: '\u{F308}', ascii: 'D' },
-  'js':     { nf: '\u{E74E}', ascii: 'J' },
-  'ts':     { nf: '\u{E628}', ascii: 'T' },
-  'python': { nf: '\u{E73C}', ascii: 'P' },
-  'go':     { nf: '\u{E724}', ascii: 'G' },
-  'rust':   { nf: '\u{E7A8}', ascii: 'R' },
-  'node':   { nf: '\u{E718}', ascii: 'N' },
-  'bullet': { nf: '\u{F0522}', ascii: '•' },
-  'checkbox': { nf: '\u{F0132}', ascii: '[ ]' },
-  'checkbox-check': { nf: '\u{F0133}', ascii: '[x]' },
+  'branch':   { nf: '\uf418', ascii: '*' },
+  'pr':       { nf: '\uf41d', ascii: '!' },
+  'commit':   { nf: '\uf417', ascii: '+' },
+  'merge':    { nf: '\uf419', ascii: '>' },
+  'fork':     { nf: '\uf41a', ascii: 'Y' },
+  'tag':      { nf: '\uf412', ascii: 't' },
+  'repo':     { nf: '\uf401', ascii: 'R' },
+  'folder':      { nf: '\uf07b', ascii: '[' },
+  'folder-open': { nf: '\uf115', ascii: '{' },
+  'file':        { nf: '\uf15b', ascii: '-' },
+  'code':        { nf: '\uf121', ascii: '{' },
+  'markdown':    { nf: '\uf48a', ascii: 'M' },
+  'json':        { nf: '\ue60b', ascii: 'J' },
+  'yaml':        { nf: '\ue6a8', ascii: 'Y' },
+  'cpu':      { nf: '\uf2db', ascii: 'C' },
+  'memory':   { nf: '\uf538', ascii: 'M' },
+  'disk':     { nf: '\uf0a0', ascii: 'D' },
+  'network':  { nf: '\uf0ac', ascii: 'N' },
+  'terminal': { nf: '\uf120', ascii: '$' },
+  'database': { nf: '\uf1c0', ascii: 'D' },
+  'server':   { nf: '\uf233', ascii: 'S' },
+  'cloud':    { nf: '\uf0c2', ascii: 'C' },
+  'maximize': { nf: '\uf2d0', ascii: '^' },
+  'minimize': { nf: '\uf2d1', ascii: 'v' },
+  'close':    { nf: '\uf00d', ascii: 'x' },
+  'exit':     { nf: '\uf08b', ascii: '<' },
+  'eye':      { nf: '\uf06e', ascii: 'v' },
+  'eye-off':  { nf: '\uf070', ascii: 'h' },
+  'list':     { nf: '\uf03a', ascii: '=' },
+  'grid':     { nf: '\uf009', ascii: '#' },
+  'external': { nf: '\uf08e', ascii: '>' },
+  'lock':     { nf: '\uf023', ascii: 'L' },
+  'settings': { nf: '\uf013', ascii: '*' },
+  'search':   { nf: '\uf002', ascii: '/' },
+  'home':     { nf: '\uf015', ascii: 'H' },
+  'user':     { nf: '\uf007', ascii: 'U' },
+  'chevron-left':  { nf: '\uf053', ascii: '<' },
+  'chevron-right': { nf: '\uf054', ascii: '>' },
+  'arrow-left':    { nf: '\uf060', ascii: '<' },
+  'arrow-right':   { nf: '\uf061', ascii: '>' },
+  'success':   { nf: '\uf00c', ascii: 'v' },
+  'error':     { nf: '\uf00d', ascii: 'x' },
+  'warning':   { nf: '\uf071', ascii: '!' },
+  'info':      { nf: '\uf05a', ascii: 'i' },
+  'loading':   { nf: '\uf110', ascii: '~' },
+  'play':      { nf: '\uf04b', ascii: '>' },
+  'pause':     { nf: '\uf04c', ascii: '|' },
+  'stop':      { nf: '\uf04d', ascii: 'X' },
+  'refresh':   { nf: '\uf021', ascii: 'R' },
+  'add':       { nf: '\uf067', ascii: '+' },
+  'remove':    { nf: '\uf068', ascii: '-' },
+  'heart':     { nf: '\uf004', ascii: '*' },
+  'star':      { nf: '\uf005', ascii: '*' },
+  'rocket':    { nf: '\uf135', ascii: 'R' },
+  'satellite': { nf: '\uef5f', ascii: 'S' },
+  'bunti':  { nf: '\uf08b5', ascii: 'B' },
+  'bun':    { nf: '\ue76f', ascii: 'B' },
+  'node':   { nf: '\ue718', ascii: 'N' },
+  'bullet': { nf: '\uf0522', ascii: '•' },
+  'checkbox': { nf: '\uf0132', ascii: '[ ]' },
+  'checkbox-check': { nf: '\uf0133', ascii: '[x]' },
 };
 
-let cachedCaps: TerminalCapabilities | null = null;
-const customRegistry: Record<string, string> = {};
+/**
+ * Mapping of common emojis to their closest Nerd Font v3 equivalents.
+ */
+export const EMOJI_MAP: Record<string, string> = {
+  '🌿': '\uf418', '📥': '\uf41d', '📌': '\uf417', '🔀': '\uf419', '🍴': '\uf41a', '🏷️': '\uf412',
+  '📁': '\uf07b', '📂': '\uf115', '📄': '\uf15b', '💻': '\uf121', '📝': '\uf48a', '📦': '\ue60b', '📜': '\ue6a8',
+  '✅': '\uf00c', '❌': '\uf00d', '⚠️': '\uf071', 'ℹ️': '\uf05a', '⏳': '\uf110', '🚀': '\uf135', '🛰️': '\uef5f',
+  '🥟': '\uf08b5', '🐙': '\uf09b', '🐳': '\uf308', '🐍': '\ue73c', '🐹': '\ue724', '🦀': '\ue7a8', '🌲': '\ue718',
+  '🙂': '\uf118', '😊': '\uf118', '😀': '\uf118', '😄': '\uee80', '😉': '\ueda9', '😎': '\ueb54', '😇': '\uf4a2',
+};
 
-export async function init(): Promise<TerminalCapabilities> {
-  if (!cachedCaps) cachedCaps = await detectCapabilities();
+const GENERIC_ICON = '\uf0010';
+
+export function replaceEmojis(text: string): string {
+  if (!text) return '';
+  const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+  // @ts-ignore
+  return Array.from(segmenter.segment(text)).map(({ segment }) => {
+    if (EMOJI_MAP[segment]) return EMOJI_MAP[segment];
+    const clean = segment.replace(/\uFE0F/g, '');
+    if (EMOJI_MAP[clean]) return EMOJI_MAP[clean];
+    if (/\p{Emoji_Presentation}/u.test(segment)) return GENERIC_ICON;
+    return segment;
+  }).join('');
+}
+
+// OPTIMISTIC PERSISTENCE: If NF is assumed or detected, it stays TRUE.
+let cachedCaps: TerminalCapabilities = {
+  nerdFont: true,
+  glyphProtocol: false,
+  unicode: true,
+  color: true
+};
+
+let detectionStarted = false;
+
+/**
+ * Background detection that prioritizes the 'Optimistic' assumed state.
+ */
+export async function init(options?: { nerdFont?: boolean }): Promise<TerminalCapabilities> {
+  if (options?.nerdFont !== undefined) {
+    cachedCaps.nerdFont = options.nerdFont;
+    return cachedCaps;
+  }
+  
+  if (!detectionStarted) {
+    detectionStarted = true;
+    
+    // Start background detection
+    detectCapabilities().then(caps => {
+      // ONLY UPDATE if the result is positive, or if we weren't already true.
+      // We essentially "ignore" false negatives unless forced.
+      if (caps.nerdFont) {
+        cachedCaps.nerdFont = true;
+      }
+      cachedCaps.glyphProtocol = caps.glyphProtocol;
+      cachedCaps.unicode = caps.unicode;
+      cachedCaps.color = caps.color;
+    });
+  }
+
   return cachedCaps;
 }
 
-export function getIcon(name: string, caps: any): string {
+export function getIcon(name: string, caps: TerminalCapabilities): string {
   const def = ICON_MAP[name];
   if (!def) return '';
+  // Use NF if assumed or detected
   if (caps.nerdFont) return def.nf;
   return def.ascii;
 }
 
-/**
- * Returns an opinionated icon with automatic fallback (Nerd Font or ASCII).
- */
 export function icon(name: string): string {
-  const caps = cachedCaps || { nerdFont: true };
-  return getIcon(name, caps);
+  return getIcon(name, cachedCaps);
 }
 
-/**
- * Returns a specific Nerd Font icon by name from the registry.
- */
 export function nerd(name: string): string {
-  const caps = cachedCaps || { nerdFont: true };
-  if (!caps.nerdFont) return ICON_MAP[name]?.ascii || '';
-  return ICON_MAP[name]?.nf || customRegistry[name] || '';
+  if (!cachedCaps.nerdFont) return ICON_MAP[name]?.ascii || '';
+  return ICON_MAP[name]?.nf || '';
 }
 
-/**
- * Registers a custom Nerd Font icon for use in the current session.
- */
 export function register(name: string, glyph: string): void {
-  customRegistry[name] = glyph;
+  // Optional registration
 }
 
 export function nerdIcon(nfChar: string, fallback: string): string {
-  const caps = cachedCaps || { nerdFont: true };
-  return caps.nerdFont ? nfChar : fallback;
+  return cachedCaps.nerdFont ? nfChar : fallback;
 }

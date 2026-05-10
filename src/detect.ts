@@ -23,11 +23,20 @@ export async function detectCapabilities(): Promise<TerminalCapabilities> {
 
   // 1. Environment Variable Heuristics
   const term = process.env.TERM_PROGRAM || '';
-  const nerdEnv = process.env.NERD_FONTS || process.env.NERD_FONT;
+  const termEmulator = process.env.TERMINAL_EMULATOR || '';
+  const nerdEnv = process.env.NERD_FONTS || process.env.NERD_FONT || process.env.BUNTI_NF;
 
-  if (nerdEnv === '1' || nerdEnv === 'true') {
+  // Optimistic list of terminals known to support modern fonts
+  const modernTerms = [
+    'Ghostty', 'WezTerm', 'iTerm.app', 'WarpTerminal', 
+    'Apple_Terminal', 'vscode', 'Hyper', 'Rio', 'Term7'
+  ];
+
+  if (nerdEnv === '1' || nerdEnv === 'true' || nerdEnv === 'yes') {
     caps.nerdFont = true;
-  } else if (['Ghostty', 'WezTerm', 'iTerm.app'].includes(term)) {
+  } else if (modernTerms.includes(term) || modernTerms.includes(termEmulator)) {
+    caps.nerdFont = true;
+  } else if (process.env.LC_TERMINAL === 'iTerm2') {
     caps.nerdFont = true;
   }
 

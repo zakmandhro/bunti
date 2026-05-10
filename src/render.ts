@@ -91,6 +91,7 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
     if (options.mouse) cmd += ANSI.mouseEnable;
     if (options.focus) cmd += ANSI.focusEnable;
     if (cmd) process.stdout.write(cmd);
+    
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.on('data', (data) => handleInput(state, data, stop));
@@ -108,7 +109,7 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
     process.exit(0);
   };
 
-  if (options.mouse || options.focus) setupInput();
+  if (options.mouse || options.focus || options.keyboard) setupInput();
 
   process.on('SIGWINCH', () => {
     resizeScreen(state);
@@ -118,10 +119,11 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
 
-  let interval: Timer | null = null;
+  let interval: any = null;
   const tick = () => {
     renderCallback(state);
     flush(state);
+    state.lastKey = undefined;
   };
 
   const restartLoop = () => {
@@ -135,9 +137,8 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
   restartLoop();
 }
 
-function handleInput(state: ScreenState, data: Buffer, stop: () => void) {
+function handleInput(state: ScreenState, data: any, stop: () => void) {
   const input = data.toString();
-  if (input === '\u0003') stop();
 
   if (input === '\x1b[I') {
     state.hasFocus = true;
@@ -156,7 +157,11 @@ function handleInput(state: ScreenState, data: Buffer, stop: () => void) {
     state.mouseX = parseInt(match[2]) - 1;
     state.mouseY = parseInt(match[3]) - 1;
     state.isMouseDown = match[4] === 'M';
+    return;
   }
+
+  if (input === '\u0003') stop();
+  state.lastKey = input;
 }
 
 import { resizeScreen } from './state';
