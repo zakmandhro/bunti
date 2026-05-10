@@ -95,7 +95,7 @@ export const ICON_MAP: Record<string, IconDefinition> = {
   'trash':          { nf: '\uf1f8', ascii: 'x' },
   'user':           { nf: '\uf007', ascii: 'U' },
   'warning':        { nf: '\uf071', ascii: '!' },
-  'wizard':         { nf: '\u{f1101}', ascii: 'W' },
+  'wizard':         { nf: '\u{f1477}', ascii: 'W' },
   'yaml':           { nf: '\ue6a8', ascii: 'Y' },
   'zap':            { nf: '\uf0e7', ascii: 'z' },
 };
