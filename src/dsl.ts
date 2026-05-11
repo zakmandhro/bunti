@@ -38,6 +38,7 @@ export interface DSLBoxOptions extends StyleOptions {
   titleStyle?: (s: string) => string;
   id?: string;
   borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
+  detach?: boolean; // If true, the string is returned but NOT appended to the flow
 }
 
 /**
@@ -61,8 +62,8 @@ export interface BuntiContext {
   blit(x: number, y: number, content: string, style?: Partial<Cell>): BuntiContext;
   rect(x: number, y: number, w: number, h: number, style: Partial<Cell>): BuntiContext;
   viewport(content: string, width: number, height: number, scrollY?: number): string;
-  span(options: { color?: string | number | RGB | ((s: string) => string) }, callback: (sub: BuntiContext) => void): BuntiContext;
-  box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void): BuntiContext;
+  span(options: { color?: string | number | RGB | ((s: string) => string) }, callback: (sub: BuntiContext) => void): string;
+  box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void): string;
   joinHorizontal(...blocks: string[]): string;
   joinVertical(...blocks: string[]): string;
   wallpaper(input: string | number | RGB | RGB[] | Gradient | { color: any }): void;
@@ -95,12 +96,14 @@ interface DSLState {
 /**
  * Common Context Factory: Provided to every closure.
  */
-function createDSLContext(state: ScreenState, dslState: DSLState, availableW: number, availableH: number): BuntiContext {
+function createDSLContext(state: ScreenState, dslState: DSLState, availableW: number, availableH: number, offsetX: number = 0, offsetY: number = 0): BuntiContext {
   const ctx: BuntiContext = {
     color: { ...pc, darken, lighten, rgb, fg, bg } as any,
     state,
     width: availableW,
     height: availableH,
+    offsetX,
+    offsetY,
     mouseX: state.mouseX,
     mouseY: state.mouseY,
     mouseButton: state.mouseButton,
@@ -221,7 +224,7 @@ function createDSLContext(state: ScreenState, dslState: DSLState, availableW: nu
       }
       
       dslState.activeContents.push(styled);
-      return ctx;
+      return styled;
     },
 
     box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void) {
@@ -240,7 +243,29 @@ function createDSLContext(state: ScreenState, dslState: DSLState, availableW: nu
       dslState.stack.push(dslState.activeContents);
       dslState.activeContents = subContents;
 
-      const subCtx = createDSLContext(state, dslState, innerW, innerH);
+      const boxW = resolvedW || availableW;
+      const boxH = resolvedH || availableH;
+      
+      let absX = offsetX;
+      let absY = offsetY;
+
+      if (options.x !== undefined) {
+        absX += options.x;
+      } else {
+        absX += Math.max(0, Math.floor((availableW - boxW) / 2));
+      }
+
+      if (options.y !== undefined) {
+        absY += options.y;
+      } else if (options.anchor === 'top') {
+        absY = offsetY;
+      } else if (options.anchor === 'bottom') {
+        absY = offsetY + availableH - boxH;
+      } else {
+        absY += Math.max(0, Math.floor((availableH - boxH) / 2));
+      }
+
+      const subCtx = createDSLContext(state, dslState, innerW, innerH, absX + (borderOffset/2) + px, absY + (borderOffset/2) + py);
       callback(subCtx);
       
       dslState.activeContents = dslState.stack.pop()!;
@@ -248,8 +273,10 @@ function createDSLContext(state: ScreenState, dslState: DSLState, availableW: nu
       const innerContent = subContents.join('');
       const styledBox = layoutBox(innerContent, options, availableW, availableH);
       
-      dslState.activeContents.push(styledBox);
-      return ctx;
+      if (!options.detach) {
+        dslState.activeContents.push(styledBox);
+      }
+      return styledBox;
     },
 
     joinHorizontal(...blocks: string[]) {
@@ -323,27 +350,35 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     dslState.stack.push(dslState.activeContents);
     dslState.activeContents = subContents;
 
-    const subCtx = createDSLContext(state, dslState, innerW, innerH);
+    let x = options.x !== undefined ? options.x : 0; // Temp assignment for offset
+    let y = options.y !== undefined ? options.y : 0;
+    if (options.anchor === 'top') {
+      y = 0;
+    }
+
+    const subCtx = createDSLContext(state, dslState, innerW, innerH, x + (borderOffset/2) + px, y + (borderOffset/2) + py);
     callback(subCtx);
-    
+
     dslState.activeContents = dslState.stack.pop()!;
-    
+
     const contentStr = subContents.join('');
     const styledBox = layoutBox(contentStr, options, state.width, state.height);
 
     const lines = styledBox.split('\n');
-    const w = Math.max(...lines.map(visibleWidth));
-    const h = lines.length;
+    const boxW = resolveSize(options.width, state.width, Math.max(...lines.map(visibleWidth)));
+    const boxH = resolveSize(options.height, state.height, lines.length);
 
-    let x = options.x !== undefined ? options.x : Math.max(0, Math.floor((state.width - w) / 2));
-    let y = options.y !== undefined ? options.y : Math.max(0, Math.floor((state.height - h) / 2));
+    x = options.x !== undefined ? options.x : Math.max(0, Math.floor((state.width - boxW) / 2));
+    y = options.y !== undefined ? options.y : Math.max(0, Math.floor((state.height - boxH) / 2));
 
-    if (options.anchor === 'bottom') {
-      y = state.height - h;
+    if (options.anchor === 'top') {
+      y = 0;
+    } else if (options.anchor === 'bottom') {
+      y = state.height - boxH;
     }
 
     if (options.bgColor || options.color) {
-      rect(state, x, y, w, h, { 
+      rect(state, x, y, boxW, boxH, { 
         char: ' ', 
         bg: options.bgColor, 
         fg: options.color === 'blank' ? undefined : options.color 

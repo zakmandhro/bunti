@@ -49,11 +49,18 @@ export function rect(state: ScreenState, x: number, y: number, w: number, h: num
         resolvedBg = style.bg !== undefined ? resolveColor(style.bg) : undefined;
       }
 
-      setCell(state, x + dx, y + dy, {
-        char: style.char || ' ',
-        fg: style.fg !== undefined ? resolveColor(style.fg) : undefined,
-        bg: resolvedBg
-      });
+      const cell: Partial<Cell> = { bg: resolvedBg };
+      if (style.char) cell.char = style.char;
+      if (style.fg) cell.fg = resolveColor(style.fg) as any;
+
+      const existing = state.backBuffer[y + dy]?.[x + dx];
+      if (existing && existing.char !== ' ' && !style.char) {
+        // Keep existing char/fg if drawing a pure background
+        cell.char = existing.char;
+        cell.fg = existing.fg;
+      }
+
+      setCell(state, x + dx, y + dy, cell);
     }
   }
 }
