@@ -232,12 +232,14 @@ export function rgb(r: number, g: number, b: number) {
  */
 export function fg(color: any, text: string): string {
   const code = resolveColor(color);
-  const prefix = (typeof color === 'object' || (typeof color === 'string' && color.startsWith('#'))) ? '38' : '38;5';
-  return `\x1b[${prefix};${code}m${text}\x1b[0m`;
+  const codeStr = String(code);
+  const prefix = (typeof color === 'object' || codeStr.startsWith('2;')) ? '38' : '38;5';
+  return `\x1b[${prefix};${codeStr}m${text}\x1b[0m`;
 }
 
 export function bg(color: any, text: string): string {
   const code = resolveColor(color);
-  const prefix = (typeof color === 'object' || (typeof color === 'string' && color.startsWith('#'))) ? '48' : '48;5';
-  return `\x1b[${prefix};${code}m${text}\x1b[0m`;
+  const codeStr = String(code);
+  const prefix = (typeof color === 'object' || codeStr.startsWith('2;')) ? '48' : '48;5';
+  return `\x1b[${prefix};${codeStr}m${text}\x1b[0m`;
 }

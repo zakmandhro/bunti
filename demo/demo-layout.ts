@@ -10,36 +10,42 @@ export interface DemoBounds {
   centerW: (targetW: number) => number;
 }
 
-export async function demo(
+export function demo(
   title: string,
   contentRender: (ctx: BuntiContext, bounds: DemoBounds) => void,
   options: ScreenOptions = { fps: 10, alternateBuffer: true, hideCursor: true, nerdFont: true }
 ) {
-  // Force the capability sync immediately
-  await bunti.init({ nerdFont: true });
-
   bunti.render((ctx) => {
-    const { box, color, width, height, wallpaper } = ctx;
+    const { box, color, width, height, wallpaper, icon } = ctx;
     
     // 1. Base Layer (Deep Tactical Navy)
     wallpaper(233);
 
     const W = Math.min(width - 8, 100);
 
-    // 2. Standardized Header (Anchored Top, Relative Width)
+    // 2. Standardized Minimalist Header (Single Row, 100% Width)
     box({
-      anchor: 'top',
-      y: 1,
-      width: W,
-      border: 'frame',
-      borderColor: color.gray,
-      align: 'center',
+      x: 0,
+      y: 0,
+      width: '100%',
+      height: 1,
+      bgColor: 'white',
+      border: 'none',
       padding: [0, 2]
     }, ({ text }) => {
-      text(`🌀 ${color.bold(`BUNTI :: ${title}`)} 🛰️`);
+      const iconStr = color.fg('plasma', icon('bunti'));
+      const titleStr = color.fg(236, `Bunti Demo ▶ ${color.bold(title)}`);
+      const exitStr = color.dim('^C');
+      
+      const innerW = width - 4; // width - padding[1]*2
+      const titleW = title.length + 13; // "Bunti Demo ▶ " is 13 chars
+      
+      const leftPad = Math.floor((innerW - titleW) / 2) - 1; // -1 for icon
+      const rightPad = Math.ceil((innerW - titleW) / 2) - 2; // -2 for ^C
+      
+      const fullStr = `${iconStr}${' '.repeat(Math.max(0, leftPad))}${titleStr}${' '.repeat(Math.max(0, rightPad))}${exitStr}`;
+      text(fullStr);
     });
-
-    // 3. Standardized Footer (Anchored Bottom)
     box({
       anchor: 'bottom',
       width: '100%',
@@ -51,14 +57,13 @@ export async function demo(
     });
 
     // 4. Calculate Inner Safe Bounds
-    // Header takes rows y: 1, 2, 3. Spacer at y: 4. Content starts at y: 5.
+    // Header takes y: 0. Spacer at y: 1. Content starts at y: 2.
     // Footer takes row y: height - 1. Spacer at height - 2. End at height - 3.
-    // Usable height: (height - 3) - 5 + 1 = height - 7.
     const bounds: DemoBounds = {
       x: 0,
-      y: 5,
+      y: 2,
       w: width,
-      h: height - 7,
+      h: height - 4,
       centerW: (targetW: number) => Math.max(0, Math.floor((width - targetW) / 2))
     };
 

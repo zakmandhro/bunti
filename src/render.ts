@@ -49,13 +49,29 @@ export function flush(state: ScreenState) {
           } else {
             // Foreground
             if (fg !== lastFg) {
-              if (fg === undefined) renderString += '\x1b[39m';
-              else renderString += (typeof fg === 'string' && fg.startsWith('2;')) ? `\x1b[38;${fg}m` : `\x1b[38;5;${fg}m`;
+              if (fg === undefined) {
+                renderString += '\x1b[39m';
+              } else {
+                const fgStr = String(fg);
+                if (fgStr.startsWith('2;')) {
+                  renderString += `\x1b[38;${fgStr}m`;
+                } else {
+                  renderString += `\x1b[38;5;${fgStr}m`;
+                }
+              }
             }
             // Background
             if (bg !== lastBg) {
-              if (bg === undefined) renderString += '\x1b[49m';
-              else renderString += (typeof bg === 'string' && bg.startsWith('2;')) ? `\x1b[48;${bg}m` : `\x1b[48;5;${bg}m`;
+              if (bg === undefined) {
+                renderString += '\x1b[49m';
+              } else {
+                const bgStr = String(bg);
+                if (bgStr.startsWith('2;')) {
+                  renderString += `\x1b[48;${bgStr}m`;
+                } else {
+                  renderString += `\x1b[48;5;${bgStr}m`;
+                }
+              }
             }
           }
           lastFg = fg;

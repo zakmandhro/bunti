@@ -25,6 +25,7 @@ const registry: Record<string, string> = {
   "animation": "./animation.ts",
   "layout": "./layout.ts",
   "colors": "./colors.ts",
+  "color-isolation": "./color-isolation.ts",
 };
 
 if (!target || !registry[target]) {

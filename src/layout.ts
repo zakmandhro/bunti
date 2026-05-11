@@ -6,17 +6,17 @@
 import { ScreenState, Cell, RGB } from './state';
 import { visibleWidth, charWidth, truncate, wrapText, stripAnsi } from './utils';
 import { replaceEmojis } from './icons';
+import { bg } from './colors';
 
 // --- Functional Primitives (Buffer Manipulation) ---
 
 export function setCell(state: ScreenState, x: number, y: number, cell: Partial<Cell>) {
   if (x >= 0 && x < state.width && y >= 0 && y < state.height) {
-    let char = cell.char || ' ';
-    if (!cell.raw) char = replaceEmojis(char);
+    const existing = state.backBuffer[y][x];
     state.backBuffer[y][x] = {
-      char,
-      fg: cell.fg,
-      bg: cell.bg
+      char: cell.char !== undefined ? replaceEmojis(cell.char) : existing.char,
+      fg: cell.fg !== undefined ? cell.fg : existing.fg,
+      bg: cell.bg !== undefined ? cell.bg : existing.bg
     };
   }
 }
@@ -32,6 +32,8 @@ export interface RectOptions {
 export function rect(state: ScreenState, x: number, y: number, w: number, h: number, style: RectOptions) {
   const isGradient = style.bg && typeof style.bg === 'object' && 'colors' in style.bg;
   
+  const { resolveColor } = require('./colors');
+
   for (let dy = 0; dy < h; dy++) {
     for (let dx = 0; dx < w; dx++) {
       let resolvedBg: string | number | RGB | undefined = undefined;
@@ -44,12 +46,12 @@ export function rect(state: ScreenState, x: number, y: number, w: number, h: num
           resolvedBg = grad.colors[Math.floor((dy / h) * grad.colors.length)];
         }
       } else {
-        resolvedBg = style.bg as any;
+        resolvedBg = style.bg !== undefined ? resolveColor(style.bg) : undefined;
       }
 
       setCell(state, x + dx, y + dy, {
         char: style.char || ' ',
-        fg: style.fg,
+        fg: style.fg !== undefined ? resolveColor(style.fg) : undefined,
         bg: resolvedBg
       });
     }
@@ -74,9 +76,9 @@ export function blit(state: ScreenState, startX: number, startY: number, content
           else if (code >= 40 && code <= 47) currentBg = (code - 40).toString();
           else if (code >= 90 && code <= 97) currentFg = (code - 90 + 8).toString();
           else if (code >= 100 && code <= 107) currentBg = (code - 100 + 8).toString();
-          else if (code === 38 && codes[i + 1] === '5') { currentFg = codes[i + 2]; i += 2; }
+          else if (code === 38 && codes[i + 1] === '5') { currentFg = parseInt(codes[i + 2]); i += 2; }
           else if (code === 38 && codes[i + 1] === '2') { currentFg = { r: parseInt(codes[i + 2]), g: parseInt(codes[i + 3]), b: parseInt(codes[i + 4]) }; i += 4; }
-          else if (code === 48 && codes[i + 1] === '5') { currentBg = codes[i + 2]; i += 2; }
+          else if (code === 48 && codes[i + 1] === '5') { currentBg = parseInt(codes[i + 2]); i += 2; }
           else if (code === 48 && codes[i + 1] === '2') { currentBg = { r: parseInt(codes[i + 2]), g: parseInt(codes[i + 3]), b: parseInt(codes[i + 4]) }; i += 4; }
           else if (code === 39) currentFg = undefined;
           else if (code === 49) currentBg = undefined;
@@ -87,9 +89,16 @@ export function blit(state: ScreenState, startX: number, startY: number, content
         for (const char of chars) {
           const w = charWidth(char);
           if (w === 0) continue;
+          
           const cell: Partial<Cell> = { char, ...style };
+          
+          // Only overwrite buffer colors if explicitly set in the string or style
           if (currentFg !== undefined) cell.fg = currentFg;
+          else if (style.fg !== undefined) cell.fg = style.fg;
+          
           if (currentBg !== undefined) cell.bg = currentBg;
+          else if (style.bg !== undefined) cell.bg = style.bg;
+
           setCell(state, x, startY + row, cell);
           x += w;
         }
@@ -227,70 +236,21 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
 
   const out = [];
 
-  const { bg } = require('./colors');
-  const applyLineBg = (line: string, rowIdx: number) => {
-    if (!options.bgColor) return line;
-    if (typeof options.bgColor === 'object' && 'colors' in options.bgColor) {
-      const grad = options.bgColor as Gradient;
-      if (grad.direction === 'vertical') {
-        const idx = Math.floor((rowIdx / finalInnerH) * grad.colors.length);
-        const color = grad.colors[Math.min(idx, grad.colors.length - 1)];
-        return bg(color, line);
-      } else {
-        // Horizontal gradient: apply per character safely
-        const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-        // @ts-ignore
-        const segments = Array.from(segmenter.segment(line));
-        let out = '';
-        let visibleIdx = 0;
-        
-        for (const { segment } of segments) {
-          // If the segment is just ANSI codes, append without advancing width
-          if (segment.startsWith('\x1b[')) {
-             out += segment;
-             continue;
-          }
-
-          const cleanSegment = stripAnsi(segment);
-          const w = charWidth(cleanSegment);
-          
-          if (w > 0) {
-            const gradIdx = Math.floor((visibleIdx / resolvedW) * grad.colors.length);
-            const color = grad.colors[Math.min(gradIdx, grad.colors.length - 1)];
-            
-            // Re-apply any existing ANSI foreground within the background wrap if needed,
-            // but `bg()` wraps the string in a background color and resets at the end.
-            // Since `line` might contain foreground codes, breaking it up means we lose state.
-            // For now, assume pure string or accept reset behavior.
-            out += bg(color, segment);
-            visibleIdx += w;
-          } else {
-            out += segment;
-          }
-        }
-        return out;
-      }
-    }
-    return bg(options.bgColor, line);
-  };
-  
   // Top Border
   if (b) {
-    out.push(applyLineBg(colors.top(b.tl + hTop.repeat(targetInnerW) + b.tr), 0));
+    out.push(colors.top(b.tl + hTop.repeat(targetInnerW) + b.tr));
   }
   
   // Top Padding
   for (let i = 0; i < py + topS; i++) {
-    const rowIdx = (b ? 1 : 0) + i;
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(targetInnerW);
     if (b) row += colors.right(vRight);
-    out.push(applyLineBg(row, rowIdx));
+    out.push(row);
   }
 
   // Content Lines
   for (let i = 0; i < lines.length; i++) {
-    const rowIdx = (b ? 1 : 0) + py + topS + i;
     let line = lines[i].trim(); 
     const lineW = visibleWidth(line);
     const extra = Math.max(0, targetInnerW - lineW - (px * 2));
@@ -311,21 +271,20 @@ export function box(content: string, options: StyleOptions = {}, parentW?: numbe
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(Math.max(0, left)) + line + ' '.repeat(Math.max(0, right));
     if (b) row += colors.right(vRight);
-    out.push(applyLineBg(row, rowIdx));
+    out.push(row);
   }
 
   // Bottom Padding
   for (let i = 0; i < py + bottomS; i++) {
-    const rowIdx = (b ? 1 : 0) + py + topS + lines.length + i;
     let row = b ? colors.left(vLeft) : '';
     row += ' '.repeat(targetInnerW);
     if (b) row += colors.right(vRight);
-    out.push(applyLineBg(row, rowIdx));
+    out.push(row);
   }
 
   // Bottom Border
   if (b) {
-    out.push(applyLineBg(colors.bottom(b.bl + hBottom.repeat(targetInnerW) + b.br), finalInnerH + 1));
+    out.push(colors.bottom(b.bl + hBottom.repeat(targetInnerW) + b.br));
   }
 
   return out.join('\n');

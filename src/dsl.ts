@@ -59,6 +59,7 @@ export interface BuntiContext {
   text(str: string | number): BuntiContext;
   icon(name: string): string; // Pure string return for template literal safety
   blit(x: number, y: number, content: string, style?: Partial<Cell>): BuntiContext;
+  rect(x: number, y: number, w: number, h: number, style: Partial<Cell>): BuntiContext;
   viewport(content: string, width: number, height: number, scrollY?: number): string;
   span(options: { color?: string | number | RGB | ((s: string) => string) }, callback: (sub: BuntiContext) => void): BuntiContext;
   box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void): BuntiContext;
@@ -190,6 +191,11 @@ function createDSLContext(state: ScreenState, dslState: DSLState, availableW: nu
     
     blit(x: number, y: number, content: string, style: Partial<Cell> = {}) {
       layoutBlit(state, x, y, content, style);
+      return ctx;
+    },
+
+    rect(x: number, y: number, w: number, h: number, style: Partial<Cell>) {
+      rect(state, x, y, w, h, style);
       return ctx;
     },
 
@@ -334,6 +340,14 @@ export function createScreenContext(state: ScreenState): BuntiContext {
 
     if (options.anchor === 'bottom') {
       y = state.height - h;
+    }
+
+    if (options.bgColor || options.color) {
+      rect(state, x, y, w, h, { 
+        char: ' ', 
+        bg: options.bgColor, 
+        fg: options.color === 'blank' ? undefined : options.color 
+      });
     }
 
     layoutBlit(state, x, y, styledBox);
