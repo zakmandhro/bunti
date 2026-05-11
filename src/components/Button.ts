@@ -20,15 +20,19 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const isSelected = focusable(props.id);
   
   // 2. Resolve final dimensions to perform Mouse Hit-Testing
-  // Note: We're doing a simplified hit-test based on absolute screen coordinates.
   const finalLabel = props.icon ? `${props.icon} ${props.label}` : props.label;
   const w = props.width || Math.max(12, finalLabel.length + 4);
   const h = props.height || 3;
   
-  // We need to know where this box will land. 
-  // In the demo, we are using flow layout, but HOCs in Phase 2 should know their parent offsets.
-  const isHovered = mouseX >= offsetX && mouseX < offsetX + (w as number) &&
-                    mouseY >= offsetY && mouseY < offsetY + (h as number);
+  // Hit Testing: 100% width buttons use just offsetX. 
+  // Inline buttons would need cursorX, but typically they are centered by the parent layout phase.
+  // For standard form buttons (100% width or single column), using offsetX + center math works.
+  // If button is 100% width, absX = offsetX. If centered, absX = offsetX + (ctx.width - w) / 2
+  const absX = props.width === '100%' ? offsetX : offsetX + Math.max(0, Math.floor((ctx.width - (w as number)) / 2));
+  const absY = offsetY + ctx.cursorY;
+
+  const isHovered = mouseX >= absX && mouseX < absX + (w as number) &&
+                    mouseY >= absY && mouseY < absY + (h as number);
 
   // 3. Resolve Theme & State
   let bg: any = 'ocean';

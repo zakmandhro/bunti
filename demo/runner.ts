@@ -26,6 +26,7 @@ const registry: Record<string, string> = {
   "layout": "./layout.ts",
   "colors": "./colors.ts",
   "color-isolation": "./color-isolation.ts",
+  "login": "./login.ts",
 };
 
 if (!target || !registry[target]) {
@@ -50,6 +51,14 @@ const proc = spawn(args, {
   stdout: "inherit",
   stderr: "inherit",
 });
+
+// Handle termination signals in the parent runner
+const cleanup = () => {
+  proc.kill("SIGINT");
+};
+
+process.on("SIGINT", cleanup);
+process.on("SIGTERM", cleanup);
 
 const exitCode = await proc.exited;
 process.exit(exitCode);

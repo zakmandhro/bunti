@@ -120,11 +120,19 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
   const stop = () => {
     if (interval) clearInterval(interval);
     
+    // 1. Restore Terminal Modes
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    }
+
+    // 2. Remove Listeners
     process.stdin.removeListener('data', inputHandler);
     process.removeListener('SIGWINCH', resizeHandler);
     process.removeListener('SIGINT', stop);
     process.removeListener('SIGTERM', stop);
 
+    // 3. Emit Restorative ANSI Sequence
     let cmd = '';
     if (options.mouse) cmd += ANSI.mouseDisable;
     if (options.focus) cmd += ANSI.focusDisable;
@@ -133,6 +141,9 @@ export function loop(state: ScreenState, renderCallback: (s: ScreenState) => voi
     cmd += ANSI.reset;
     
     process.stdout.write(cmd);
+    
+    // Use process.exitCode instead of immediate exit if possible
+    // to allow other cleanups, but for TUI we usually want out now.
     process.exit(0);
   };
 

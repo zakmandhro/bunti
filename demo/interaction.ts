@@ -1,5 +1,5 @@
 import { demo } from "./demo-layout";
-import { Button } from "../src/components/Button";
+import { Button, Input } from "../src/components";
 
 /**
  * Interactive Components Showcase
@@ -22,6 +22,16 @@ demo("INTERACTIVE COMPONENTS", (ctx, bounds) => {
     sub.text(color.cyan(color.bold("TACTICAL CONTROLS\n\n")));
     
     sub.text("Press [TAB] to navigate focus.\n\n");
+
+    // managed input
+    Input(sub, {
+      id: 'input-mission',
+      label: 'MISSION:',
+      placeholder: 'Enter mission name...',
+      width: 40
+    });
+
+    sub.text("\n\n");
 
     Button(sub, {
       id: 'btn-deploy',

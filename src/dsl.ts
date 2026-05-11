@@ -49,6 +49,10 @@ export interface BuntiContext {
   state: ScreenState;
   width: number;
   height: number;
+  offsetX: number;
+  offsetY: number;
+  readonly cursorX: number;
+  readonly cursorY: number;
   mouseX: number;
   mouseY: number;
   mouseButton: number;
@@ -104,6 +108,15 @@ function createDSLContext(state: ScreenState, dslState: DSLState, availableW: nu
     height: availableH,
     offsetX,
     offsetY,
+    get cursorX() {
+      const currentFlow = dslState.activeContents.join('');
+      const lines = currentFlow.split('\n');
+      return visibleWidth(lines[lines.length - 1]);
+    },
+    get cursorY() {
+      const currentFlow = dslState.activeContents.join('');
+      return Math.max(0, currentFlow.split('\n').length - 1);
+    },
     mouseX: state.mouseX,
     mouseY: state.mouseY,
     mouseButton: state.mouseButton,

@@ -14,7 +14,7 @@ export interface DemoBounds {
 export async function demo(
   title: string,
   contentRender: (ctx: BuntiContext, bounds: DemoBounds) => void,
-  options: ScreenOptions = { fps: 10, alternateBuffer: true, hideCursor: true, nerdFont: true }
+  options: ScreenOptions = { fps: 10, alternateBuffer: true, hideCursor: true, nerdFont: true, mouse: true, keyboard: true }
 ) {
   await bunti.init({ nerdFont: true });
 
@@ -40,7 +40,7 @@ export async function demo(
       border: 'none',
       padding: [0, 0]
     }, ({ text }) => {
-      text(color.dim(` 󰇄 Screen: ${width}x${height} | Logic: Stateless | Buffer: Double `));
+      text(color.dim(` 󰇄 Screen: ${width}x${height} | Mouse: ${ctx.mouseX},${ctx.mouseY} | Logic: Stateless `));
     });
 
     // 4. Calculate Inner Safe Bounds
