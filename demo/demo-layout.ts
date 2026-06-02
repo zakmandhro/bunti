@@ -1,7 +1,7 @@
-import { bunti } from "../src/index";
-import { BuntiContext } from "../src/dsl";
-import { ScreenOptions } from "../src/state";
-import { Header } from "../src/components/Header";
+import { Header } from '../src/components/Header';
+import type { BuntiContext } from '../src/dsl';
+import { bunti } from '../src/index';
+import type { ScreenOptions } from '../src/state';
 
 export interface DemoBounds {
   x: number;
@@ -14,34 +14,48 @@ export interface DemoBounds {
 export async function demo(
   title: string,
   contentRender: (ctx: BuntiContext, bounds: DemoBounds) => void,
-  options: ScreenOptions = { fps: 10, alternateBuffer: true, hideCursor: true, nerdFont: true, mouse: true, keyboard: true }
+  options: ScreenOptions = {
+    fps: 10,
+    alternateBuffer: true,
+    hideCursor: true,
+    nerdFont: true,
+    mouse: true,
+    keyboard: true,
+  },
 ) {
   await bunti.init({ nerdFont: true });
 
   bunti.render((ctx) => {
     const { box, color, width, height, wallpaper, icon } = ctx;
-    
-    // 1. Base Layer (Deep Tactical Navy)
-    wallpaper(233);
+
+    // 1. Base Layer (High-Fidelity Paper White)
+    wallpaper({ r: 255, g: 255, b: 254 });
 
     // 2. High-Order Header Component
     Header(ctx, {
       title: title.toUpperCase(),
       leftIcon: icon('bunti'),
       rightLabel: '^C',
-      theme: 'light'
+      theme: 'light',
     });
 
     // 3. Standardized Footer (Anchored Bottom)
-    box({
-      anchor: 'bottom',
-      width: '100%',
-      align: 'center',
-      border: 'none',
-      padding: [0, 0]
-    }, ({ text }) => {
-      text(color.dim(` 󰇄 Screen: ${width}x${height} | Mouse: ${ctx.mouseX},${ctx.mouseY} | Logic: Stateless `));
-    });
+    box(
+      {
+        anchor: 'bottom',
+        width: '100%',
+        align: 'center',
+        border: 'none',
+        padding: [0, 0],
+      },
+      ({ text }) => {
+        text(
+          color.dim(
+            ` 󰇄 Screen: ${width}x${height} | Mouse: ${ctx.mouseX},${ctx.mouseY} | Logic: Stateless `,
+          ),
+        );
+      },
+    );
 
     // 4. Calculate Inner Safe Bounds
     // Header takes y: 0. Spacer at y: 1. Content starts at y: 2.
@@ -51,7 +65,8 @@ export async function demo(
       y: 2,
       w: width,
       h: height - 4,
-      centerW: (targetW: number) => Math.max(0, Math.floor((width - targetW) / 2))
+      centerW: (targetW: number) =>
+        Math.max(0, Math.floor((width - targetW) / 2)),
     };
 
     // 5. Render Core Content

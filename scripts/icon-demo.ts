@@ -1,5 +1,13 @@
-import { box, joinHorizontal, joinVertical, render, createStyle, truncate, ANSI, init, icon } from '../src/index';
 import pc from 'picocolors';
+import {
+  ANSI,
+  box,
+  createStyle,
+  icon,
+  init,
+  joinVertical,
+  render,
+} from '../src/index';
 
 /**
  * Bunti Icon & Capability Demo
@@ -15,7 +23,7 @@ const runDemo = async () => {
     border: 'rounded',
     borderColor: pc.cyan,
     padding: [1, 2],
-    width: 60
+    width: 60,
   });
 
   const iconRow = (name: string, label: string) => {
@@ -23,24 +31,36 @@ const runDemo = async () => {
   };
 
   const frame = joinVertical(
-    box(pc.bold("🛰️  BUNTI ICON ENGINE & CAPABILITY DETECTION"), { align: 'center', width: 60, border: 'normal', borderColor: pc.magenta }),
+    box(pc.bold('🛰️  BUNTI ICON ENGINE & CAPABILITY DETECTION'), {
+      align: 'center',
+      width: 60,
+      border: 'normal',
+      borderColor: pc.magenta,
+    }),
     panel(
-      pc.blue("TERMINAL CAPABILITIES\n") + 
-      `NERD FONT: ${caps.nerdFont ? pc.green("DETECTED") : pc.red("NOT FOUND")}\n` +
-      `GLYPH PROTOCOL: ${caps.glyphProtocol ? pc.green("SUPPORTED") : pc.yellow("LEGACY")}\n\n` +
-      pc.yellow("ICON GALLERY\n") +
-      iconRow('satellite', 'Orbital Command') + '\n' +
-      iconRow('branch', 'Git Worktree') + '\n' +
-      iconRow('success', 'Mission Landed') + '\n' +
-      iconRow('loading', 'Propulsion Warm-up') + '\n' +
-      iconRow('agent', 'AI Pilot Active')
+      pc.blue('TERMINAL CAPABILITIES\n') +
+        `NERD FONT: ${caps.nerdFont ? pc.green('DETECTED') : pc.red('NOT FOUND')}\n` +
+        `GLYPH PROTOCOL: ${caps.glyphProtocol ? pc.green('SUPPORTED') : pc.yellow('LEGACY')}\n\n` +
+        pc.yellow('ICON GALLERY\n') +
+        iconRow('satellite', 'Orbital Command') +
+        '\n' +
+        iconRow('branch', 'Git Worktree') +
+        '\n' +
+        iconRow('success', 'Mission Landed') +
+        '\n' +
+        iconRow('loading', 'Propulsion Warm-up') +
+        '\n' +
+        iconRow('agent', 'AI Pilot Active'),
     ),
-    box(pc.dim("Bunti automatically falls back to Emojis or ASCII if needed."), { width: 60, align: 'center' })
+    box(
+      pc.dim('Bunti automatically falls back to Emojis or ASCII if needed.'),
+      { width: 60, align: 'center' },
+    ),
   );
 
   render(frame);
   process.stdout.write(ANSI.showCursor);
-  console.log("\n");
+  console.log('\n');
 };
 
 runDemo();

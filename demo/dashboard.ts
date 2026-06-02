@@ -1,4 +1,4 @@
-import { bunti, KEYS } from '../src/index';
+import { bunti } from '../src/index';
 
 /**
  * Bunti Mission Control Dashboard
@@ -13,71 +13,87 @@ const PLANETS = [
 ];
 
 const ISSUES = [
-  { number: 42, title: 'Atmosphere leaking on Mars', labels: ['bug', 'critical'] },
+  {
+    number: 42,
+    title: 'Atmosphere leaking on Mars',
+    labels: ['bug', 'critical'],
+  },
   { number: 101, title: 'Venus rotation too slow', labels: ['feature'] },
   { number: 202, title: 'Earth needs more trees', labels: ['improvement'] },
 ];
 
-bunti.render(({ wallpaper, box, color, width, height, blit, list, lastKey }) => {
-  wallpaper('#0a0a0b');
+bunti.render(
+  ({ wallpaper, box, color, width, height, blit, list, lastKey }) => {
+    wallpaper('#0a0a0b');
 
-  // 1. Header
-  box({ border: 'none', padding: [1, 2], x: 2, y: 1 }, ({ span, text }) => {
-    span({ color: color.cyan }, (s) => s.text(' MISSION CONTROL '));
-    span({ color: color.gray }, (s) => s.text(` v1.0 • ${new Date().toLocaleTimeString()}`));
-  });
-
-  // 2. Main Layout Grid
-  const panelW = Math.floor(width * 0.45);
-  const panelH = 10;
-
-  // Planets Panel
-  box({
-    id: 'planets',
-    x: 2,
-    y: 5,
-    width: panelW,
-    height: panelH,
-    border: 'frame',
-    title: ' PLANETARY FLEET '
-  }, (sub) => {
-    const planetLines = PLANETS.map(p => 
-      `${color.green('✔')} ${p.name.padEnd(10)} ${color.gray(p.branch.padEnd(15))} ${p.status}`
-    );
-    sub.list('planets', planetLines, {
-      focusStyle: (s) => color.bold(color.cyan(`> ${s.trim()}`))
+    // 1. Header
+    box({ border: 'none', padding: [1, 2], x: 2, y: 1 }, ({ span, text }) => {
+      span({ color: color.cyan }, (s) => s.text(' MISSION CONTROL '));
+      span({ color: color.gray }, (s) =>
+        s.text(` v1.0 • ${new Date().toLocaleTimeString()}`),
+      );
     });
-  });
 
-  // Issues Panel
-  box({
-    id: 'issues',
-    x: width - panelW - 2,
-    y: 5,
-    width: panelW,
-    height: panelH,
-    border: 'frame',
-    title: ' CRITICAL TELEMETRY '
-  }, (sub) => {
-    const issueLines = ISSUES.map(i => 
-      `${color.magenta('#' + i.number)} ${i.title} ${color.gray('[' + i.labels.join(',') + ']')}`
+    // 2. Main Layout Grid
+    const panelW = Math.floor(width * 0.45);
+    const panelH = 10;
+
+    // Planets Panel
+    box(
+      {
+        id: 'planets',
+        x: 2,
+        y: 5,
+        width: panelW,
+        height: panelH,
+        border: 'frame',
+        title: ' PLANETARY FLEET ',
+      },
+      (sub) => {
+        const planetLines = PLANETS.map(
+          (p) =>
+            `${color.green('✔')} ${p.name.padEnd(10)} ${color.gray(p.branch.padEnd(15))} ${p.status}`,
+        );
+        sub.list('planets', planetLines, {
+          focusStyle: (s) => color.bold(color.cyan(`> ${s.trim()}`)),
+        });
+      },
     );
-    sub.list('issues', issueLines, {
-      focusStyle: (s) => color.bold(color.magenta(`! ${s.trim()}`))
-    });
-  });
 
-  // 3. Status Bar
-  const statusX = 4;
-  const statusY = 17;
-  blit(statusX, statusY, color.gray('  Press '));
-  blit(statusX + 8, statusY, color.white('TAB'));
-  blit(statusX + 12, statusY, color.gray(' to switch focus, '));
-  blit(statusX + 30, statusY, color.white('UP/DOWN'));
-  blit(statusX + 38, statusY, color.gray(' to navigate, '));
-  blit(statusX + 52, statusY, color.white('q'));
-  blit(statusX + 54, statusY, color.gray(' to abort mission.'));
+    // Issues Panel
+    box(
+      {
+        id: 'issues',
+        x: width - panelW - 2,
+        y: 5,
+        width: panelW,
+        height: panelH,
+        border: 'frame',
+        title: ' CRITICAL TELEMETRY ',
+      },
+      (sub) => {
+        const issueLines = ISSUES.map(
+          (i) =>
+            `${color.magenta(`#${i.number}`)} ${i.title} ${color.gray(`[${i.labels.join(',')}]`)}`,
+        );
+        sub.list('issues', issueLines, {
+          focusStyle: (s) => color.bold(color.magenta(`! ${s.trim()}`)),
+        });
+      },
+    );
 
-  if (lastKey === 'q') process.exit(0);
+    // 3. Status Bar
+    const statusX = 4;
+    const statusY = 17;
+    blit(statusX, statusY, color.gray('  Press '));
+    blit(statusX + 8, statusY, color.white('TAB'));
+    blit(statusX + 12, statusY, color.gray(' to switch focus, '));
+    blit(statusX + 30, statusY, color.white('UP/DOWN'));
+    blit(statusX + 38, statusY, color.gray(' to navigate, '));
+    blit(statusX + 52, statusY, color.white('q'));
+    blit(statusX + 54, statusY, color.gray(' to abort mission.'));
 
-}, { fps: 60 });
+    if (lastKey === 'q') process.exit(0);
+  },
+  { fps: 60 },
+);

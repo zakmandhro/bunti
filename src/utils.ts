@@ -19,8 +19,7 @@ export function visibleWidth(str: string): number {
   if (lines.length > 1) {
     return Math.max(...lines.map(visibleWidth));
   }
-  
-  // @ts-ignore
+
   return Bun.stringWidth(stripAnsi(str));
 }
 
@@ -30,7 +29,6 @@ export function visibleWidth(str: string): number {
 export function charWidth(char: string): number {
   const clean = stripAnsi(char);
   if (clean.length === 0) return 0;
-  // @ts-ignore
   return Bun.stringWidth(clean);
 }
 
@@ -47,22 +45,21 @@ export function truncate(str: string, width: number, tail = '…'): string {
 
   let currentWidth = 0;
   let out = '';
-  
+
   // Custom parsing loop to isolate ANSI sequences from text
   const regex = /\x1B\[[0-9;]*[a-zA-Z]/g;
   let lastIndex = 0;
-  let match;
+  let match: RegExpExecArray | null = null;
 
   while ((match = regex.exec(str)) !== null) {
     // 1. Process text before the ANSI code
     const textSegment = str.substring(lastIndex, match.index);
     if (textSegment.length > 0) {
       const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-      // @ts-ignore
       for (const { segment } of segmenter.segment(textSegment)) {
         const w = charWidth(segment);
         if (currentWidth + w > targetWidth) {
-          return out + '\x1b[0m' + tail; // Return immediately upon hitting limit
+          return `${out}\x1b[0m${tail}`; // Return immediately upon hitting limit
         }
         out += segment;
         currentWidth += w;
@@ -78,18 +75,17 @@ export function truncate(str: string, width: number, tail = '…'): string {
   const remainingText = str.substring(lastIndex);
   if (remainingText.length > 0) {
     const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-    // @ts-ignore
     for (const { segment } of segmenter.segment(remainingText)) {
       const w = charWidth(segment);
       if (currentWidth + w > targetWidth) {
-        return out + '\x1b[0m' + tail;
+        return `${out}\x1b[0m${tail}`;
       }
       out += segment;
       currentWidth += w;
     }
   }
 
-  return out + '\x1b[0m';
+  return `${out}\x1b[0m`;
 }
 
 /**
@@ -108,7 +104,7 @@ export function wrapText(str: string, width: number): string[] {
     }
 
     // Split into tokens: words and whitespaces
-    const tokens = rawLine.split(/(\s+)/).filter(t => t.length > 0);
+    const tokens = rawLine.split(/(\s+)/).filter((t) => t.length > 0);
     let currentLine = '';
     let currentWidth = 0;
 
@@ -120,18 +116,17 @@ export function wrapText(str: string, width: number): string[] {
       if (tokenWidth > width) {
         // Flush current line if it exists
         if (currentLine) {
-          result.push(currentLine + '\x1b[0m');
+          result.push(`${currentLine}\x1b[0m`);
           currentLine = '';
           currentWidth = 0;
         }
 
         // Segmented break of the long token
         const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-        // @ts-ignore
         for (const { segment } of segmenter.segment(token)) {
           const sw = charWidth(segment);
           if (currentWidth + sw > width) {
-            result.push(currentLine + '\x1b[0m');
+            result.push(`${currentLine}\x1b[0m`);
             currentLine = segment;
             currentWidth = sw;
           } else {
@@ -148,7 +143,7 @@ export function wrapText(str: string, width: number): string[] {
           // Swallow leading whitespace on new lines
           continue;
         }
-        result.push(currentLine.trimEnd() + '\x1b[0m');
+        result.push(`${currentLine.trimEnd()}\x1b[0m`);
         currentLine = token;
         currentWidth = tokenWidth;
       } else {

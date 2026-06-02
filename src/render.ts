@@ -2,9 +2,8 @@
  * Bunti Functional Rendering & Diffing
  */
 
-import { ScreenState, ANSI } from './state';
 import { resolveColor } from './colors';
-import { charWidth } from './utils';
+import { ANSI, type ScreenState } from './state';
 
 /**
  * Diffs back and front buffers surgically.
@@ -14,15 +13,26 @@ export function flush(state: ScreenState) {
   let renderString = '';
   let lastFg: any = state.lastFg;
   let lastBg: any = state.lastBg;
+  let lastBold: boolean = state.lastBold ?? false;
 
-  for (let y = 0; y < state.height; y++) {
+  const width = state.width;
+  const height = state.height;
+
+  for (let y = 0; y < height; y++) {
     let firstDirty = -1;
     let lastDirty = -1;
+    const rowOffset = y * width;
 
-    for (let x = 0; x < state.width; x++) {
-      const b = state.backBuffer[y][x];
-      const f = state.frontBuffer[y][x];
-      if (b.char !== f.char || b.fg !== f.fg || b.bg !== f.bg) {
+    for (let x = 0; x < width; x++) {
+      const idx = rowOffset + x;
+      const b = state.backBuffer[idx];
+      const f = state.frontBuffer[idx];
+      if (
+        b.char !== f.char ||
+        b.fg !== f.fg ||
+        b.bg !== f.bg ||
+        !!b.bold !== !!f.bold
+      ) {
         if (firstDirty === -1) firstDirty = x;
         lastDirty = x;
       }
@@ -30,22 +40,37 @@ export function flush(state: ScreenState) {
 
     if (firstDirty !== -1) {
       renderString += `\x1b[${y + 1};${firstDirty + 1}H`;
-      
+
       for (let x = firstDirty; x <= lastDirty; x++) {
-        const cell = state.backBuffer[y][x];
-        const front = state.frontBuffer[y][x];
+        const idx = rowOffset + x;
+        const cell = state.backBuffer[idx];
+        const front = state.frontBuffer[idx];
 
         if (cell.char === '') {
-          front.char = ''; front.fg = cell.fg; front.bg = cell.bg;
+          front.char = '';
+          front.fg = cell.fg;
+          front.bg = cell.bg;
+          front.fgCode = cell.fgCode;
+          front.bgCode = cell.bgCode;
+          front.bold = cell.bold;
           continue;
         }
 
-        const fg = cell.fg !== undefined ? resolveColor(cell.fg) : undefined;
-        const bg = cell.bg !== undefined ? resolveColor(cell.bg) : undefined;
+        const fg = cell.fgCode;
+        const bg = cell.bgCode;
+        const bold = !!cell.bold;
+
+        if (bold !== lastBold) {
+          renderString += bold ? '\x1b[1m' : '\x1b[22m';
+          lastBold = bold;
+        }
 
         if (fg !== lastFg || bg !== lastBg) {
           if (fg === undefined && bg === undefined) {
             renderString += '\x1b[0m';
+            if (lastBold) {
+              renderString += '\x1b[1m';
+            }
           } else {
             // Foreground
             if (fg !== lastFg) {
@@ -79,107 +104,149 @@ export function flush(state: ScreenState) {
         }
 
         renderString += cell.char;
-        front.char = cell.char; front.fg = cell.fg; front.bg = cell.bg;
+        front.char = cell.char;
+        front.fg = cell.fg;
+        front.bg = cell.bg;
+        front.fgCode = cell.fgCode;
+        front.bgCode = cell.bgCode;
+        front.bold = cell.bold;
       }
     }
   }
 
   if (renderString) {
-    writer.write(renderString);
+    writer.write(ANSI.hideCursor + renderString);
     writer.flush();
   }
 
   state.lastFg = lastFg;
   state.lastBg = lastBg;
+  state.lastBold = lastBold;
 }
 
 /**
  * Starts the render loop for a given screen state.
  */
-export function loop(state: ScreenState, renderCallback: (s: ScreenState) => void) {
+export function loop(
+  state: ScreenState,
+  renderCallback: (s: ScreenState) => void,
+): Promise<void> {
   const options = state.options;
 
   if (options.alternateBuffer) process.stdout.write(ANSI.alternateBuffer);
   if (options.hideCursor) process.stdout.write(ANSI.hideCursor);
-  
-  const setupInput = () => {
-    let cmd = '';
-    if (options.mouse) cmd += ANSI.mouseEnable;
-    if (options.focus) cmd += ANSI.focusEnable;
-    if (cmd) process.stdout.write(cmd);
-    
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-      process.stdin.resume();
-      process.stdin.on('data', inputHandler);
+
+  return new Promise((resolve) => {
+    let stopped = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const setupInput = () => {
+      let cmd = '';
+      if (options.mouse) cmd += ANSI.mouseEnable;
+      if (options.focus) cmd += ANSI.focusEnable;
+      if (cmd) process.stdout.write(cmd);
+
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.on('data', inputHandler);
+      }
+    };
+
+    const inputHandler = (data: unknown) => handleInput(state, data, stop);
+
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+
+      if (interval) clearInterval(interval);
+
+      // 1. Restore Terminal Modes
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+      }
+
+      // 2. Remove Listeners
+      process.stdin.removeListener('data', inputHandler);
+      process.removeListener('SIGWINCH', resizeHandler);
+      process.removeListener('SIGINT', stop);
+      process.removeListener('SIGTERM', stop);
+
+      // 3. Emit Restorative ANSI Sequence
+      let cmd = '';
+      if (options.mouse) cmd += ANSI.mouseDisable;
+      if (options.focus) cmd += ANSI.focusDisable;
+      if (options.alternateBuffer) cmd += ANSI.mainBuffer;
+      if (options.hideCursor) cmd += ANSI.showCursor;
+      cmd += ANSI.reset;
+
+      process.stdout.write(cmd);
+      resolve();
+    };
+
+    const resizeHandler = () => {
+      resizeScreen(state);
+      process.stdout.write(ANSI.clear);
+      tick();
+    };
+
+    let ticking = false
+    let tickAgain = false
+
+    const tick = () => {
+      if (ticking) {
+        tickAgain = true
+        return
+      }
+
+      ticking = true
+      try {
+        do {
+          tickAgain = false
+          renderCallback(state)
+          flush(state)
+          state.lastKey = undefined
+        } while (tickAgain)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        ticking = false
+      }
     }
-  };
 
-  const inputHandler = (data: any) => handleInput(state, data, stop);
-
-  const stop = () => {
-    if (interval) clearInterval(interval);
-    
-    // 1. Restore Terminal Modes
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
-      process.stdin.pause();
+    const requestTick = () => {
+      if (ticking) {
+        tickAgain = true
+      } else {
+        tick()
+      }
     }
 
-    // 2. Remove Listeners
-    process.stdin.removeListener('data', inputHandler);
-    process.removeListener('SIGWINCH', resizeHandler);
-    process.removeListener('SIGINT', stop);
-    process.removeListener('SIGTERM', stop);
+    const restartLoop = () => {
+      if (interval) clearInterval(interval)
+      const fps = state.hasFocus ? options.fps || 60 : 5
+      interval = setInterval(tick, 1000 / fps)
+      requestTick()
+    }
 
-    // 3. Emit Restorative ANSI Sequence
-    let cmd = '';
-    if (options.mouse) cmd += ANSI.mouseDisable;
-    if (options.focus) cmd += ANSI.focusDisable;
-    if (options.alternateBuffer) cmd += ANSI.mainBuffer;
-    if (options.hideCursor) cmd += ANSI.showCursor;
-    cmd += ANSI.reset;
-    
-    process.stdout.write(cmd);
-    
-    // Use process.exitCode instead of immediate exit if possible
-    // to allow other cleanups, but for TUI we usually want out now.
-    process.exit(0);
-  };
+    if (options.mouse || options.focus || options.keyboard) setupInput();
 
-  const resizeHandler = () => {
-    resizeScreen(state);
-    process.stdout.write(ANSI.clear);
-    tick();
-  };
+    process.on('SIGWINCH', resizeHandler);
+    process.on('SIGINT', stop);
+    process.on('SIGTERM', stop);
 
-  if (options.mouse || options.focus || options.keyboard) setupInput();
-
-  process.on('SIGWINCH', resizeHandler);
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
-
-  let interval: any = null;
-  const tick = () => {
-    renderCallback(state);
-    flush(state);
-    state.lastKey = undefined;
-  };
-
-  const restartLoop = () => {
-    if (interval) clearInterval(interval);
-    const fps = state.hasFocus ? (options.fps || 60) : 5;
-    interval = setInterval(tick, 1000 / fps);
-    tick();
-  };
-
-  (state as any).restartLoop = restartLoop; 
-  restartLoop();
+    (state as { restartLoop?: () => void }).restartLoop = restartLoop;
+    (state as { requestTick?: () => void }).requestTick = requestTick;
+    (state as { requestStop?: () => void }).requestStop = stop;
+    restartLoop();
+  });
 }
 
 function handleInput(state: ScreenState, data: any, stop: () => void) {
   const input = data.toString();
 
+  // 1. Focus Tracking
   if (input === '\x1b[I') {
     state.hasFocus = true;
     if ((state as any).restartLoop) (state as any).restartLoop();
@@ -191,17 +258,45 @@ function handleInput(state: ScreenState, data: any, stop: () => void) {
     return;
   }
 
+  // 2. Mouse Tracking (SGR protocol)
   const match = input.match(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/);
   if (match) {
-    state.mouseButton = parseInt(match[1]);
-    state.mouseX = parseInt(match[2]) - 1;
-    state.mouseY = parseInt(match[3]) - 1;
+    state.mouseButton = parseInt(match[1], 10);
+    state.mouseX = parseInt(match[2], 10) - 1;
+    state.mouseY = parseInt(match[3], 10) - 1;
     state.isMouseDown = match[4] === 'M';
+    if (match[4] === 'M') {
+      if (state.mouseButton === 64) state.lastKey = 'wheel_up';
+      else if (state.mouseButton === 65) state.lastKey = 'wheel_down';
+      else if (state.mouseButton === 0) state.lastKey = 'click';
+      if ((state as { requestTick?: () => void }).requestTick) {
+        (state as { requestTick?: () => void }).requestTick!()
+      }
+    }
     return;
   }
 
-  if (input === '\u0003') stop();
-  state.lastKey = input;
+  // 3. Signal Interception
+  if (input === '\u0003') {
+    stop() // Ctrl+C
+    return
+  }
+
+  // 4. Key Normalization
+  let key = input
+  if (input === '\x7f' || input === '\x08') key = 'backspace'
+  else if (input === '\r' || input === '\n') key = 'enter'
+  else if (input === '\t') key = 'tab'
+  else if (input === '\x1b[A') key = 'up'
+  else if (input === '\x1b[B') key = 'down'
+  else if (input === '\x1b[C') key = 'right'
+  else if (input === '\x1b[D') key = 'left'
+  else if (input === '\x1b') key = 'escape'
+
+  state.lastKey = key
+  if ((state as { requestTick?: () => void }).requestTick) {
+    (state as { requestTick?: () => void }).requestTick!()
+  }
 }
 
 import { resizeScreen } from './state';

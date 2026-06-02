@@ -2,8 +2,8 @@ import { bunti } from '../src/index';
 
 /**
  * Bunti Gradient Utility Demo
- * 
- * Showcases the `gradient(color1, color2, steps)` helper 
+ *
+ * Showcases the `gradient(color1, color2, steps)` helper
  * and how it can be used for smooth UI transitions.
  */
 
@@ -20,29 +20,35 @@ bunti.render(({ wallpaper, gradient, rgb, box, color }) => {
   wallpaper(config);
 
   // 4. Show the ramp steps in a box
-  box({
-    size: "auto",
-    bgColor: "white",
-  }, ({ text, span }) => {
-    span({ color: color.black }, ({ text }) => {
-      text(" 🌈  GRADIENT RAMP  \n\n ");
-    });
+  box(
+    {
+      size: 'auto',
+      bgColor: 'white',
+    },
+    ({ text, span }) => {
+      span({ color: color.black }, ({ text }) => {
+        text(' 🌈  GRADIENT RAMP  \n\n ');
+      });
 
-    // Draw blocks for each color in the ramp
-    ramp.forEach((c: any) => {
-      // Now span() correctly handles our RGB objects!
-      span({ color: c }, ({ text }) => {
-        text("█");
+      // Draw blocks for each color in the ramp
+      ramp.forEach((c: any) => {
+        // Now span() correctly handles our RGB objects!
+        span({ color: c }, ({ text }) => {
+          text('█');
+        });
       });
-    });
-    
-    text("\n ");
-    
-    // Reverse it for fun
-    ramp.slice().reverse().forEach((c: any) => {
-      span({ color: c }, ({ text }) => {
-        text("█");
-      });
-    });
-  });
+
+      text('\n ');
+
+      // Reverse it for fun
+      ramp
+        .slice()
+        .reverse()
+        .forEach((c: any) => {
+          span({ color: c }, ({ text }) => {
+            text('█');
+          });
+        });
+    },
+  );
 });
