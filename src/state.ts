@@ -143,4 +143,6 @@ export const ANSI = {
   mouseDisable: '\x1b[?1003l\x1b[?1006l',
   focusEnable: '\x1b[?1004h',
   focusDisable: '\x1b[?1004l',
+  syncStart: '\x1b[?2026h',
+  syncEnd: '\x1b[?2026l',
 };

@@ -115,7 +115,7 @@ export function flush(state: ScreenState) {
   }
 
   if (renderString) {
-    writer.write(ANSI.hideCursor + renderString);
+    writer.write(ANSI.syncStart + ANSI.hideCursor + renderString + ANSI.syncEnd);
     writer.flush();
   }
 
@@ -187,7 +187,6 @@ export function loop(
 
     const resizeHandler = () => {
       resizeScreen(state);
-      process.stdout.write(ANSI.clear);
       tick();
     };
 
