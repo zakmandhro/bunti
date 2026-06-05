@@ -2,7 +2,7 @@ import pc from 'picocolors';
 import { bunti } from '../src/index';
 
 /**
- * Bunti Performance Demo - RESTORED STABLE
+ * Bunti Performance Demo - Optimized for Native Loop
  */
 
 const panel = bunti.createStyle({
@@ -25,65 +25,62 @@ const bar = (val: number, max: number, width: number) => {
   return pc.green('█'.repeat(filled)) + pc.dim('░'.repeat(width - filled));
 };
 
-const runDemo = async () => {
-  console.log(bunti.ANSI.clear + bunti.ANSI.hideCursor);
+const items = [
+  'Propulsion System Online',
+  'Life Support Nominal',
+  'Navigation Synced with Earth',
+  "AI Agent 'Claude' Active",
+  'Solar Array Deployment: 85%',
+  'Cabin Pressure Stable',
+  'Blackbox Logging Active',
+];
 
-  let frames = 0;
-  const start = performance.now();
+let frames = 0;
+const start = performance.now();
 
-  const items = [
-    'Propulsion System Online',
-    'Life Support Nominal',
-    'Navigation Synced with Earth',
-    "AI Agent 'Claude' Active",
-    'Solar Array Deployment: 85%',
-    'Cabin Pressure Stable',
-    'Blackbox Logging Active',
-  ];
+bunti.render((ctx) => {
+  const i = frames;
+  const now = performance.now();
+  const elapsed = (now - start) / 1000;
+  const fps = Math.round(frames / elapsed) || 0;
 
-  for (let i = 0; i < 200; i++) {
-    const now = performance.now();
-    const elapsed = (now - start) / 1000;
-    const fps = Math.round(frames / elapsed) || 0;
+  const cpu = Math.abs(Math.sin(i / 10)) * 100;
+  const ram = 1.2 + Math.cos(i / 15) * 0.5;
 
-    const cpu = Math.abs(Math.sin(i / 10)) * 100;
-    const ram = 1.2 + Math.cos(i / 15) * 0.5;
-
-    const frame = bunti.joinVertical(
-      header(pc.bold('BUNTI (BUN TERMINAL INTERFACE) PERFORMANCE DEMO')),
-      bunti.joinHorizontal(
-        panel(
-          pc.blue('CORE TELEMETRY\n') +
-            `FPS: ${fps} f/s\n` +
-            `CPU: ${bar(cpu, 100, 20)} ${cpu.toFixed(1)}%\n` +
-            `RAM: ${bar(ram, 4, 20)} ${ram.toFixed(2)}GB`,
-        ),
-        panel(
-          pc.yellow('MISSION LOG\n') +
-            items
-              .slice(i % 4, (i % 4) + 3)
-              .map((it) => bunti.truncate(it, 40))
-              .join('\n'),
-        ),
+  const frame = bunti.joinVertical(
+    header(pc.bold('BUNTI (BUN TERMINAL INTERFACE) PERFORMANCE DEMO')),
+    bunti.joinHorizontal(
+      panel(
+        pc.blue('CORE TELEMETRY\n') +
+          `FPS: ${fps} f/s\n` +
+          `CPU: ${bar(cpu, 100, 20)} ${cpu.toFixed(1)}%\n` +
+          `RAM: ${bar(ram, 4, 20)} ${ram.toFixed(2)}GB`,
       ),
-      bunti.box(
-        pc.dim(
-          `Time Elapsed: ${elapsed.toFixed(2)}s | Total Frames: ${frames}`,
-        ),
-        { width: 102, align: 'center' },
+      panel(
+        pc.yellow('MISSION LOG\n') +
+          items
+            .slice(i % 4, (i % 4) + 3)
+            .map((it) => bunti.truncate(it, 40))
+            .join('\n'),
       ),
-    );
+    ),
+    bunti.box(
+      pc.dim(
+        `Time Elapsed: ${elapsed.toFixed(2)}s | Total Frames: ${frames}`,
+      ),
+      { width: 102, align: 'center' },
+    ),
+  );
 
-    bunti.render((ctx) => {
-      ctx.blit(0, 0, frame);
-    }, { once: true });
-    frames++;
+  ctx.blit(0, 0, frame);
+  frames++;
 
-    await new Promise((r) => setTimeout(r, 16));
+  if (frames > 1000) {
+    ctx.requestStop?.();
   }
-
-  process.stdout.write(bunti.ANSI.showCursor);
-  console.log(pc.green('\n🏁 Performance Demo Restored.'));
-};
-
-runDemo();
+}, { 
+  fps: 60,
+  alternateBuffer: true,
+  hideCursor: true,
+  keyboard: true
+});
