@@ -286,7 +286,7 @@ export function box(
   if (options.wrap && contentWidth > 0) {
     lines = wrapText(content, contentWidth);
   } else {
-    lines = content.split('\n').map((l) => truncate(l, contentWidth, ''));
+    lines = content.split('\n').map((l) => truncate(l, contentWidth));
   }
 
   const contentH = lines.length + py * 2;
