@@ -2,7 +2,6 @@
  * Bunti Functional Rendering & Diffing
  */
 
-import { resolveColor } from './colors';
 import { ANSI, type ScreenState } from './state';
 
 /**
@@ -115,7 +114,9 @@ export function flush(state: ScreenState) {
   }
 
   if (renderString) {
-    writer.write(ANSI.syncStart + ANSI.hideCursor + renderString + ANSI.syncEnd);
+    writer.write(
+      ANSI.syncStart + ANSI.hideCursor + renderString + ANSI.syncEnd,
+    );
     writer.flush();
   }
 
@@ -190,44 +191,44 @@ export function loop(
       tick();
     };
 
-    let ticking = false
-    let tickAgain = false
+    let ticking = false;
+    let tickAgain = false;
 
     const tick = () => {
       if (ticking) {
-        tickAgain = true
-        return
+        tickAgain = true;
+        return;
       }
 
-      ticking = true
+      ticking = true;
       try {
         do {
-          tickAgain = false
-          renderCallback(state)
-          flush(state)
-          state.lastKey = undefined
-        } while (tickAgain)
+          tickAgain = false;
+          renderCallback(state);
+          flush(state);
+          state.lastKey = undefined;
+        } while (tickAgain);
       } catch (err) {
-        console.error(err)
+        console.error(err);
       } finally {
-        ticking = false
+        ticking = false;
       }
-    }
+    };
 
     const requestTick = () => {
       if (ticking) {
-        tickAgain = true
+        tickAgain = true;
       } else {
-        tick()
+        tick();
       }
-    }
+    };
 
     const restartLoop = () => {
-      if (interval) clearInterval(interval)
-      const fps = state.hasFocus ? options.fps || 60 : 5
-      interval = setInterval(tick, 1000 / fps)
-      requestTick()
-    }
+      if (interval) clearInterval(interval);
+      const fps = state.hasFocus ? options.fps || 60 : 5;
+      interval = setInterval(tick, 1000 / fps);
+      requestTick();
+    };
 
     if (options.mouse || options.focus || options.keyboard) setupInput();
 
@@ -269,7 +270,7 @@ function handleInput(state: ScreenState, data: any, stop: () => void) {
       else if (state.mouseButton === 65) state.lastKey = 'wheel_down';
       else if (state.mouseButton === 0) state.lastKey = 'click';
       if ((state as { requestTick?: () => void }).requestTick) {
-        (state as { requestTick?: () => void }).requestTick!()
+        (state as { requestTick?: () => void }).requestTick!();
       }
     }
     return;
@@ -277,24 +278,24 @@ function handleInput(state: ScreenState, data: any, stop: () => void) {
 
   // 3. Signal Interception
   if (input === '\u0003') {
-    stop() // Ctrl+C
-    return
+    stop(); // Ctrl+C
+    return;
   }
 
   // 4. Key Normalization
-  let key = input
-  if (input === '\x7f' || input === '\x08') key = 'backspace'
-  else if (input === '\r' || input === '\n') key = 'enter'
-  else if (input === '\t') key = 'tab'
-  else if (input === '\x1b[A') key = 'up'
-  else if (input === '\x1b[B') key = 'down'
-  else if (input === '\x1b[C') key = 'right'
-  else if (input === '\x1b[D') key = 'left'
-  else if (input === '\x1b') key = 'escape'
+  let key = input;
+  if (input === '\x7f' || input === '\x08') key = 'backspace';
+  else if (input === '\r' || input === '\n') key = 'enter';
+  else if (input === '\t') key = 'tab';
+  else if (input === '\x1b[A') key = 'up';
+  else if (input === '\x1b[B') key = 'down';
+  else if (input === '\x1b[C') key = 'right';
+  else if (input === '\x1b[D') key = 'left';
+  else if (input === '\x1b') key = 'escape';
 
-  state.lastKey = key
+  state.lastKey = key;
   if ((state as { requestTick?: () => void }).requestTick) {
-    (state as { requestTick?: () => void }).requestTick!()
+    (state as { requestTick?: () => void }).requestTick!();
   }
 }
 

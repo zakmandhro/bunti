@@ -57,9 +57,12 @@ for (let i = 0; i < 1000; i++) {
   );
 
   if (i === 999) {
-    render((ctx) => {
-      ctx.blit(0, 0, frame);
-    }, { once: true });
+    render(
+      (ctx) => {
+        ctx.blit(0, 0, frame);
+      },
+      { once: true },
+    );
   }
 }
 

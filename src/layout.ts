@@ -69,7 +69,9 @@ export function rect(
         }
       } else {
         resolvedBg =
-          style.bg !== undefined ? resolveColor(style.bg) : undefined;
+          style.bg !== undefined
+            ? resolveColor(style.bg as string | number | RGB)
+            : undefined;
       }
 
       const cell: Partial<Cell> = { bg: resolvedBg };
@@ -372,7 +374,7 @@ export function box(
           colors.top(hTop.repeat(targetInnerW)) +
           colors.top(b.tr),
       ),
-    )
+    );
   }
 
   // Top Padding
@@ -427,7 +429,7 @@ export function box(
           colors.bottom(hBottom.repeat(targetInnerW)) +
           colors.bottom(b.br),
       ),
-    )
+    );
   }
 
   return out.join('\n');

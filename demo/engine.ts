@@ -12,7 +12,7 @@ bunti.render(
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const colorVal = 232 + (Math.floor((x + y + frameCount) / 5) % 10);
-        state.backBuffer[y][x] = { char: '·', fg: colorVal };
+        state.backBuffer[y * width + x] = { char: '·', fg: colorVal };
       }
     }
 

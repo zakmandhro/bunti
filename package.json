@@ -5,6 +5,7 @@
   "module": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
     "./icons": "./src/icons.ts",
     "./layout": "./src/layout.ts",
     "./render": "./src/render.ts"
@@ -22,7 +23,10 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "demo": "bun demo/runner.ts",
-    "example": "bun demo/runner.ts"
+    "example": "bun demo/runner.ts",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [
     "tui",
@@ -34,12 +38,16 @@
   ],
   "author": "Zak Mandhro <zakmandhro@gmail.com>",
   "license": "MIT",
+  "files": [
+    "src"
+  ],
   "peerDependencies": {
     "picocolors": "^1.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "@types/bun": "^1.3.13",
-    "@types/node": "^25.6.2"
+    "@types/node": "^25.6.2",
+    "vitepress": "^1.6.4"
   }
 }

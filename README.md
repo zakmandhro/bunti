@@ -13,6 +13,20 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 - 🌈 **24-bit TrueColor**: High-fidelity RGB gradients with native hex parsing and relative contrast.
 - 🖱️ **Interactive**: Built-in SGR mouse tracking and focus detection with automatic FPS throttling.
 
+## 📦 Installation
+
+Bunti is designed for Bun, but works in standard Node.js environments (v18+) as well.
+
+```bash
+bun add bunti
+```
+
+Or using npm/pnpm/yarn:
+
+```bash
+npm install bunti
+```
+
 ## 🚀 Quick Start
 
 ```typescript
@@ -65,6 +79,25 @@ We chose `tsgo` over the standard `tsc` because:
 - **Strict Integrity**: It ensures that Bunti's functional architecture remains 100% type-safe without the overhead of standard Node-based compilers.
 
 Run a full check with: `npm run type-check`
+
+## 📚 Documentation
+
+Dive deeper into Bunti's architecture and layout engine:
+
+- [The Box Model & Layout Math](./docs/layout.md)
+- [Bunti Components & Primitives](./docs/components.md)
+- [Bunti vs. The TUI Ecosystem](./docs/comparison.md)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. Since Bunti prioritizes mathematical precision and performance, please ensure you run the benchmark and type-check scripts before submitting.
+
+```bash
+bun run lint
+bun run typecheck
+bun run test
+bun run bench
+```
 
 ## 📄 License
 
