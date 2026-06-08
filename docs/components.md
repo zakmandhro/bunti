@@ -1,4 +1,4 @@
-# 🛰️ Bunti Components & Primitives
+# 🥟 Bunti Components & Primitives
 
 Bunti provides a strictly functional, closure-based DSL for declaring UI structures. Instead of importing heavy class instances or using a Virtual DOM, you use lightweight functions attached to the `BuntiContext`.
 

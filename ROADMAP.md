@@ -1,4 +1,4 @@
-# 🛰️ Bunti (Bun Terminal Interface) Roadmap
+# 🥟 Bunti (Bun Terminal Interface) Roadmap
 
 This roadmap defines the surgical feature set required to power the **Space Station Mission Control** dashboard.
 

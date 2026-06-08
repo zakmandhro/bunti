@@ -1,4 +1,4 @@
-# 🛰️ Spec: Bunti Universal Box Primitive (v2.0)
+# 🥟 Spec: Bunti Universal Box Primitive (v2.0)
 
 ## 1. Vision
 The `box` is the fundamental building block of Bunti. In v2.0, it evolves from a "border drawer" into a **Constraint-Aware Layout Node**. It is designed to be lean by default and powerful through composition.
@@ -63,4 +63,4 @@ I will verify this implementation using an automated validation suite (`scripts/
 
 ---
 
-**Protocol Mandate**: No code will be reported as "Complete" until `bun scripts/validate-box.ts` returns a **TOTAL SUCCESS** signal. 🛰️🏁✨
+**Protocol Mandate**: No code will be reported as "Complete" until `bun scripts/validate-box.ts` returns a **TOTAL SUCCESS** signal. 🥟🏁✨

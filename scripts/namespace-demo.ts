@@ -23,7 +23,7 @@ const runDemo = async () => {
   };
 
   const frame = bunti.joinVertical(
-    bunti.box(pc.bold('🛰️  BUNTI NAMESPACED ENGINE'), {
+    bunti.box(pc.bold('🥟  BUNTI NAMESPACED ENGINE'), {
       align: 'center',
       width: 60,
       border: 'normal',

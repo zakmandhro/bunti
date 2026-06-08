@@ -1,4 +1,4 @@
-# 🛰️ Bunti Icon Engine
+# 🥟 Bunti Icon Engine
 
 **High-fidelity, zero-dependency tactical iconography.**
 

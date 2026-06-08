@@ -31,7 +31,7 @@ const registry: Record<string, string> = {
 };
 
 if (!target || !registry[target]) {
-  console.log(`\n🛰️  BUNTI RUNNER`);
+  console.log(`\n🥟  BUNTI RUNNER`);
   console.log(`Usage: bun demo <name>\n`);
   console.log(`Available Demos:`);
   for (const k of Object.keys(registry)) {

@@ -41,7 +41,7 @@ Building a TUI requires strict mathematical understanding of string widths, as A
 Calculates the exact visible character width of a string in the terminal, ignoring hidden ANSI color codes and handling wide graphemes.
 
 ```typescript
-const w = bunti.visibleWidth("\x1b[31mHello 🛰️\x1b[0m"); // Returns 8
+const w = bunti.visibleWidth("\x1b[31mHello 🥟\x1b[0m"); // Returns 8
 ```
 
 ### `bunti.truncate(str, length, tail = '…')`
@@ -66,7 +66,7 @@ By default, Bunti safely intercepts known emojis in your `text()` streams and sw
 
 ```typescript
 box({}, ({ text }) => {
-  text("Status: 🛰️ Launching"); 
+  text("Status: 🥟 Launching"); 
   // Internally translates to "Status:  Launching" keeping width math 100% stable.
 });
 ```

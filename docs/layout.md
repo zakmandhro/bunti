@@ -1,4 +1,4 @@
-# 🛰️ Bunti Box Model
+# 🥟 Bunti Box Model
 
 Bunti features a zero-dependency, mathematically absolute layout engine designed specifically for terminal environments. It guarantees 100% precision in width, padding, and border alignment, preventing the "Jagged Border" artifacts common in traditional TUI libraries.
 
@@ -23,7 +23,7 @@ Bunti features a zero-dependency, mathematically absolute layout engine designed
 
 *   **Surgical Wrapping**: Word-based text flow that automatically folds content at constraint boundaries to prevent TTY artifacts, with a fallback to character-breaking for over-width tokens.
 *   **ANSI-Aware Truncation**: Safe `truncate(str, width)` utility that mathematically splices strings without corrupting embedded ANSI color codes or escape sequences.
-*   **Deep-Integrated Nerd-Emoji Swap**: A global interceptor that safely swaps raw emojis (e.g., `🛰️`, `🌀`) for Width-1 Nerd Font tactical signals (``, `󰁥`) *before* any layout math occurs, guaranteeing 100% border stability.
+*   **Deep-Integrated Nerd-Emoji Swap**: A global interceptor that safely swaps raw emojis (e.g., `🥟`, `🌀`) for Width-1 Nerd Font tactical signals (``, `󰁥`) *before* any layout math occurs, guaranteeing 100% border stability.
 
 ## 🧱 Structural Primitives
 

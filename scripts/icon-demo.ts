@@ -31,7 +31,7 @@ const runDemo = async () => {
   };
 
   const frame = joinVertical(
-    box(pc.bold('🛰️  BUNTI ICON ENGINE & CAPABILITY DETECTION'), {
+    box(pc.bold('🥟  BUNTI ICON ENGINE & CAPABILITY DETECTION'), {
       align: 'center',
       width: 60,
       border: 'normal',

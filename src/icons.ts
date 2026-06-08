@@ -121,7 +121,7 @@ export const EMOJI_MAP: Record<string, string> = {
   ℹ️: 'info',
   '⏳': 'loading',
   '🚀': 'rocket',
-  '🛰️': 'satellite',
+  '🥟': 'satellite',
   '🪐': 'planet',
   '🌀': 'bunti',
   '🤖': 'robot',

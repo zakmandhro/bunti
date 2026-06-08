@@ -23,7 +23,7 @@ bunti.render(
         border: 'none',
       },
       ({ text }) => {
-        const header = bunti.box(color.bold('🛰️  BUNTI RENDER LOOP'), {
+        const header = bunti.box(color.bold('🥟  BUNTI RENDER LOOP'), {
           align: 'center',
           width: 50,
           border: 'rounded',

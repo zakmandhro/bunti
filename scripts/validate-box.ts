@@ -9,7 +9,7 @@ import { visibleWidth } from '../src/utils';
  */
 
 async function run() {
-  console.log('🛰️  BUNTI :: BOX VALIDATION SUITE');
+  console.log('🥟  BUNTI :: BOX VALIDATION SUITE');
   console.log('--------------------------------');
 
   let failures = 0;
@@ -77,10 +77,10 @@ async function run() {
 
   console.log('\n--------------------------------');
   if (failures === 0) {
-    console.log('🛰️  SIGNAL: TOTAL SUCCESS');
+    console.log('🥟  SIGNAL: TOTAL SUCCESS');
     process.exit(0);
   } else {
-    console.log(`🛰️  SIGNAL: FAILED (${failures} errors)`);
+    console.log(`🥟  SIGNAL: FAILED (${failures} errors)`);
     process.exit(1);
   }
 }

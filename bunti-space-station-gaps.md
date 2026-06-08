@@ -1,4 +1,4 @@
-# 🛰️ Bunti <-> Space Station: Gap Analysis & Roadmap
+# 🥟 Bunti <-> Space Station: Gap Analysis & Roadmap
 
 This document tracks the technical gaps between the **Bunti TUI Engine** and the requirements for a clean, professional API in **Space Station**.
 

@@ -1,4 +1,4 @@
-# 🛰️ Bunti vs. The TUI Ecosystem
+# 🥟 Bunti vs. The TUI Ecosystem
 
 Bunti is a high-performance, functional TUI engine built for the age of Bun. This document outlines how it compares to established standards in other languages and why it represents a new "Surgical" standard for terminal development.
 

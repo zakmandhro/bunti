@@ -1,4 +1,4 @@
-# 🛰️ Bunti (Bun Terminal Interface)
+# 🥟 Bunti (Bun Terminal Interface)
 
 **A high-performance, functional TUI engine built specifically for Bun.**
 
