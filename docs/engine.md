@@ -7,7 +7,7 @@ Bunti's rendering lifecycle is managed by a high-performance, double-buffered di
 To start a Bunti application, you invoke the `render` function. It takes your UI declaration (the DSL closure) and a set of structural options.
 
 ```typescript
-import { bunti } from 'bunti';
+import { bunti } from '@zakmandhro/bunti';
 
 bunti.render((ctx) => {
   // Your layout here

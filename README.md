@@ -18,19 +18,19 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 Bunti is designed for Bun, but works in standard Node.js environments (v18+) as well.
 
 ```bash
-bun add bunti
+bun add @zakmandhro/bunti
 ```
 
 Or using npm/pnpm/yarn:
 
 ```bash
-npm install bunti
+npm install @zakmandhro/bunti
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { bunti } from 'bunti';
+import { bunti } from '@zakmandhro/bunti';
 
 bunti.render(({ wallpaper, box, color, icon, span }) => {
   // 1. Set a dynamic gradient background

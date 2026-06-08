@@ -87,7 +87,7 @@ To use them, import them from `bunti/components` (or `src/components`) and pass 
 A structural panel that integrates a styled top header/title with a content body. Automatically applies standard padding and contrast logic.
 
 ```typescript
-import { Card } from 'bunti/components';
+import { Card } from '@zakmandhro/bunti/components';
 
 bunti.render((ctx) => {
   Card(ctx, { 
@@ -104,7 +104,7 @@ bunti.render((ctx) => {
 A highly interactive, focusable button element. It responds to `TAB` navigation, hover states (if mouse is enabled), and executes `onClick` when activated via `ENTER` or `CLICK`.
 
 ```typescript
-import { Button } from 'bunti/components';
+import { Button } from '@zakmandhro/bunti/components';
 
 bunti.render((ctx) => {
   Button(ctx, {
@@ -123,7 +123,7 @@ bunti.render((ctx) => {
 A fully-featured single-line text input field. It handles internal cursor tracking, backspace/delete, horizontal scrolling for long text, and focus states.
 
 ```typescript
-import { Input } from 'bunti/components';
+import { Input } from '@zakmandhro/bunti/components';
 
 bunti.render((ctx) => {
   Input(ctx, {
@@ -142,7 +142,7 @@ bunti.render((ctx) => {
 A full-width top-level navigation bar designed to anchor to the top of the terminal.
 
 ```typescript
-import { Header } from 'bunti/components';
+import { Header } from '@zakmandhro/bunti/components';
 
 bunti.render((ctx) => {
   Header(ctx, {

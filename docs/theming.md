@@ -41,7 +41,7 @@ box({ borderColor: "#00FFCC", bgColor: "midnight" }, ({ text }) => { ... })
 Instead of hardcoding hover states or border depths, Bunti exposes `lighten()` and `darken()` mathematical functions attached to the `color` context. This allows you to build deeply contextual, self-shading components.
 
 ```typescript
-import { bunti } from 'bunti';
+import { bunti } from '@zakmandhro/bunti';
 
 bunti.render(({ box, color }) => {
   const baseColor = "#3B82F6";
