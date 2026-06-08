@@ -1,7 +1,7 @@
 {
   "name": "@zakmandhro/bunti",
   "version": "0.1.0",
-  "description": "Bun Terminal Interface (bunti) - A minimalist, utility-first terminal layout engine built for Bun.",
+  "description": "A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API.",
   "module": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",

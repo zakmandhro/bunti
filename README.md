@@ -1,6 +1,6 @@
 # 🥟 Bunti (Bun Terminal Interface)
 
-**A high-performance, functional TUI engine built specifically for Bun.**
+**A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API.**
 
 Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine for building terminal user interfaces. Unlike traditional TUI libraries, Bunti uses a **functional, state-driven architecture** and a **surgical diff-renderer** to deliver 60+ FPS layouts with minimal CPU and TTY overhead.
 

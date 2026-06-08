@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress';
 
 export default defineConfig({
   title: 'Bunti',
-  description: 'A high-performance, functional TUI engine built specifically for Bun.',
+  description: 'A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API.',
   base: '/bunti/', // Typically needed for GitHub Pages if repo name is bunti
   themeConfig: {
     nav: [

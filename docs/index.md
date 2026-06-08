@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Bunti"
   text: "Bun Terminal Interface"
-  tagline: "A high-performance, functional TUI engine built specifically for Bun."
+  tagline: "A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API."
   actions:
     - theme: brand
       text: Get Started
