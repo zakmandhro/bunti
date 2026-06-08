@@ -448,7 +448,8 @@ export function joinHorizontal(...blocks: string[]): string {
       const targetW = widths[j]!;
       if (block[i] !== undefined) {
         row +=
-          block[i]! + ' '.repeat(Math.max(0, targetW - visibleWidth(block[i]!)));
+          block[i]! +
+          ' '.repeat(Math.max(0, targetW - visibleWidth(block[i]!)));
       } else {
         row += ' '.repeat(targetW);
       }
