@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": [
+      "src/**/*.ts",
+      "tests/**/*.ts",
+      "scripts/**/*.ts",
+      "demo/**/*.ts",
+      "examples/**/*.ts",
+      "experiments/**/*.ts"
+    ]
   },
   "formatter": {
     "enabled": true,
