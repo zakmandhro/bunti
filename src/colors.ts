@@ -95,9 +95,9 @@ export function hexToRGB(hex: string): RGB {
   const h = hex.replace('#', '');
   if (h.length === 3) {
     return {
-      r: parseInt(h[0] + h[0], 16),
-      g: parseInt(h[1] + h[1], 16),
-      b: parseInt(h[2] + h[2], 16),
+      r: parseInt(h[0]! + h[0]!, 16),
+      g: parseInt(h[1]! + h[1]!, 16),
+      b: parseInt(h[2]! + h[2]!, 16),
     };
   }
   return {
@@ -166,9 +166,9 @@ export function createGradient(
     const t = globalT * segmentCount - segmentIdx;
 
     result.push({
-      r: Math.round(start.r + (end.r - start.r) * t),
-      g: Math.round(start.g + (end.g - start.g) * t),
-      b: Math.round(start.b + (end.b - start.b) * t),
+      r: Math.round(start!.r + (end!.r - start!.r) * t),
+      g: Math.round(start!.g + (end!.g - start!.g) * t),
+      b: Math.round(start!.b + (end!.b - start!.b) * t),
     });
   }
 

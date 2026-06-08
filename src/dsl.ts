@@ -194,7 +194,7 @@ function createDSLContext(
     get cursorX() {
       const currentFlow = dslState.activeContents.join('');
       const lines = currentFlow.split('\n');
-      return visibleWidth(lines[lines.length - 1]);
+      return visibleWidth(lines[lines.length - 1]!);
     },
     get cursorY() {
       const currentFlow = dslState.activeContents.join('');

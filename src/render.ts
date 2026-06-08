@@ -27,10 +27,10 @@ export function flush(state: ScreenState) {
       const b = state.backBuffer[idx];
       const f = state.frontBuffer[idx];
       if (
-        b.char !== f.char ||
-        b.fg !== f.fg ||
-        b.bg !== f.bg ||
-        !!b.bold !== !!f.bold
+        b!.char !== f!.char ||
+        b!.fg !== f!.fg ||
+        b!.bg !== f!.bg ||
+        !!b!.bold !== !!f!.bold
       ) {
         if (firstDirty === -1) firstDirty = x;
         lastDirty = x;
@@ -45,19 +45,19 @@ export function flush(state: ScreenState) {
         const cell = state.backBuffer[idx];
         const front = state.frontBuffer[idx];
 
-        if (cell.char === '') {
-          front.char = '';
-          front.fg = cell.fg;
-          front.bg = cell.bg;
-          front.fgCode = cell.fgCode;
-          front.bgCode = cell.bgCode;
-          front.bold = cell.bold;
+        if (cell!.char === '') {
+          front!.char = '';
+          front!.fg = cell!.fg;
+          front!.bg = cell!.bg;
+          front!.fgCode = cell!.fgCode;
+          front!.bgCode = cell!.bgCode;
+          front!.bold = cell!.bold;
           continue;
         }
 
-        const fg = cell.fgCode;
-        const bg = cell.bgCode;
-        const bold = !!cell.bold;
+        const fg = cell!.fgCode;
+        const bg = cell!.bgCode;
+        const bold = !!cell!.bold;
 
         if (bold !== lastBold) {
           renderString += bold ? '\x1b[1m' : '\x1b[22m';
@@ -102,13 +102,13 @@ export function flush(state: ScreenState) {
           lastBg = bg;
         }
 
-        renderString += cell.char;
-        front.char = cell.char;
-        front.fg = cell.fg;
-        front.bg = cell.bg;
-        front.fgCode = cell.fgCode;
-        front.bgCode = cell.bgCode;
-        front.bold = cell.bold;
+        renderString += cell!.char;
+        front!.char = cell!.char;
+        front!.fg = cell!.fg;
+        front!.bg = cell!.bg;
+        front!.fgCode = cell!.fgCode;
+        front!.bgCode = cell!.bgCode;
+        front!.bold = cell!.bold;
       }
     }
   }

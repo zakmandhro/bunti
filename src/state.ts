@@ -121,7 +121,7 @@ export function resizeScreen(state: ScreenState) {
  */
 export function clearBackBuffer(state: ScreenState) {
   for (let i = 0; i < state.backBuffer.length; i++) {
-    const cell = state.backBuffer[i];
+    const cell = state.backBuffer[i]!;
     cell.char = ' ';
     cell.fg = undefined;
     cell.bg = undefined;

@@ -18,16 +18,16 @@ export function setCell(
 ) {
   if (x >= 0 && x < state.width && y >= 0 && y < state.height) {
     const target = state.backBuffer[y * state.width + x];
-    if (cell.char !== undefined) target.char = replaceEmojis(cell.char);
+    if (cell.char !== undefined) target!.char = replaceEmojis(cell.char);
     if (cell.fg !== undefined) {
-      target.fg = cell.fg;
-      target.fgCode = resolveColor(cell.fg);
+      target!.fg = cell.fg;
+      target!.fgCode = resolveColor(cell.fg);
     }
     if (cell.bg !== undefined) {
-      target.bg = cell.bg;
-      target.bgCode = resolveColor(cell.bg);
+      target!.bg = cell.bg;
+      target!.bgCode = resolveColor(cell.bg);
     }
-    if (cell.bold !== undefined) target.bold = cell.bold;
+    if (cell.bold !== undefined) target!.bold = cell.bold;
   }
 }
 
@@ -78,7 +78,7 @@ export function rect(
       if (style.char) cell.char = style.char;
       if (style.fg) cell.fg = resolveColor(style.fg) as any;
 
-      const existing = state.backBuffer[row * state.width + col];
+      const existing = state.backBuffer[row * state.width + col]!;
       if (existing.char !== ' ' && !style.char) {
         // Keep existing char/fg if drawing a pure background
         cell.char = existing.char;
@@ -105,7 +105,7 @@ export function blit(
     let currentBold = false;
     const regex = /\x1B\[([0-9;]*)m|([^\x1B]+)/g;
     let match: RegExpExecArray | null = null;
-    while ((match = regex.exec(line)) !== null) {
+    while ((match = regex.exec(line!)) !== null) {
       if (match[1] !== undefined) {
         const codes = match[1].split(';');
         for (let i = 0; i < codes.length; i++) {
@@ -123,23 +123,23 @@ export function blit(
           else if (code >= 100 && code <= 107)
             currentBg = (code - 100 + 8).toString();
           else if (code === 38 && codes[i + 1] === '5') {
-            currentFg = parseInt(codes[i + 2], 10);
+            currentFg = parseInt(codes[i + 2]!, 10);
             i += 2;
           } else if (code === 38 && codes[i + 1] === '2') {
             currentFg = {
-              r: parseInt(codes[i + 2], 10),
-              g: parseInt(codes[i + 3], 10),
-              b: parseInt(codes[i + 4], 10),
+              r: parseInt(codes[i + 2]!, 10),
+              g: parseInt(codes[i + 3]!, 10),
+              b: parseInt(codes[i + 4]!, 10),
             };
             i += 4;
           } else if (code === 48 && codes[i + 1] === '5') {
-            currentBg = parseInt(codes[i + 2], 10);
+            currentBg = parseInt(codes[i + 2]!, 10);
             i += 2;
           } else if (code === 48 && codes[i + 1] === '2') {
             currentBg = {
-              r: parseInt(codes[i + 2], 10),
-              g: parseInt(codes[i + 3], 10),
-              b: parseInt(codes[i + 4], 10),
+              r: parseInt(codes[i + 2]!, 10),
+              g: parseInt(codes[i + 3]!, 10),
+              b: parseInt(codes[i + 4]!, 10),
             };
             i += 4;
           } else if (code === 39) currentFg = undefined;
@@ -387,7 +387,7 @@ export function box(
 
   // Content Lines
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const line = lines[i]!.trim();
     const lineW = visibleWidth(line);
     const extra = Math.max(0, targetInnerW - lineW - px * 2);
     let left = 0,
@@ -448,7 +448,7 @@ export function joinHorizontal(...blocks: string[]): string {
       const targetW = widths[j]!;
       if (block[i] !== undefined) {
         row +=
-          block[i] + ' '.repeat(Math.max(0, targetW - visibleWidth(block[i])));
+          block[i]! + ' '.repeat(Math.max(0, targetW - visibleWidth(block[i]!)));
       } else {
         row += ' '.repeat(targetW);
       }
