@@ -219,7 +219,7 @@ function createDSLContext(
     ) {
       const now = Date.now();
       const start = options.id
-        ? this.useState(`${options.id}_start`, now)[0]
+        ? ctx.useState(`${options.id}_start`, now)[0]
         : state.startTime;
       const elapsed = now - start - (options.delay || 0);
       if (elapsed < 0) return 0;
@@ -316,8 +316,8 @@ function createDSLContext(
     },
 
     list(id: string, items: string[], options: ListOptions = {}) {
-      const [selectedIndex, setSelectedIndex] = this.useState(`${id}_index`, 0);
-      const isFocused = this.focusable(id);
+      const [selectedIndex, setSelectedIndex] = ctx.useState(`${id}_index`, 0);
+      const isFocused = ctx.focusable(id);
 
       if (isFocused && options.interactive !== false) {
         if (state.lastKey === KEYS.UP)
@@ -468,7 +468,7 @@ function createDSLContext(
       } else if (Array.isArray(input)) {
         layoutGradient(state, input);
       } else if (typeof input === 'object' && 'color' in input) {
-        this.wallpaper(input.color);
+        ctx.wallpaper(input.color);
       } else {
         layoutWallpaper(state, { bg: input });
       }
