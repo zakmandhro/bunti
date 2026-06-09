@@ -28,8 +28,8 @@ export async function demo(
   bunti.render((ctx) => {
     const { box, color, width, height, wallpaper, icon } = ctx;
 
-    // 1. Base Layer (High-Fidelity Paper White)
-    wallpaper({ r: 255, g: 255, b: 254 });
+    // 1. Base Layer (Dark Mode optimized)
+    wallpaper('#0a0a0b');
 
     // 2. High-Order Header Component
     Header(ctx, {
