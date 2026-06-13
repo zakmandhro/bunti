@@ -116,8 +116,8 @@ export function Input(ctx: BuntiContext, props: InputProps) {
         text(color.fg(textColor, displayValue));
       }
 
-      // Cursor (blinking)
-      if (isSelected && ctx.flicker(0.8)) {
+      // Cursor
+      if (isSelected) {
         text(color.fg('silver', '█'));
       }
     },
