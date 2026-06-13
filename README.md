@@ -70,15 +70,10 @@ Bunti is built for speed. By leveraging `Bun.stdout.writer()` and surgical diffi
 
 ## 🛠️ Tooling
 
-### TSGO (High-Performance TypeScript)
-Bunti uses **[tsgo](https://github.com/d-ts/tsgo)** for its type-checking pipeline. 
+### TypeScript
+Bunti uses the standard TypeScript compiler for type checking so local development and GitHub Actions run the same toolchain.
 
-We chose `tsgo` over the standard `tsc` because:
-- **Speed**: It leverages a Go-based core to provide near-instant feedback during development.
-- **Agent-Friendly**: Its predictable and high-performance output makes it ideal for automated engineering workflows.
-- **Strict Integrity**: It ensures that Bunti's functional architecture remains 100% type-safe without the overhead of standard Node-based compilers.
-
-Run a full check with: `npm run type-check`
+Run a full check with: `bun run typecheck`
 
 ## 📚 Documentation
 

@@ -154,7 +154,8 @@ export function loop(
       }
     };
 
-    const inputHandler = (data: unknown) => handleInput(state, data, stop);
+    const inputHandler = (data: unknown) =>
+      applyInputToState(state, data, stop);
 
     const stop = () => {
       if (stopped) return;
@@ -243,8 +244,12 @@ export function loop(
   });
 }
 
-function handleInput(state: ScreenState, data: any, stop: () => void) {
-  const input = data.toString();
+export function applyInputToState(
+  state: ScreenState,
+  data: unknown,
+  stop?: () => void,
+) {
+  const input = data instanceof Buffer ? data.toString() : String(data);
 
   // 1. Focus Tracking
   if (input === '\x1b[I') {
@@ -278,7 +283,7 @@ function handleInput(state: ScreenState, data: any, stop: () => void) {
 
   // 3. Signal Interception
   if (input === '\u0003') {
-    stop(); // Ctrl+C
+    stop?.(); // Ctrl+C
     return;
   }
 

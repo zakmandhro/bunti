@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import pc from 'picocolors';
+import { Button, Input } from '../src/components';
+import { createScreenContext } from '../src/dsl';
 import {
   box,
   joinHorizontal,
@@ -8,6 +10,8 @@ import {
   truncate,
   visibleWidth,
 } from '../src/index';
+import { applyInputToState } from '../src/render';
+import { createScreenState, resizeScreen } from '../src/state';
 
 describe('Bunti Core Engine', () => {
   test('stripAnsi removes color codes', () => {
@@ -34,7 +38,7 @@ describe('Bunti Core Engine', () => {
   });
 
   test('truncate respects visible width and preserves ANSI', () => {
-    const colored = pc.red('supercalifragilistic');
+    const colored = '\x1b[31msupercalifragilistic\x1b[39m';
     const truncated = truncate(colored, 10);
     expect(visibleWidth(truncated)).toBe(10);
     expect(truncated).toContain('\x1b[31m'); // Should still have red code
@@ -44,6 +48,151 @@ describe('Bunti Core Engine', () => {
     const items = ['one', 'two'];
     const out = list(items, { bullet: '- ', indent: 2 });
     expect(out).toBe('  - one\n  - two');
+  });
+
+  test('context list responds to normalized arrow keys', () => {
+    const state = createScreenState();
+    state.focusedId = 'items';
+    state.lastKey = 'down';
+
+    const ctx = createScreenContext(state);
+    ctx.list('items', ['one', 'two', 'three']);
+
+    expect(state.componentState.get('items_index')).toBe(1);
+  });
+
+  test('tab cycles focus using previous frame focusables', () => {
+    const state = createScreenState();
+
+    let ctx = createScreenContext(state);
+    ctx.list('one', ['alpha']);
+    ctx.list('two', ['beta']);
+    expect(state.focusedId).toBe('one');
+
+    state.lastKey = 'tab';
+    ctx = createScreenContext(state);
+    ctx.list('one', ['alpha']);
+    ctx.list('two', ['beta']);
+
+    expect(state.focusedId).toBe('two');
+  });
+
+  test('keyboard input is normalized and requests an immediate rerender', () => {
+    const state = createScreenState();
+    let ticks = 0;
+    (state as { requestTick?: () => void }).requestTick = () => ticks++;
+
+    applyInputToState(state, '\x1b[A');
+    expect(state.lastKey).toBe('up');
+    expect(ticks).toBe(1);
+
+    applyInputToState(state, '\t');
+    expect(state.lastKey).toBe('tab');
+    expect(ticks).toBe(2);
+
+    applyInputToState(state, 'x');
+    expect(state.lastKey).toBe('x');
+    expect(ticks).toBe(3);
+  });
+
+  test('mouse input tracks SGR coordinates and click rerenders', () => {
+    const state = createScreenState();
+    let ticks = 0;
+    (state as { requestTick?: () => void }).requestTick = () => ticks++;
+
+    applyInputToState(state, '\x1b[<0;10;5M');
+
+    expect(state.mouseButton).toBe(0);
+    expect(state.mouseX).toBe(9);
+    expect(state.mouseY).toBe(4);
+    expect(state.isMouseDown).toBe(true);
+    expect(state.lastKey).toBe('click');
+    expect(ticks).toBe(1);
+  });
+
+  test('focus events update throttling state and restart the render loop', () => {
+    const state = createScreenState();
+    let restarts = 0;
+    (state as { restartLoop?: () => void }).restartLoop = () => restarts++;
+
+    applyInputToState(state, '\x1b[O');
+    expect(state.hasFocus).toBe(false);
+    expect(restarts).toBe(1);
+
+    applyInputToState(state, '\x1b[I');
+    expect(state.hasFocus).toBe(true);
+    expect(restarts).toBe(2);
+  });
+
+  test('resizeScreen rebuilds buffers for the current terminal dimensions', () => {
+    const columns = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
+    const rows = Object.getOwnPropertyDescriptor(process.stdout, 'rows');
+
+    Object.defineProperty(process.stdout, 'columns', {
+      configurable: true,
+      value: 42,
+    });
+    Object.defineProperty(process.stdout, 'rows', {
+      configurable: true,
+      value: 11,
+    });
+
+    try {
+      const state = createScreenState();
+      resizeScreen(state);
+
+      expect(state.width).toBe(42);
+      expect(state.height).toBe(11);
+      expect(state.frontBuffer).toHaveLength(42 * 11);
+      expect(state.backBuffer).toHaveLength(42 * 11);
+    } finally {
+      if (columns) Object.defineProperty(process.stdout, 'columns', columns);
+      else delete (process.stdout as { columns?: number }).columns;
+      if (rows) Object.defineProperty(process.stdout, 'rows', rows);
+      else delete (process.stdout as { rows?: number }).rows;
+    }
+  });
+
+  test('Input updates managed state from normalized keyboard input', () => {
+    const state = createScreenState();
+    state.focusedId = 'mission';
+    state.lastKey = 'a';
+
+    const ctx = createScreenContext(state);
+    Input(ctx, { id: 'mission', width: 20 });
+
+    expect(state.componentState.get('mission')).toBe('a');
+  });
+
+  test('Button invokes onClick from keyboard activation and mouse clicks', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.focusedId = 'deploy';
+    state.lastKey = 'enter';
+
+    let clicks = 0;
+    let ctx = createScreenContext(state);
+    Button(ctx, {
+      id: 'deploy',
+      label: 'DEPLOY',
+      onClick: () => clicks++,
+    });
+    expect(clicks).toBe(1);
+
+    state.lastKey = 'click';
+    state.mouseButton = 0;
+    state.isMouseDown = true;
+    state.mouseX = 34;
+    state.mouseY = 0;
+
+    ctx = createScreenContext(state);
+    Button(ctx, {
+      id: 'abort',
+      label: 'ABORT',
+      onClick: () => clicks++,
+    });
+
+    expect(clicks).toBe(2);
   });
 
   test('box respects maxWidth and truncates content', () => {

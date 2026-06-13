@@ -45,14 +45,14 @@ import { visibleWidth } from './utils';
 // --- Traits (Contextual Capabilities) ---
 
 export const KEYS = {
-  UP: '\x1b[A',
-  DOWN: '\x1b[B',
-  RIGHT: '\x1b[C',
-  LEFT: '\x1b[D',
-  ENTER: '\r',
-  ESCAPE: '\x1b',
-  TAB: '\t',
-  BACKSPACE: '\x7f',
+  UP: 'up',
+  DOWN: 'down',
+  RIGHT: 'right',
+  LEFT: 'left',
+  ENTER: 'enter',
+  ESCAPE: 'escape',
+  TAB: 'tab',
+  BACKSPACE: 'backspace',
   SPACE: ' ',
 };
 export interface DSLBoxOptions extends StyleOptions {
@@ -499,7 +499,15 @@ function createDSLContext(
  * Top-level Screen Context
  */
 export function createScreenContext(state: ScreenState): BuntiContext {
-  state.focusableIds = []; // Clear for this frame
+  const previousFocusableIds = state.focusableIds;
+
+  if (state.lastKey === KEYS.TAB && previousFocusableIds.length > 0) {
+    const idx = previousFocusableIds.indexOf(state.focusedId || '');
+    const nextIdx = (idx + 1) % previousFocusableIds.length;
+    state.focusedId = previousFocusableIds[nextIdx];
+  }
+
+  state.focusableIds = []; // Rebuild from this frame's rendered focusables.
 
   const dslState: DSLState = {
     activeContents: [],
@@ -512,10 +520,6 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     const flow = dslState.activeContents.join('');
     if (flow) layoutBlit(state, 0, 0, flow);
   };
-
-  if (state.lastKey === KEYS.TAB) {
-    base.focusNext();
-  }
 
   // Override box for top-level to handle auto-centering and direct-to-buffer rendering
   const boxOverride = (
