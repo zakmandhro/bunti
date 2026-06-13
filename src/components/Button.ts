@@ -1,3 +1,4 @@
+import { adjustBrightness } from '../colors';
 import type { BuntiContext } from '../dsl';
 import type { StyleOptions } from '../layout';
 
@@ -58,7 +59,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     borderCol = 'black';
   } else if (props.variant === 'danger') {
     bg = 'error';
-    borderCol = color.lighten('error', 20);
+    borderCol = adjustBrightness('error', 20);
     fg = 'white';
   }
 
@@ -71,7 +72,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     } else {
       borderCol = 'black';
       if (isMouseDown && isHovered) {
-        bg = color.darken(bg, 5); // Pressed state
+        bg = adjustBrightness(bg, -5); // Pressed state
       }
     }
   }

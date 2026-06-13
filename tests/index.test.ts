@@ -196,6 +196,27 @@ describe('Bunti Core Engine', () => {
     expect(clicks).toBe(2);
   });
 
+  test('Button pressed state uses color values for backgrounds', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.focusedId = 'abort';
+    state.mouseButton = 0;
+    state.isMouseDown = true;
+    state.mouseX = 34;
+    state.mouseY = 0;
+
+    const ctx = createScreenContext(state);
+    Button(ctx, {
+      id: 'abort',
+      label: 'ABORT',
+      variant: 'danger',
+    });
+    const rendered = state.backBuffer.map((cell) => cell.char).join('');
+
+    expect(rendered).not.toContain('(text)');
+    expect(rendered).not.toContain('=>');
+  });
+
   test('box respects maxWidth and truncates content', () => {
     const content = 'this is a very long line that should be truncated';
     const b = box(content, { maxWidth: 20, border: 'normal' });
