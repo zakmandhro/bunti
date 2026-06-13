@@ -111,6 +111,20 @@ describe('Bunti Core Engine', () => {
     expect(ticks).toBe(1);
   });
 
+  test('mouse movement requests an immediate rerender without click state', () => {
+    const state = createScreenState();
+    let ticks = 0;
+    (state as { requestTick?: () => void }).requestTick = () => ticks++;
+
+    applyInputToState(state, '\x1b[<35;12;6m');
+
+    expect(state.mouseX).toBe(11);
+    expect(state.mouseY).toBe(5);
+    expect(state.isMouseDown).toBe(false);
+    expect(state.lastKey).toBeUndefined();
+    expect(ticks).toBe(1);
+  });
+
   test('focus events update throttling state and restart the render loop', () => {
     const state = createScreenState();
     let restarts = 0;
@@ -220,6 +234,40 @@ describe('Bunti Core Engine', () => {
     });
 
     expect(clicks).toBe(2);
+  });
+
+  test('Button hover state changes primary pill color', () => {
+    const idleState = createScreenState();
+    idleState.width = 80;
+    idleState.focusedId = 'other';
+    let ctx = createScreenContext(idleState);
+    Button(ctx, {
+      id: 'deploy',
+      label: 'Deploy',
+      variant: 'primary',
+      width: 16,
+    });
+    const idleFg = idleState.backBuffer.find(
+      (cell) => cell.char === '',
+    )?.fgCode;
+
+    const hoverState = createScreenState();
+    hoverState.width = 80;
+    hoverState.focusedId = 'other';
+    hoverState.mouseX = 34;
+    hoverState.mouseY = 0;
+    ctx = createScreenContext(hoverState);
+    Button(ctx, {
+      id: 'deploy',
+      label: 'Deploy',
+      variant: 'primary',
+      width: 16,
+    });
+    const hoverFg = hoverState.backBuffer.find(
+      (cell) => cell.char === '',
+    )?.fgCode;
+
+    expect(idleFg).not.toBe(hoverFg);
   });
 
   test('Button pressed state uses color values for backgrounds', () => {

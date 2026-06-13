@@ -270,13 +270,13 @@ export function applyInputToState(
     state.mouseX = parseInt(match[2], 10) - 1;
     state.mouseY = parseInt(match[3], 10) - 1;
     state.isMouseDown = match[4] === 'M';
+    if ((state as { requestTick?: () => void }).requestTick) {
+      (state as { requestTick?: () => void }).requestTick!();
+    }
     if (match[4] === 'M') {
       if (state.mouseButton === 64) state.lastKey = 'wheel_up';
       else if (state.mouseButton === 65) state.lastKey = 'wheel_down';
       else if (state.mouseButton === 0) state.lastKey = 'click';
-      if ((state as { requestTick?: () => void }).requestTick) {
-        (state as { requestTick?: () => void }).requestTick!();
-      }
     }
     return;
   }
