@@ -392,7 +392,7 @@ export function box(
 
   // Content Lines
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!.trim();
+    const line = lines[i]!.trimEnd();
     const lineW = visibleWidth(line);
     const extra = Math.max(0, targetInnerW - lineW - px * 2);
     let left = 0,

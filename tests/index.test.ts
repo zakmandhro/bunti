@@ -30,6 +30,11 @@ describe('Bunti Core Engine', () => {
     expect(visibleWidth(b.split('\n')[0] ?? '')).toBe(6); // "  hi  "
   });
 
+  test('box preserves intentional leading spaces', () => {
+    const b = box('  indented', { align: 'left' });
+    expect(b).toStartWith('  indented');
+  });
+
   test('joinHorizontal aligns blocks correctly', () => {
     const b1 = box('left', { width: 10 });
     const b2 = box('right', { width: 10 });

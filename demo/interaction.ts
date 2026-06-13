@@ -20,14 +20,16 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
       border: 'rounded',
       borderColor: 'bunti-blue',
       padding: [1, compact ? 1 : 3],
+      align: 'left',
     },
     (sub) => {
       const panelInnerW = W - 2 - (compact ? 2 : 6);
-      const ghostW = 8;
-      const primaryW = compact ? 18 : 20;
-      const actionGap = 3;
+      const ghostW = 5;
+      const primaryW = compact ? 14 : 15;
+      const actionGap = 2;
       const actionRowW = ghostW + actionGap + primaryW;
       const actionLeft = Math.max(0, panelInnerW - actionRowW);
+      const actionY = 8;
 
       sub.text(color.cyan(color.bold('TACTICAL CONTROLS')));
       sub.text('\n');
@@ -52,6 +54,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
         variant: 'ghost',
         width: ghostW,
         x: actionLeft,
+        y: actionY,
         detach: true,
       }) as unknown as string;
 
@@ -62,6 +65,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
         variant: 'primary',
         width: primaryW,
         x: actionLeft + ghostW + actionGap,
+        y: actionY,
         detach: true,
         onClick: () => {
           /* Action handled here */
