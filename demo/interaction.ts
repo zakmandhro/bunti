@@ -7,32 +7,36 @@ import { demo } from './demo-layout';
 
 demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
   const { box, color, icon } = ctx;
-  const W = Math.min(bounds.w - 8, 100);
+  const W = Math.min(bounds.w - 8, 72);
   const X = bounds.centerW(W);
+  const compact = W < 60;
 
   box(
     {
       x: X,
-      y: bounds.y,
+      y: bounds.y + 1,
       width: W,
-      height: bounds.h,
+      height: Math.min(bounds.h - 1, 18),
       border: 'rounded',
-      borderColor: 'cyan',
-      padding: [1, 2],
+      borderColor: 'bunti-blue',
+      padding: [1, compact ? 1 : 3],
     },
     (sub) => {
-      sub.text(color.cyan(color.bold('TACTICAL CONTROLS\n\n')));
+      sub.text(color.cyan(color.bold('TACTICAL CONTROLS')));
+      sub.text('\n');
+      sub.text(color.dim('Keyboard, mouse, focus, and rerender states.'));
+      sub.text('\n\n');
 
-      sub.text('Press [TAB] to navigate focus.\n\n');
-
-      // managed input
       Input(sub, {
         id: 'input-mission',
         label: 'MISSION:',
         placeholder: 'Enter mission name...',
-        width: 40,
+        width: compact ? W - 8 : 48,
       });
 
+      sub.text('\n');
+      sub.text(color.dim(`Last key: ${ctx.lastKey || 'none'}`));
+      sub.text(color.dim(`    Mouse: ${ctx.mouseX},${ctx.mouseY}`));
       sub.text('\n\n');
 
       Button(sub, {
@@ -40,6 +44,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
         label: 'DEPLOY SYSTEM',
         icon: icon('rocket'),
         variant: 'primary',
+        width: compact ? W - 12 : 24,
         onClick: () => {
           /* Action handled here */
         },
@@ -52,6 +57,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
         label: 'ABORT',
         icon: icon('error'),
         variant: 'danger',
+        width: compact ? W - 12 : 16,
       });
     },
   );

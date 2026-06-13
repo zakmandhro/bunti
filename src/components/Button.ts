@@ -32,8 +32,9 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
 
   // 2. Resolve final dimensions to perform Mouse Hit-Testing
   const finalLabel = props.icon ? `${props.icon} ${props.label}` : props.label;
+  const filled = props.variant === 'primary' || props.variant === 'danger';
   const w = props.width || Math.max(12, finalLabel.length + 4);
-  const h = props.height || 3;
+  const h = props.height || (filled ? 1 : 3);
 
   const resolvedW = typeof w === 'number' ? w : ctx.width;
   const absX =
@@ -87,7 +88,6 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   }
 
   // 5. Render the Primitive
-  const filled = props.variant === 'primary' || props.variant === 'danger';
   return box(
     {
       width: w,
