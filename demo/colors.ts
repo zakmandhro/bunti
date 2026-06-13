@@ -1,3 +1,5 @@
+import { Box } from '../src/components';
+import { splitRect } from '../src/index';
 import { demo } from './demo-layout';
 
 /**
@@ -5,17 +7,23 @@ import { demo } from './demo-layout';
  */
 
 demo('COLOR & GRADIENT REGISTRY', (ctx, bounds) => {
-  const { box, color, gradient } = ctx;
+  const { color, gradient } = ctx;
   const W = Math.min(bounds.w - 8, 100);
-  const X = bounds.centerW(W);
+  const frame = bounds.place({ width: W, height: '100%' });
+  const [palette, gradients] = splitRect(frame, {
+    direction: 'horizontal',
+    constraints: ['40%', '1fr'],
+    gap: 2,
+  });
 
   // Semantic Palette & Math
-  box(
+  Box(
+    ctx,
     {
-      x: X,
-      y: bounds.y,
-      width: Math.floor(W * 0.4),
-      height: bounds.h,
+      x: palette?.x,
+      y: palette?.y,
+      width: palette?.width,
+      height: palette?.height,
       border: 'rounded',
       borderColor: 'cyan',
       padding: [1, 2],
@@ -56,12 +64,13 @@ demo('COLOR & GRADIENT REGISTRY', (ctx, bounds) => {
   );
 
   // Gradient Factory
-  box(
+  Box(
+    ctx,
     {
-      x: X + Math.floor(W * 0.4) + 2,
-      y: bounds.y,
-      width: Math.floor(W * 0.6) - 2,
-      height: bounds.h,
+      x: gradients?.x,
+      y: gradients?.y,
+      width: gradients?.width,
+      height: gradients?.height,
       border: 'double',
       borderColor: 'magenta',
       padding: [1, 2],
@@ -69,7 +78,7 @@ demo('COLOR & GRADIENT REGISTRY', (ctx, bounds) => {
     ({ text, box: subBox }) => {
       text(color.magenta(color.bold('GRADIENT INTERPOLATION\n\n')));
 
-      const gradW = Math.floor(W * 0.6) - 8;
+      const gradW = Math.max(0, (gradients?.width ?? 8) - 8);
 
       // Spectrum
       text('Horizontal Spectrum:\n');

@@ -1,3 +1,5 @@
+import { Box } from '../src/components';
+import { splitRect } from '../src/index';
 import { demo } from './demo-layout';
 
 /**
@@ -6,17 +8,27 @@ import { demo } from './demo-layout';
  */
 
 demo('LAYOUT ARCHITECTURE', (ctx, bounds) => {
-  const { box, color, gradient } = ctx;
+  const { color, gradient } = ctx;
   const W = Math.min(bounds.w - 8, 100);
-  const X = bounds.centerW(W);
+  const top = bounds.place({
+    y: 0,
+    width: W,
+    height: '60%',
+  });
+  const [left, right] = splitRect(top, {
+    direction: 'horizontal',
+    constraints: ['40%', '1fr'],
+    gap: 2,
+  });
 
   // Left Panel: Constraints & Sizing (Fixed Width)
-  box(
+  Box(
+    ctx,
     {
-      x: X,
-      y: bounds.y,
-      width: Math.floor(W * 0.4),
-      height: Math.floor(bounds.h * 0.6),
+      x: left?.x,
+      y: left?.y,
+      width: left?.width,
+      height: left?.height,
       border: 'rounded',
       borderColor: 'cyan',
       padding: [1, 2],
@@ -56,12 +68,13 @@ demo('LAYOUT ARCHITECTURE', (ctx, bounds) => {
   );
 
   // Right Panel: Alignment & Flow
-  box(
+  Box(
+    ctx,
     {
-      x: X + Math.floor(W * 0.4) + 2,
-      y: bounds.y,
-      width: Math.floor(W * 0.6) - 2,
-      height: Math.floor(bounds.h * 0.6),
+      x: right?.x,
+      y: right?.y,
+      width: right?.width,
+      height: right?.height,
       border: 'double',
       borderColor: 'magenta',
       padding: [1, 2],
@@ -121,12 +134,19 @@ demo('LAYOUT ARCHITECTURE', (ctx, bounds) => {
     direction: 'vertical',
   });
 
-  box(
+  const reactor = bounds.place({
+    y: top.height + 1,
+    width: 20,
+    height: 6,
+  });
+
+  Box(
+    ctx,
     {
-      x: bounds.centerW(20),
-      y: bounds.y + Math.floor(bounds.h * 0.6) + 1,
-      width: 20,
-      height: 6,
+      x: reactor.x,
+      y: reactor.y,
+      width: reactor.width,
+      height: reactor.height,
       bgColor: reactorGrad,
       border: 'thick-frame',
       borderColor: 'white',
