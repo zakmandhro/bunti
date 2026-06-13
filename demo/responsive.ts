@@ -1,4 +1,4 @@
-import { bunti, splitRect, visibleWidth } from '../src/index';
+import { bunti, innerRect, splitRect, visibleWidth } from '../src/index';
 
 /**
  * Bunti Responsive Standard
@@ -19,12 +19,19 @@ bunti.render(
     blit(headerArea.x, headerArea.y, color.bgGreen(header));
 
     const isSmall = width < 70;
+    const screen = { x: 0, y: 0, width, height };
+    const bodyBounds = innerRect(screen, {
+      left: 2,
+      right: 2,
+      top: 4,
+      bottom: 2,
+    });
     const body = resolveLocalRect(
       {
-        x: 2,
-        y: 4,
-        width: width - 4,
-        height: height - 6,
+        x: bodyBounds.x,
+        y: bodyBounds.y,
+        width: bodyBounds.width,
+        height: bodyBounds.height,
       },
       { defaultX: 'left', defaultY: 'top' },
     );

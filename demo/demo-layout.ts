@@ -16,7 +16,6 @@ export interface DemoBounds {
   w: number;
   h: number;
   rect: Rect;
-  centerW: (targetW: number) => number;
   place: (input: PlacedRectInput) => Rect;
   split: (options: SplitOptions) => Rect[];
 }
@@ -83,11 +82,6 @@ export async function demo(
       w: rect.width,
       h: rect.height,
       rect,
-      centerW: (targetW: number) =>
-        resolvePlacedRect(rect, {
-          width: targetW,
-          height: rect.height,
-        }).x,
       place: (input) => resolvePlacedRect(rect, input),
       split: (options) => splitRect(rect, options),
     };

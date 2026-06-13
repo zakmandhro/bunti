@@ -1,4 +1,4 @@
-import { bunti, splitRect } from '../src/index';
+import { bunti, innerRect, splitRect } from '../src/index';
 
 /**
  * Bunti Mission Control Dashboard
@@ -23,7 +23,16 @@ const ISSUES = [
 ];
 
 bunti.render(
-  ({ wallpaper, box, color, width, blit, lastKey, resolveLocalRect }) => {
+  ({
+    wallpaper,
+    box,
+    color,
+    width,
+    height,
+    blit,
+    lastKey,
+    resolveLocalRect,
+  }) => {
     wallpaper('#0a0a0b');
 
     // 1. Header
@@ -35,8 +44,10 @@ bunti.render(
     });
 
     // 2. Main Layout Grid
+    const screen = { x: 0, y: 0, width, height: 24 };
+    const mainBounds = innerRect(screen, { left: 2, right: 2 });
     const main = resolveLocalRect(
-      { x: 2, y: 5, width: width - 4, height: 10 },
+      { x: mainBounds.x, y: 5, width: mainBounds.width, height: 10 },
       { defaultX: 'left', defaultY: 'top' },
     );
     const [fleet, telemetry] = splitRect(main, {
