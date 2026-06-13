@@ -165,6 +165,32 @@ describe('Bunti Core Engine', () => {
     expect(state.componentState.get('mission')).toBe('a');
   });
 
+  test('Input renders placeholder muted and typed value bright', () => {
+    const placeholderState = createScreenState();
+    let ctx = createScreenContext(placeholderState);
+    Input(ctx, {
+      id: 'mission',
+      label: 'MISSION:',
+      placeholder: 'Enter mission name...',
+      width: 40,
+    });
+    const placeholderFg = placeholderState.backBuffer.find(
+      (cell) => cell.char === 'E',
+    )?.fgCode;
+
+    const valueState = createScreenState();
+    valueState.focusedId = 'mission';
+    valueState.componentState.set('mission', 'Alpha');
+    ctx = createScreenContext(valueState);
+    Input(ctx, { id: 'mission', label: 'MISSION:', width: 40 });
+    const valueFg = valueState.backBuffer.find(
+      (cell) => cell.char === 'A',
+    )?.fgCode;
+
+    expect(String(placeholderFg)).toBe('240');
+    expect(String(valueFg)).toBe('255');
+  });
+
   test('Button invokes onClick from keyboard activation and mouse clicks', () => {
     const state = createScreenState();
     state.width = 80;
@@ -215,6 +241,22 @@ describe('Bunti Core Engine', () => {
 
     expect(rendered).not.toContain('(text)');
     expect(rendered).not.toContain('=>');
+  });
+
+  test('danger Button renders as filled button without side borders', () => {
+    const state = createScreenState();
+    state.width = 80;
+
+    const ctx = createScreenContext(state);
+    Button(ctx, {
+      id: 'abort',
+      label: 'ABORT',
+      variant: 'danger',
+    });
+    const rendered = state.backBuffer.map((cell) => cell.char).join('');
+
+    expect(rendered).not.toContain('│');
+    expect(rendered).not.toContain('╭');
   });
 
   test('box respects maxWidth and truncates content', () => {

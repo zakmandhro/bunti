@@ -85,9 +85,10 @@ export function Input(ctx: BuntiContext, props: InputProps) {
 
   // 5. Resolve Theme
   const neutralGray = { r: 217, g: 216, b: 213 };
-  const borderCol = isSelected ? 'black' : isHovered ? 'ash' : neutralGray;
-  const _bgColor = { r: 255, g: 255, b: 255 };
-  const textColor = 'black';
+  const borderCol = isSelected ? 'bunti-blue' : isHovered ? 'ash' : neutralGray;
+  const labelColor = 'silver';
+  const placeholderColor = 'ash';
+  const textColor = 'white';
 
   // 6. Render
   return box(
@@ -103,12 +104,12 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     ({ text }) => {
       // Label
       if (props.label) {
-        text(color.dim(`${props.label} `));
+        text(color.fg(labelColor, `${props.label} `));
       }
 
       // Value Display with simulated cursor
       if (value.length === 0 && props.placeholder) {
-        text(color.dim(props.placeholder));
+        text(color.fg(placeholderColor, props.placeholder));
       } else {
         const displayValue =
           props.type === 'password' ? '*'.repeat(value.length) : value;
@@ -117,7 +118,7 @@ export function Input(ctx: BuntiContext, props: InputProps) {
 
       // Cursor (blinking)
       if (isSelected && ctx.flicker(0.8)) {
-        text(color.black('█'));
+        text(color.fg('silver', '█'));
       }
     },
   );

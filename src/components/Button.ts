@@ -87,11 +87,12 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   }
 
   // 5. Render the Primitive
+  const filled = props.variant === 'primary' || props.variant === 'danger';
   return box(
     {
       width: w,
       height: h,
-      border: props.variant === 'primary' ? 'none' : props.border || 'rounded',
+      border: filled ? 'none' : props.border || 'rounded',
       borderColor: borderCol,
       bgColor: bg,
       align: props.align || 'center',
