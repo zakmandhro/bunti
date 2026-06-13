@@ -22,6 +22,13 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
       padding: [1, compact ? 1 : 3],
     },
     (sub) => {
+      const panelInnerW = W - 2 - (compact ? 2 : 6);
+      const ghostW = 8;
+      const primaryW = compact ? 18 : 20;
+      const actionGap = 3;
+      const actionRowW = ghostW + actionGap + primaryW;
+      const actionLeft = Math.max(0, panelInnerW - actionRowW);
+
       sub.text(color.cyan(color.bold('TACTICAL CONTROLS')));
       sub.text('\n');
       sub.text(color.dim('Keyboard, mouse, focus, and rerender states.'));
@@ -39,26 +46,31 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
       sub.text(color.dim(`    Mouse: ${ctx.mouseX},${ctx.mouseY}`));
       sub.text('\n\n');
 
-      Button(sub, {
+      const abort = Button(sub, {
+        id: 'btn-abort',
+        label: 'Abort',
+        variant: 'ghost',
+        width: ghostW,
+        x: actionLeft,
+        detach: true,
+      }) as unknown as string;
+
+      const deploy = Button(sub, {
         id: 'btn-deploy',
-        label: 'DEPLOY SYSTEM',
+        label: 'Deploy',
         icon: icon('rocket'),
         variant: 'primary',
-        width: compact ? W - 12 : 24,
+        width: primaryW,
+        x: actionLeft + ghostW + actionGap,
+        detach: true,
         onClick: () => {
           /* Action handled here */
         },
-      });
+      }) as unknown as string;
 
-      sub.text('\n');
-
-      Button(sub, {
-        id: 'btn-abort',
-        label: 'ABORT',
-        icon: icon('error'),
-        variant: 'danger',
-        width: compact ? W - 12 : 16,
-      });
+      sub.text(
+        `${' '.repeat(actionLeft)}${abort}${' '.repeat(actionGap)}${deploy}`,
+      );
     },
   );
 });
