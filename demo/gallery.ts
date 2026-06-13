@@ -1,4 +1,4 @@
-import { ICON_MAP } from '../src/index';
+import { ICON_MAP, splitRect } from '../src/index';
 import { demo } from './demo-layout';
 
 /**
@@ -9,7 +9,10 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
   const { box, color, gradient } = ctx;
 
   const MASTER_WIDTH = 84;
-  const START_X = bounds.centerW(MASTER_WIDTH);
+  const spectrum = bounds.place({
+    width: MASTER_WIDTH,
+    height: 1,
+  });
 
   // 1. Color Spectrum (Locked to Master Grid)
   const specGrad = gradient({
@@ -20,10 +23,10 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
 
   box(
     {
-      x: START_X,
-      y: bounds.y,
-      width: MASTER_WIDTH,
-      height: 1,
+      x: spectrum.x,
+      y: spectrum.y,
+      width: spectrum.width,
+      height: spectrum.height,
       bgColor: specGrad,
       border: 'none',
       padding: [0, 0],
@@ -33,11 +36,17 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
 
   // 2. Style Showcase (Rigid Row, 3 boxes)
   const W = 88;
-  const X = bounds.centerW(W);
-  const boxW = 28;
-  const gapX = 2;
   const rowH = 7;
-  const currentY = bounds.y + 2;
+  const row1 = bounds.place({
+    y: 2,
+    width: W,
+    height: rowH,
+  });
+  const row1Cells = splitRect(row1, {
+    direction: 'horizontal',
+    constraints: ['1fr', '1fr', '1fr'],
+    gap: 2,
+  });
 
   const wireStyles = ['default', 'rounded', 'double'] as const;
   const industrialStyles = [
@@ -55,12 +64,13 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
 
   // Showcase Row 1 (Wireframe)
   wireStyles.forEach((style, i) => {
+    const cell = row1Cells[i];
     box(
       {
-        x: X + i * (boxW + gapX),
-        y: currentY,
-        width: boxW,
-        height: rowH,
+        x: cell?.x,
+        y: cell?.y,
+        width: cell?.width,
+        height: cell?.height,
         border: style as any,
         borderColor: 'gray',
         align: 'center',
@@ -72,10 +82,20 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
     );
   });
 
-  const row2Y = currentY + rowH + 1;
+  const row2 = bounds.place({
+    y: row1.y - bounds.y + rowH + 1,
+    width: W,
+    height: rowH,
+  });
+  const row2Cells = splitRect(row2, {
+    direction: 'horizontal',
+    constraints: ['1fr', '1fr', '1fr'],
+    gap: 2,
+  });
 
   // Showcase Row 2 (Industrial)
   industrialStyles.forEach((cfg, i) => {
+    const cell = row2Cells[i];
     const borderColor =
       cfg.label === 'Side Colors'
         ? {
@@ -88,10 +108,10 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
 
     box(
       {
-        x: X + i * (boxW + gapX),
-        y: row2Y,
-        width: boxW,
-        height: rowH,
+        x: cell?.x,
+        y: cell?.y,
+        width: cell?.width,
+        height: cell?.height,
         border: cfg.border as any,
         borderColor: borderColor,
         bgColor: cfg.bg,
@@ -110,7 +130,6 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
   const allIconNames = Object.keys(ICON_MAP);
   const ICON_COLS = 4;
   const rowsCount = Math.ceil(allIconNames.length / ICON_COLS);
-  const _colW = Math.floor(W / ICON_COLS);
 
   const tableData: string[][] = [];
   for (let r = 0; r < rowsCount; r++) {
@@ -128,10 +147,19 @@ demo('VISUAL REGISTRY', (ctx, bounds) => {
     tableData.push(row);
   }
 
-  const tableY = row2Y + rowH + 2;
+  const table = bounds.place({
+    y: row2.y - bounds.y + rowH + 2,
+    width: W,
+  });
 
   box(
-    { x: X, y: tableY, width: W, border: 'none', padding: [0, 0] },
+    {
+      x: table.x,
+      y: table.y,
+      width: table.width,
+      border: 'none',
+      padding: [0, 0],
+    },
     ({ table }) => {
       table(tableData, {
         width: W,

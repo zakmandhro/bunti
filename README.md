@@ -15,7 +15,7 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 
 ## 📦 Installation
 
-Bunti is designed for Bun, but works in standard Node.js environments (v18+) as well.
+Bunti is Bun-first and ships compiled ESM plus TypeScript declarations for package consumers.
 
 ```bash
 bun add @zakmandhro/bunti
@@ -31,28 +31,48 @@ npm install @zakmandhro/bunti
 
 ```typescript
 import { bunti } from '@zakmandhro/bunti';
+import { Box, Button, Input } from '@zakmandhro/bunti/components';
 
-bunti.render(({ wallpaper, box, color, icon, span }) => {
-  // 1. Set a dynamic gradient background
+bunti.render((ctx) => {
+  const { color, icon, wallpaper } = ctx;
+
   wallpaper(bunti.gradient({ colors: ['midnight', 'plasma'] }));
 
-  // 2. Define a centered high-contrast card
-  box({
-    size: "auto",
-    bgColor: "white",
-    color: "blank", // Automatic high-contrast black
-    border: 'frame' // Tactical block border
-  }, ({ text }) => {
+  Box(ctx, {
+    width: 48,
+    border: 'frame',
+    bgColor: 'white',
+    color: 'blank'
+  }, (sub) => {
+    const { text } = sub;
     text(` ${icon('rocket')} `);
-    text(color.bold("MISSION CONTROL\n\n"));
-    
-    span({ color: color.dim }, ({ text }) => {
-      text("STATUS: ");
+    text(color.bold('MISSION CONTROL\n\n'));
+
+    Input(sub, {
+      id: 'mission',
+      label: 'MISSION:',
+      placeholder: 'Enter mission name...',
+      width: 36
     });
-    text("NOMINAL");
+
+    Button(sub, {
+      id: 'deploy',
+      label: 'Deploy',
+      variant: 'primary'
+    });
   });
 }, { fps: 60, mouse: true });
 ```
+
+## 📏 Layout Model
+
+Bunti's public layout direction is Rect-first:
+
+- `Rect` is the geometry primitive.
+- `Box`, `Button`, `Input`, `Card`, and `Header` resolve a rect before rendering.
+- Hitboxes and rendered output share the same resolved rect.
+- `splitRect()` and `ctx.split()` create responsive tracks from fixed sizes, percentages, and `fr` fill units.
+- `ctx.resolveLocalRect()` places components within the current parent area, including left/center/right and top/center/bottom defaults.
 
 ## 📐 Border Archetypes
 
@@ -70,15 +90,17 @@ Bunti is built for speed. By leveraging `Bun.stdout.writer()` and surgical diffi
 
 ## 🛠️ Tooling
 
-### TSGO (High-Performance TypeScript)
-Bunti uses **[tsgo](https://github.com/d-ts/tsgo)** for its type-checking pipeline. 
+### TypeScript
+Bunti uses the standard TypeScript compiler for type checking so local development and GitHub Actions run the same toolchain.
 
-We chose `tsgo` over the standard `tsc` because:
-- **Speed**: It leverages a Go-based core to provide near-instant feedback during development.
-- **Agent-Friendly**: Its predictable and high-performance output makes it ideal for automated engineering workflows.
-- **Strict Integrity**: It ensures that Bunti's functional architecture remains 100% type-safe without the overhead of standard Node-based compilers.
+Run a full check with: `bun run typecheck`
 
-Run a full check with: `npm run type-check`
+Build the published package with:
+
+```bash
+bun run build
+npm pack --dry-run
+```
 
 ## 📚 Documentation
 
@@ -96,6 +118,8 @@ Contributions are welcome! Please feel free to submit a Pull Request. Since Bunt
 bun run lint
 bun run typecheck
 bun run test
+bun run build
+npm pack --dry-run
 bun run bench
 ```
 

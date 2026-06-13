@@ -1,6 +1,13 @@
-import { Header } from '../src/components/Header';
+import { Box, Header } from '../src/components';
 import type { BuntiContext } from '../src/dsl';
-import { bunti } from '../src/index';
+import {
+  bunti,
+  type PlacedRectInput,
+  type Rect,
+  resolvePlacedRect,
+  type SplitOptions,
+  splitRect,
+} from '../src/index';
 import type { ScreenOptions } from '../src/state';
 
 export interface DemoBounds {
@@ -8,7 +15,9 @@ export interface DemoBounds {
   y: number;
   w: number;
   h: number;
-  centerW: (targetW: number) => number;
+  rect: Rect;
+  place: (input: PlacedRectInput) => Rect;
+  split: (options: SplitOptions) => Rect[];
 }
 
 export async function demo(
@@ -26,7 +35,7 @@ export async function demo(
   await bunti.init({ nerdFont: true });
 
   bunti.render((ctx) => {
-    const { box, color, width, height, wallpaper, icon } = ctx;
+    const { color, width, height, wallpaper, icon } = ctx;
 
     // 1. Base Layer (Dark Mode optimized)
     wallpaper('#0a0a0b');
@@ -40,7 +49,8 @@ export async function demo(
     });
 
     // 3. Standardized Footer (Anchored Bottom)
-    box(
+    Box(
+      ctx,
       {
         anchor: 'bottom',
         width: '100%',
@@ -60,13 +70,20 @@ export async function demo(
     // 4. Calculate Inner Safe Bounds
     // Header takes y: 0. Spacer at y: 1. Content starts at y: 2.
     // Footer takes row y: height - 1. Spacer at height - 2. End at height - 3.
-    const bounds: DemoBounds = {
+    const rect: Rect = {
       x: 0,
       y: 2,
-      w: width,
-      h: height - 4,
-      centerW: (targetW: number) =>
-        Math.max(0, Math.floor((width - targetW) / 2)),
+      width,
+      height: height - 4,
+    };
+    const bounds: DemoBounds = {
+      x: rect.x,
+      y: rect.y,
+      w: rect.width,
+      h: rect.height,
+      rect,
+      place: (input) => resolvePlacedRect(rect, input),
+      split: (options) => splitRect(rect, options),
     };
 
     // 5. Render Core Content

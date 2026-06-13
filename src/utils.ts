@@ -157,6 +157,15 @@ export function wrapText(str: string, width: number): string[] {
   return result;
 }
 
+export function indentBlock(content: string, columns: number): string {
+  if (columns <= 0) return content;
+  const prefix = ' '.repeat(columns);
+  return content
+    .split('\n')
+    .map((line) => prefix + line)
+    .join('\n');
+}
+
 /**
  * Identity function.
  */

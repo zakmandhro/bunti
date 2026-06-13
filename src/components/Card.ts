@@ -1,4 +1,5 @@
 import type { BuntiContext, DSLBoxOptions } from '../dsl';
+import { Box } from './Box';
 
 export interface CardProps extends DSLBoxOptions {
   title?: string;
@@ -14,7 +15,7 @@ export function Card(
   props: CardProps,
   callback: (sub: BuntiContext) => void,
 ) {
-  const { box, color } = ctx;
+  const { color } = ctx;
 
   const neutralGray = { r: 217, g: 216, b: 213 };
   let borderColor: any = neutralGray;
@@ -28,7 +29,8 @@ export function Card(
     titleColor = 'error';
   }
 
-  return box(
+  return Box(
+    ctx,
     {
       x: props.x,
       y: props.y,

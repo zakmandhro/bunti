@@ -1,3 +1,6 @@
 .screenshots/
+.tmp/
 node_modules/
-docs/.vitepress/dist\ndocs/.vitepress/cache
+dist/
+docs/.vitepress/dist
+docs/.vitepress/cache

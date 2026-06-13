@@ -6,19 +6,7 @@ import { demo } from './demo-layout';
  */
 
 demo('AUTHENTICATION', (ctx, bounds) => {
-  const {
-    color,
-    icon,
-    useState,
-    lastKey,
-    focus,
-    isFocused,
-    mouseX,
-    mouseY,
-    isMouseDown,
-    offsetX,
-    offsetY,
-  } = ctx;
+  const { color, icon, useState, lastKey, focus, isFocused } = ctx;
 
   const [email] = useState('input-email', '');
   const [password] = useState('input-password', '');
@@ -62,15 +50,19 @@ demo('AUTHENTICATION', (ctx, bounds) => {
   // Success screen
   if (status === 'success') {
     const W = Math.min(bounds.w - 8, 60);
-    const X = bounds.centerW(W);
+    const card = bounds.place({
+      y: 4,
+      width: W,
+      height: 12,
+    });
 
     Card(
       ctx,
       {
-        x: X,
-        y: bounds.y + 4,
-        width: W,
-        height: 12,
+        x: card.x,
+        y: card.y,
+        width: card.width,
+        height: card.height,
         title: 'Welcome back',
         theme: 'accent',
         bgColor: { r: 250, g: 249, b: 246 },
@@ -99,16 +91,18 @@ demo('AUTHENTICATION', (ctx, bounds) => {
 
   // Sign-in form
   const W = Math.min(bounds.w - 8, 50);
-  const X = bounds.centerW(W);
-  const Y = Math.max(bounds.y, Math.floor((bounds.h - 24) / 2));
+  const form = bounds.place({
+    width: W,
+    height: 26,
+  });
 
   Card(
     ctx,
     {
-      x: X,
-      y: Y,
-      width: W,
-      height: 26,
+      x: form.x,
+      y: form.y,
+      width: form.width,
+      height: form.height,
       border: 'rounded',
       theme: error ? 'danger' : 'accent',
       bgColor: { r: 250, g: 249, b: 246 },
@@ -116,10 +110,8 @@ demo('AUTHENTICATION', (ctx, bounds) => {
     (sub) => {
       // Brand logo — centered, nerd-font glyph + bold "Bunti"
       const brandVisible = 2 + 1 + 5; // glyph(2) + space + "Bunti"(5)
-      const innerW0 = W - 4;
-      const logoPad = ' '.repeat(
-        Math.max(0, Math.floor((innerW0 - brandVisible) / 2)),
-      );
+      const logo = sub.resolveLocalRect({ width: brandVisible, height: 1 });
+      const logoPad = ' '.repeat(logo.x);
       const purple = { r: 147, g: 51, b: 234 };
       const brand = color.fg(purple, color.bold(`${icon('bunti')} Bunti`));
       sub.text(`${logoPad + brand}\n\n`);
@@ -183,27 +175,27 @@ demo('AUTHENTICATION', (ctx, bounds) => {
 
       // "Forgot password?" link — hover + click
       const linkText = 'Forgot password?';
-      const linkY = sub.cursorY;
-      const linkAbsY = offsetY + linkY;
-      // approximate centered position inside card padding
-      const pad = 2;
-      const innerW = W - pad * 2;
-      const linkX = offsetX + pad + Math.floor((innerW - linkText.length) / 2);
-      const hovered =
-        mouseX >= linkX &&
-        mouseX < linkX + linkText.length &&
-        mouseY === linkAbsY;
+      const link = sub.resolveLocalRect({
+        y: sub.cursorY,
+        width: linkText.length,
+        height: 1,
+      });
+      const interaction = sub.hitbox('forgot-password', {
+        x: link.x,
+        y: link.y,
+        width: link.width,
+        height: link.height,
+      });
+      const hovered = interaction.hovered;
       if (hovered !== forgotHovered) setForgotHovered(hovered);
-      if (hovered && isMouseDown) {
+      if (interaction.pressed) {
         setForgotNotice('Password reset link sent to your email.');
       }
 
       const styled = hovered
         ? color.fg(linkHover, color.bold(linkText))
         : color.fg(linkColor, linkText);
-      const padLeft = ' '.repeat(
-        Math.max(0, Math.floor((innerW - linkText.length) / 2)),
-      );
+      const padLeft = ' '.repeat(link.x);
       sub.text(padLeft + styled);
 
       if (error) {

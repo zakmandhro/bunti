@@ -1,4 +1,4 @@
-import { bunti } from '../src/index';
+import { bunti, innerRect, splitRect } from '../src/index';
 
 /**
  * Bunti Mission Control Dashboard
@@ -23,7 +23,16 @@ const ISSUES = [
 ];
 
 bunti.render(
-  ({ wallpaper, box, color, width, height, blit, list, lastKey }) => {
+  ({
+    wallpaper,
+    box,
+    color,
+    width,
+    height,
+    blit,
+    lastKey,
+    resolveLocalRect,
+  }) => {
     wallpaper('#0a0a0b');
 
     // 1. Header
@@ -35,17 +44,26 @@ bunti.render(
     });
 
     // 2. Main Layout Grid
-    const panelW = Math.floor(width * 0.45);
-    const panelH = 10;
+    const screen = { x: 0, y: 0, width, height: 24 };
+    const mainBounds = innerRect(screen, { left: 2, right: 2 });
+    const main = resolveLocalRect(
+      { x: mainBounds.x, y: 5, width: mainBounds.width, height: 10 },
+      { defaultX: 'left', defaultY: 'top' },
+    );
+    const [fleet, telemetry] = splitRect(main, {
+      direction: 'horizontal',
+      constraints: ['1fr', '1fr'],
+      gap: 2,
+    });
 
     // Planets Panel
     box(
       {
         id: 'planets',
-        x: 2,
-        y: 5,
-        width: panelW,
-        height: panelH,
+        x: fleet?.x,
+        y: fleet?.y,
+        width: fleet?.width,
+        height: fleet?.height,
         border: 'frame',
         title: ' PLANETARY FLEET ',
       },
@@ -64,10 +82,10 @@ bunti.render(
     box(
       {
         id: 'issues',
-        x: width - panelW - 2,
-        y: 5,
-        width: panelW,
-        height: panelH,
+        x: telemetry?.x,
+        y: telemetry?.y,
+        width: telemetry?.width,
+        height: telemetry?.height,
         border: 'frame',
         title: ' CRITICAL TELEMETRY ',
       },

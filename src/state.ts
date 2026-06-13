@@ -18,6 +18,14 @@ export interface Cell {
   raw?: boolean; // Bypasses automatic emoji-to-NF replacement
 }
 
+export interface Hitbox {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface ScreenState {
   width: number;
   height: number;
@@ -31,6 +39,7 @@ export interface ScreenState {
   lastKey?: string;
   focusedId?: string;
   focusableIds: string[];
+  hitboxes: Map<string, Hitbox>;
   componentState: Map<string, any>;
   startTime: number;
   lastFg?: any;
@@ -82,6 +91,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
     isMouseDown: false,
     hasFocus: true,
     focusableIds: [],
+    hitboxes: new Map(),
     componentState: new Map(),
     startTime: Date.now(),
     options,
