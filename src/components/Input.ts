@@ -18,11 +18,12 @@ export function Input(ctx: BuntiContext, props: InputProps) {
   const { box, color, focusable, state, useState, hitbox } = ctx;
 
   // 1. Mouse Hit-Testing
-  const _finalLabelLen = props.label ? props.label.length + 1 : 0;
   const w = props.width || 40;
   const h = props.height || 3;
+  const labelOffset = props.label ? 1 : 0;
 
   const interaction = hitbox(props.id, {
+    y: ctx.cursorY + labelOffset,
     width: w as number,
     height: h as number,
   });
@@ -74,8 +75,19 @@ export function Input(ctx: BuntiContext, props: InputProps) {
   const placeholderColor = 'ash';
   const textColor = 'white';
 
-  // 6. Render
-  return box(
+  let fieldValue = '';
+  if (value.length === 0 && props.placeholder) {
+    fieldValue = color.fg(placeholderColor, props.placeholder);
+  } else {
+    const displayValue =
+      props.type === 'password' ? '*'.repeat(value.length) : value;
+    fieldValue = color.fg(textColor, displayValue);
+  }
+  if (isSelected) {
+    fieldValue += color.fg('silver', '█');
+  }
+
+  const field = box(
     {
       width: w,
       height: h,
@@ -84,26 +96,15 @@ export function Input(ctx: BuntiContext, props: InputProps) {
       padding: [0, 1],
       align: 'left',
       valign: 'middle',
+      detach: true,
     },
-    ({ text }) => {
-      // Label
-      if (props.label) {
-        text(color.fg(labelColor, `${props.label} `));
-      }
-
-      // Value Display with simulated cursor
-      if (value.length === 0 && props.placeholder) {
-        text(color.fg(placeholderColor, props.placeholder));
-      } else {
-        const displayValue =
-          props.type === 'password' ? '*'.repeat(value.length) : value;
-        text(color.fg(textColor, displayValue));
-      }
-
-      // Cursor
-      if (isSelected) {
-        text(color.fg('silver', '█'));
-      }
-    },
+    ({ text }) => text(fieldValue),
   );
+
+  if (props.label) {
+    ctx.text(color.fg(labelColor, props.label));
+    ctx.text('\n');
+  }
+  ctx.text(field);
+  return field;
 }
