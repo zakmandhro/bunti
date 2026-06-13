@@ -129,6 +129,22 @@ describe('Bunti Core Engine', () => {
     expect(ctx.isClicked('control')).toBe(true);
   });
 
+  test('context resolves component rects from parent-relative sizes', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.height = 20;
+
+    const ctx = createScreenContext(state);
+    const rect = ctx.resolveRect({
+      x: 4,
+      y: 2,
+      width: '50%',
+      height: 3,
+    });
+
+    expect(rect).toEqual({ x: 4, y: 2, width: 40, height: 3 });
+  });
+
   test('keyboard input is normalized and requests an immediate rerender', () => {
     const state = createScreenState();
     let ticks = 0;
@@ -228,6 +244,30 @@ describe('Bunti Core Engine', () => {
     Input(ctx, { id: 'mission', width: 20 });
 
     expect(state.componentState.get('mission')).toBe('a');
+  });
+
+  test('Input full-width sizing shares render and hitbox geometry', () => {
+    const state = createScreenState();
+    state.width = 64;
+
+    const ctx = createScreenContext(state);
+    Input(ctx, { id: 'mission', width: '100%' });
+
+    expect(state.hitboxes.get('mission')).toEqual({
+      id: 'mission',
+      x: 0,
+      y: 0,
+      width: 64,
+      height: 3,
+    });
+
+    const topBorderWidth = visibleWidth(
+      state.backBuffer
+        .slice(0, state.width)
+        .map((cell) => cell.char)
+        .join(''),
+    );
+    expect(topBorderWidth).toBe(64);
   });
 
   test('Input renders placeholder muted and typed value bright', () => {

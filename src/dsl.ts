@@ -13,6 +13,11 @@ import {
   lighten,
   rgb,
 } from './colors';
+import {
+  type Rect,
+  type RectInput,
+  resolveRect as resolveGeometryRect,
+} from './geometry';
 import { icon, init, replaceEmojis } from './icons';
 import {
   joinHorizontal,
@@ -28,6 +33,7 @@ import {
   rect,
   resolveSize,
   type SideColors,
+  type SizeUnit,
   type StyleOptions,
   type TableOptions,
 } from './layout';
@@ -84,6 +90,7 @@ export interface BuntiContext {
   state: ScreenState;
   width: number;
   height: number;
+  area: Rect;
   offsetX: number;
   offsetY: number;
   readonly cursorX: number;
@@ -142,13 +149,16 @@ export interface BuntiContext {
   focusNext(): void;
   hitbox(
     id: string,
-    bounds: { x?: number; y?: number; width: number; height: number },
+    bounds: RectInput,
   ): {
     box: Hitbox;
     hovered: boolean;
     pressed: boolean;
     clicked: boolean;
   };
+  measureWidth(width: SizeUnit | undefined, contentWidth?: number): number;
+  measureHeight(height: SizeUnit | undefined, contentHeight?: number): number;
+  resolveRect(bounds: RectInput): Rect;
   isHovered(id: string): boolean;
   isPressed(id: string): boolean;
   isClicked(id: string): boolean;
@@ -202,6 +212,7 @@ function createDSLContext(
     state,
     width: availableW,
     height: availableH,
+    area: { x: offsetX, y: offsetY, width: availableW, height: availableH },
     offsetX,
     offsetY,
     get cursorX() {
@@ -328,17 +339,9 @@ function createDSLContext(
       state.focusedId = state.focusableIds[nextIdx];
     },
 
-    hitbox(
-      id: string,
-      bounds: { x?: number; y?: number; width: number; height: number },
-    ) {
-      const box: Hitbox = {
-        id,
-        x: offsetX + (bounds.x ?? 0),
-        y: offsetY + (bounds.y ?? ctx.cursorY),
-        width: bounds.width,
-        height: bounds.height,
-      };
+    hitbox(id: string, bounds: RectInput) {
+      const rect = ctx.resolveRect(bounds);
+      const box: Hitbox = { id, ...rect };
       state.hitboxes.set(id, box);
       const hovered =
         state.mouseX >= box.x &&
@@ -349,6 +352,24 @@ function createDSLContext(
       const clicked = hovered && state.lastKey === 'click';
 
       return { box, hovered, pressed, clicked };
+    },
+
+    measureWidth(width: SizeUnit | undefined, contentWidth: number = 0) {
+      return Math.max(0, resolveSize(width, availableW, contentWidth));
+    },
+
+    measureHeight(height: SizeUnit | undefined, contentHeight: number = 0) {
+      return Math.max(0, resolveSize(height, availableH, contentHeight));
+    },
+
+    resolveRect(bounds: RectInput) {
+      return resolveGeometryRect(
+        { x: offsetX, y: offsetY, width: availableW, height: availableH },
+        {
+          ...bounds,
+          y: bounds.y ?? ctx.cursorY,
+        },
+      );
     },
 
     isHovered(id: string) {

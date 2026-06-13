@@ -18,14 +18,18 @@ export function Input(ctx: BuntiContext, props: InputProps) {
   const { box, color, focusable, state, useState, hitbox } = ctx;
 
   // 1. Mouse Hit-Testing
-  const w = props.width || 40;
-  const h = props.height || 3;
+  const contentWidth = 40;
+  const contentHeight = 3;
+  const w = props.width ?? contentWidth;
+  const h = props.height ?? contentHeight;
+  const resolvedW = ctx.measureWidth(w, contentWidth);
+  const resolvedH = ctx.measureHeight(h, contentHeight);
   const labelOffset = props.label ? 1 : 0;
 
   const interaction = hitbox(props.id, {
     y: ctx.cursorY + labelOffset,
-    width: w as number,
-    height: h as number,
+    width: resolvedW,
+    height: resolvedH,
   });
   const isHovered = interaction.hovered;
 
@@ -89,8 +93,8 @@ export function Input(ctx: BuntiContext, props: InputProps) {
 
   const field = box(
     {
-      width: w,
-      height: h,
+      width: resolvedW,
+      height: resolvedH,
       border: 'rounded',
       borderColor: borderCol,
       padding: [0, 1],

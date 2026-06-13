@@ -1,6 +1,7 @@
 import * as colors from './colors';
 import * as detect from './detect';
 import * as dsl from './dsl';
+import * as geometry from './geometry';
 import * as icons from './icons';
 import * as layout from './layout';
 import * as render from './render';
@@ -14,6 +15,8 @@ export type { TerminalCapabilities } from './detect';
 export { detectCapabilities } from './detect';
 export type { BuntiContext, DSLBoxOptions } from './dsl';
 export { KEYS, render } from './dsl';
+export type { Rect, RectInput } from './geometry';
+export { innerRect, resolveRect } from './geometry';
 export type { IconDefinition } from './icons';
 export {
   EMOJI_MAP,
@@ -67,6 +70,7 @@ export const bunti = {
   ...colors,
   ...state,
   ...dsl,
+  ...geometry,
 };
 
 export default bunti;

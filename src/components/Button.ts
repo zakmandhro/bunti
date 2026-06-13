@@ -24,10 +24,13 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const isGhost = props.variant === 'ghost';
   const isPill = props.variant === 'primary';
   const filled = isPill || props.variant === 'danger';
-  const w = props.width || Math.max(12, finalLabel.length + (isPill ? 6 : 4));
-  const h = props.height || (filled || isGhost ? 1 : 3);
+  const contentWidth = Math.max(12, finalLabel.length + (isPill ? 6 : 4));
+  const contentHeight = filled || isGhost ? 1 : 3;
+  const w = props.width ?? contentWidth;
+  const h = props.height ?? contentHeight;
 
-  const resolvedW = typeof w === 'number' ? w : ctx.width;
+  const resolvedW = ctx.measureWidth(w, contentWidth);
+  const resolvedH = ctx.measureHeight(h, contentHeight);
   const relativeX =
     props.x !== undefined
       ? props.x
@@ -38,7 +41,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     x: relativeX,
     y: props.y,
     width: resolvedW,
-    height: h as number,
+    height: resolvedH,
   });
   const isHovered = interaction.hovered;
   const isActive = isSelected || isHovered;
@@ -89,8 +92,8 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     {
       x: props.x,
       y: props.y,
-      width: w,
-      height: h,
+      width: resolvedW,
+      height: resolvedH,
       border: filled || isGhost ? 'none' : props.border || 'rounded',
       borderColor: borderCol,
       bgColor: filled && !isPill ? bg : undefined,
