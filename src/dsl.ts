@@ -14,9 +14,14 @@ import {
   rgb,
 } from './colors';
 import {
+  type PlacedRectInput,
+  type PlacedRectOptions,
   type Rect,
   type RectInput,
   resolveRect as resolveGeometryRect,
+  resolvePlacedRect,
+  type SplitOptions,
+  splitRect as splitGeometryRect,
 } from './geometry';
 import { icon, init, replaceEmojis } from './icons';
 import {
@@ -31,9 +36,7 @@ import {
   viewport as layoutViewport,
   wallpaper as layoutWallpaper,
   rect,
-  resolveSize,
   type SideColors,
-  type SizeUnit,
   type StyleOptions,
   type TableOptions,
 } from './layout';
@@ -91,6 +94,7 @@ export interface BuntiContext {
   width: number;
   height: number;
   area: Rect;
+  isRoot: boolean;
   offsetX: number;
   offsetY: number;
   readonly cursorX: number;
@@ -156,9 +160,9 @@ export interface BuntiContext {
     pressed: boolean;
     clicked: boolean;
   };
-  measureWidth(width: SizeUnit | undefined, contentWidth?: number): number;
-  measureHeight(height: SizeUnit | undefined, contentHeight?: number): number;
   resolveRect(bounds: RectInput): Rect;
+  resolveLocalRect(bounds: PlacedRectInput, options?: PlacedRectOptions): Rect;
+  split(options: SplitOptions): Rect[];
   isHovered(id: string): boolean;
   isPressed(id: string): boolean;
   isClicked(id: string): boolean;
@@ -196,6 +200,43 @@ interface DSLState {
   stack: string[][];
 }
 
+function boxBorderInset(options: DSLBoxOptions): number {
+  return options.border === 'none' || !options.border ? 0 : 1;
+}
+
+function resolveBoxArea(
+  parent: Rect,
+  options: DSLBoxOptions,
+  contentWidth: number,
+  contentHeight: number,
+): Rect {
+  return resolvePlacedRect(parent, {
+    x: options.x,
+    y: options.y,
+    width:
+      options.anchor === 'top' || options.anchor === 'bottom'
+        ? parent.width
+        : options.width,
+    height: options.height,
+    anchor: options.anchor,
+    contentWidth,
+    contentHeight,
+  });
+}
+
+function resolveBoxInnerArea(area: Rect, options: DSLBoxOptions): Rect {
+  const borderInset = boxBorderInset(options);
+  const px = options.padding?.[1] ?? 0;
+  const py = options.padding?.[0] ?? 0;
+
+  return {
+    x: area.x + borderInset + px,
+    y: area.y + borderInset + py,
+    width: Math.max(0, area.width - borderInset * 2 - px * 2),
+    height: Math.max(0, area.height - borderInset * 2 - py * 2),
+  };
+}
+
 /**
  * Common Context Factory: Provided to every closure.
  */
@@ -206,6 +247,7 @@ function createDSLContext(
   availableH: number,
   offsetX: number = 0,
   offsetY: number = 0,
+  isRoot: boolean = false,
 ): BuntiContext {
   const ctx: BuntiContext = {
     color: { ...pc, darken, lighten, rgb, fg, bg } as any,
@@ -213,6 +255,7 @@ function createDSLContext(
     width: availableW,
     height: availableH,
     area: { x: offsetX, y: offsetY, width: availableW, height: availableH },
+    isRoot,
     offsetX,
     offsetY,
     get cursorX() {
@@ -354,14 +397,6 @@ function createDSLContext(
       return { box, hovered, pressed, clicked };
     },
 
-    measureWidth(width: SizeUnit | undefined, contentWidth: number = 0) {
-      return Math.max(0, resolveSize(width, availableW, contentWidth));
-    },
-
-    measureHeight(height: SizeUnit | undefined, contentHeight: number = 0) {
-      return Math.max(0, resolveSize(height, availableH, contentHeight));
-    },
-
     resolveRect(bounds: RectInput) {
       return resolveGeometryRect(
         { x: offsetX, y: offsetY, width: availableW, height: availableH },
@@ -369,6 +404,21 @@ function createDSLContext(
           ...bounds,
           y: bounds.y ?? ctx.cursorY,
         },
+      );
+    },
+
+    resolveLocalRect(bounds: PlacedRectInput, options?: PlacedRectOptions) {
+      return resolvePlacedRect(
+        { x: 0, y: 0, width: availableW, height: availableH },
+        bounds,
+        options,
+      );
+    },
+
+    split(options: SplitOptions) {
+      return splitGeometryRect(
+        { x: 0, y: 0, width: availableW, height: availableH },
+        options,
       );
     },
 
@@ -463,54 +513,27 @@ function createDSLContext(
     },
 
     box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void) {
-      const borderOffset = options.border === 'none' || !options.border ? 0 : 2;
-      const px = options.padding?.[1] ?? 0;
-      const py = options.padding?.[0] ?? 0;
-
-      // Measure parent-relative dimensions
-      const resolvedW = resolveSize(options.width, availableW, 0);
-      const innerW = resolvedW
-        ? Math.max(0, resolvedW - borderOffset - px * 2)
-        : availableW;
-
-      const resolvedH = resolveSize(options.height, availableH, 0);
-      const innerH = resolvedH
-        ? Math.max(0, resolvedH - borderOffset - py * 2)
-        : availableH;
+      const preContentW = options.width === undefined ? availableW : 0;
+      const preContentH = options.height === undefined ? availableH : 0;
+      const preArea = resolveBoxArea(
+        ctx.area,
+        options,
+        preContentW,
+        preContentH,
+      );
+      const innerArea = resolveBoxInnerArea(preArea, options);
 
       const subContents: string[] = [];
       dslState.stack.push(dslState.activeContents);
       dslState.activeContents = subContents;
 
-      const boxW = resolvedW || availableW;
-      const boxH = resolvedH || availableH;
-
-      let absX = offsetX;
-      let absY = offsetY;
-
-      if (options.x !== undefined) {
-        absX += options.x;
-      } else {
-        absX += Math.max(0, Math.floor((availableW - boxW) / 2));
-      }
-
-      if (options.y !== undefined) {
-        absY += options.y;
-      } else if (options.anchor === 'top') {
-        absY = offsetY;
-      } else if (options.anchor === 'bottom') {
-        absY = offsetY + availableH - boxH;
-      } else {
-        absY += Math.max(0, Math.floor((availableH - boxH) / 2));
-      }
-
       const subCtx = createDSLContext(
         state,
         dslState,
-        innerW,
-        innerH,
-        absX + borderOffset / 2 + px,
-        absY + borderOffset / 2 + py,
+        innerArea.width,
+        innerArea.height,
+        innerArea.x,
+        innerArea.y,
       );
       callback(subCtx);
 
@@ -591,7 +614,15 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     stack: [],
   };
 
-  const base = createDSLContext(state, dslState, state.width, state.height);
+  const base = createDSLContext(
+    state,
+    dslState,
+    state.width,
+    state.height,
+    0,
+    0,
+    true,
+  );
 
   const flushFlow = () => {
     const flow = dslState.activeContents.join('');
@@ -603,89 +634,61 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     options: DSLBoxOptions,
     callback: (ctx: BuntiContext) => void,
   ) => {
-    // 1. Resolve Anchor dimensions
-    if (options.anchor === 'top') {
-      options.x = 0;
-      options.y = 0;
-      options.width = state.width;
-    } else if (options.anchor === 'bottom') {
-      options.x = 0;
-      options.width = state.width;
-    }
-
-    const borderOffset = options.border === 'none' || !options.border ? 0 : 2;
-    const px = options.padding?.[1] ?? 0;
-    const py = options.padding?.[0] ?? 0;
-
-    // 2. Resolve dimensions (top-level uses screen width)
-    const resolvedW = resolveSize(options.width, state.width, 0);
-    const innerW = resolvedW
-      ? Math.max(0, resolvedW - borderOffset - px * 2)
-      : state.width;
-    const resolvedH = resolveSize(options.height, state.height, 0);
-    const innerH = resolvedH
-      ? Math.max(0, resolvedH - borderOffset - py * 2)
-      : state.height;
+    const boxOptions: DSLBoxOptions =
+      options.anchor === 'top' || options.anchor === 'bottom'
+        ? { ...options, width: state.width }
+        : options;
+    const preArea = resolveBoxArea(
+      base.area,
+      boxOptions,
+      boxOptions.width === undefined ? state.width : 0,
+      boxOptions.height === undefined ? state.height : 0,
+    );
+    const innerArea = resolveBoxInnerArea(preArea, boxOptions);
 
     const subContents: string[] = [];
     dslState.stack.push(dslState.activeContents);
     dslState.activeContents = subContents;
 
-    let x = options.x !== undefined ? options.x : 0; // Temp assignment for offset
-    let y = options.y !== undefined ? options.y : 0;
-    if (options.anchor === 'top') {
-      y = 0;
-    }
-
     const subCtx = createDSLContext(
       state,
       dslState,
-      innerW,
-      innerH,
-      x + borderOffset / 2 + px,
-      y + borderOffset / 2 + py,
+      innerArea.width,
+      innerArea.height,
+      innerArea.x,
+      innerArea.y,
     );
     callback(subCtx);
 
     dslState.activeContents = dslState.stack.pop()!;
 
     const contentStr = subContents.join('');
-    const styledBox = layoutBox(contentStr, options, state.width, state.height);
+    const styledBox = layoutBox(
+      contentStr,
+      boxOptions,
+      state.width,
+      state.height,
+    );
 
     const lines = styledBox.split('\n');
     const lineWidths = lines.map(visibleWidth);
-    const boxW = resolveSize(
-      options.width,
-      state.width,
+    const boxArea = resolveBoxArea(
+      base.area,
+      boxOptions,
       lineWidths.length > 0 ? Math.max(...lineWidths) : 0,
+      lines.length,
     );
-    const boxH = resolveSize(options.height, state.height, lines.length);
 
-    x =
-      options.x !== undefined
-        ? options.x
-        : Math.max(0, Math.floor((state.width - boxW) / 2));
-    y =
-      options.y !== undefined
-        ? options.y
-        : Math.max(0, Math.floor((state.height - boxH) / 2));
-
-    if (options.anchor === 'top') {
-      y = 0;
-    } else if (options.anchor === 'bottom') {
-      y = state.height - boxH;
-    }
-
-    if (options.bgColor || options.color) {
-      rect(state, x, y, boxW, boxH, {
+    if (boxOptions.bgColor || boxOptions.color) {
+      rect(state, boxArea.x, boxArea.y, boxArea.width, boxArea.height, {
         char: ' ',
-        bg: options.bgColor,
-        fg: options.color === 'blank' ? undefined : options.color,
+        bg: boxOptions.bgColor,
+        fg: boxOptions.color === 'blank' ? undefined : boxOptions.color,
       });
     }
 
-    layoutBlit(state, x, y, styledBox);
-    return base;
+    layoutBlit(state, boxArea.x, boxArea.y, styledBox);
+    return styledBox;
   };
 
   return {

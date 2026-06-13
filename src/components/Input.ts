@@ -15,27 +15,26 @@ export interface InputProps extends StyleOptions {
  * Managed state HOC with cursor simulation, keyboard interception, and mouse focus.
  */
 export function Input(ctx: BuntiContext, props: InputProps) {
-  const { box, color, focusable, state, useState, hitbox } = ctx;
+  const { box, color, focusable, state, useState, hitbox, resolveLocalRect } =
+    ctx;
 
   // 1. Mouse Hit-Testing
   const contentWidth = 40;
   const contentHeight = 3;
-  const w = props.width ?? contentWidth;
-  const h = props.height ?? contentHeight;
-  const resolvedW = ctx.measureWidth(w, contentWidth);
-  const resolvedH = ctx.measureHeight(h, contentHeight);
-  const relativeX =
-    props.width === '100%'
-      ? 0
-      : Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
   const labelOffset = props.label ? 1 : 0;
-  const relativeY = ctx.cursorY + labelOffset;
+  const area = resolveLocalRect({
+    y: ctx.cursorY + labelOffset,
+    width: props.width ?? contentWidth,
+    height: props.height ?? contentHeight,
+    contentWidth,
+    contentHeight,
+  });
 
   const interaction = hitbox(props.id, {
-    x: relativeX,
-    y: relativeY,
-    width: resolvedW,
-    height: resolvedH,
+    x: area.x,
+    y: area.y,
+    width: area.width,
+    height: area.height,
   });
   const isHovered = interaction.hovered;
 
@@ -99,10 +98,10 @@ export function Input(ctx: BuntiContext, props: InputProps) {
 
   const field = box(
     {
-      x: relativeX,
-      y: relativeY,
-      width: resolvedW,
-      height: resolvedH,
+      x: area.x,
+      y: area.y,
+      width: area.width,
+      height: area.height,
       border: 'rounded',
       borderColor: borderCol,
       padding: [0, 1],
@@ -117,6 +116,8 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     ctx.text(color.fg(labelColor, props.label));
     ctx.text('\n');
   }
-  ctx.text(field);
+  if (!ctx.isRoot) {
+    ctx.text(field);
+  }
   return field;
 }

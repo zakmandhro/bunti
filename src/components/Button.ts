@@ -14,7 +14,7 @@ export interface ButtonProps extends DSLBoxOptions {
  * Fully reactive to keyboard focus and action events.
  */
 export function Button(ctx: BuntiContext, props: ButtonProps) {
-  const { box, color, focusable, state, hitbox } = ctx;
+  const { box, color, focusable, state, hitbox, resolveLocalRect } = ctx;
 
   // 1. Register in the global focus loop (for TAB navigation)
   const isSelected = focusable(props.id);
@@ -26,23 +26,19 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const filled = isPill || props.variant === 'danger';
   const contentWidth = Math.max(12, finalLabel.length + (isPill ? 6 : 4));
   const contentHeight = filled || isGhost ? 1 : 3;
-  const w = props.width ?? contentWidth;
-  const h = props.height ?? contentHeight;
-
-  const resolvedW = ctx.measureWidth(w, contentWidth);
-  const resolvedH = ctx.measureHeight(h, contentHeight);
-  const relativeX =
-    props.x !== undefined
-      ? props.x
-      : props.width === '100%'
-        ? 0
-        : Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
-  const relativeY = props.y ?? ctx.cursorY;
+  const area = resolveLocalRect({
+    x: props.x,
+    y: props.y ?? ctx.cursorY,
+    width: props.width ?? contentWidth,
+    height: props.height ?? contentHeight,
+    contentWidth,
+    contentHeight,
+  });
   const interaction = hitbox(props.id, {
-    x: relativeX,
-    y: relativeY,
-    width: resolvedW,
-    height: resolvedH,
+    x: area.x,
+    y: area.y,
+    width: area.width,
+    height: area.height,
   });
   const isHovered = interaction.hovered;
   const isActive = isSelected || isHovered;
@@ -91,10 +87,10 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
 
   return box(
     {
-      x: relativeX,
-      y: relativeY,
-      width: resolvedW,
-      height: resolvedH,
+      x: area.x,
+      y: area.y,
+      width: area.width,
+      height: area.height,
       border: filled || isGhost ? 'none' : props.border || 'rounded',
       borderColor: borderCol,
       bgColor: filled && !isPill ? bg : undefined,

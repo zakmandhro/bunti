@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import pc from 'picocolors';
-import { Button, Input } from '../src/components';
+import { Box, Button, Input } from '../src/components';
 import { createScreenContext } from '../src/dsl';
 import {
   box,
   createGradient,
   joinHorizontal,
   list,
+  splitRect,
   stripAnsi,
   truncate,
   visibleWidth,
@@ -145,6 +146,67 @@ describe('Bunti Core Engine', () => {
     expect(rect).toEqual({ x: 4, y: 2, width: 40, height: 3 });
   });
 
+  test('context resolves local placed rects for component layout', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.height = 20;
+
+    const ctx = createScreenContext(state);
+    const rect = ctx.resolveLocalRect({
+      y: 4,
+      width: 20,
+      height: 3,
+    });
+
+    expect(rect).toEqual({ x: 30, y: 4, width: 20, height: 3 });
+  });
+
+  test('splitRect creates responsive tracks with fixed percent and fill sizes', () => {
+    const areas = splitRect(
+      { x: 0, y: 0, width: 100, height: 20 },
+      {
+        direction: 'horizontal',
+        constraints: [20, '50%', '1fr'],
+        gap: 2,
+      },
+    );
+
+    expect(areas).toEqual([
+      { x: 0, y: 0, width: 20, height: 20 },
+      { x: 22, y: 0, width: 48, height: 20 },
+      { x: 72, y: 0, width: 28, height: 20 },
+    ]);
+  });
+
+  test('context split returns local layout rects', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.height = 20;
+
+    const ctx = createScreenContext(state);
+    const [left, right] = ctx.split({
+      direction: 'horizontal',
+      constraints: ['1fr', '1fr'],
+      gap: 4,
+    });
+
+    expect(left).toEqual({ x: 0, y: 0, width: 38, height: 20 });
+    expect(right).toEqual({ x: 42, y: 0, width: 38, height: 20 });
+  });
+
+  test('Box component renders through the shared context box path', () => {
+    const state = createScreenState();
+    state.width = 20;
+    state.height = 6;
+
+    const ctx = createScreenContext(state);
+    Box(ctx, { width: 10, height: 3, border: 'rounded' }, ({ text }) => {
+      text('ok');
+    });
+
+    expect(state.backBuffer[25]?.char).toBe('╭');
+  });
+
   test('keyboard input is normalized and requests an immediate rerender', () => {
     const state = createScreenState();
     let ticks = 0;
@@ -252,6 +314,7 @@ describe('Bunti Core Engine', () => {
 
     const ctx = createScreenContext(state);
     Input(ctx, { id: 'mission', width: '100%' });
+    ctx.flushFlow();
 
     expect(state.hitboxes.get('mission')).toEqual({
       id: 'mission',
@@ -276,6 +339,7 @@ describe('Bunti Core Engine', () => {
 
     const ctx = createScreenContext(state);
     Input(ctx, { id: 'mission', width: 20 });
+    ctx.flushFlow();
 
     expect(state.hitboxes.get('mission')).toEqual({
       id: 'mission',
@@ -296,6 +360,7 @@ describe('Bunti Core Engine', () => {
       placeholder: 'Enter mission name...',
       width: 40,
     });
+    ctx.flushFlow();
     const placeholderFg = placeholderState.backBuffer.find(
       (cell) => cell.char === 'E',
     )?.fgCode;
@@ -305,6 +370,7 @@ describe('Bunti Core Engine', () => {
     valueState.componentState.set('mission', 'Alpha');
     ctx = createScreenContext(valueState);
     Input(ctx, { id: 'mission', label: 'MISSION:', width: 40 });
+    ctx.flushFlow();
     const valueFg = valueState.backBuffer.find(
       (cell) => cell.char === 'A',
     )?.fgCode;
