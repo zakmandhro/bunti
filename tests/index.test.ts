@@ -270,6 +270,44 @@ describe('Bunti Core Engine', () => {
     expect(idleFg).not.toBe(hoverFg);
   });
 
+  test('Button hover hit testing respects explicit y', () => {
+    const idleState = createScreenState();
+    idleState.width = 80;
+    idleState.focusedId = 'other';
+    idleState.mouseX = 34;
+    idleState.mouseY = 0;
+    let ctx = createScreenContext(idleState);
+    Button(ctx, {
+      id: 'deploy',
+      label: 'Deploy',
+      variant: 'primary',
+      width: 16,
+      y: 2,
+    });
+    const idleFg = idleState.backBuffer.find(
+      (cell) => cell.char === '',
+    )?.fgCode;
+
+    const hoverState = createScreenState();
+    hoverState.width = 80;
+    hoverState.focusedId = 'other';
+    hoverState.mouseX = 34;
+    hoverState.mouseY = 2;
+    ctx = createScreenContext(hoverState);
+    Button(ctx, {
+      id: 'deploy',
+      label: 'Deploy',
+      variant: 'primary',
+      width: 16,
+      y: 2,
+    });
+    const hoverFg = hoverState.backBuffer.find(
+      (cell) => cell.char === '',
+    )?.fgCode;
+
+    expect(idleFg).not.toBe(hoverFg);
+  });
+
   test('Button pressed state uses color values for backgrounds', () => {
     const state = createScreenState();
     state.width = 80;

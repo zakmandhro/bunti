@@ -44,7 +44,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
       : props.width === '100%'
         ? offsetX
         : offsetX + Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
-  const absY = offsetY + ctx.cursorY;
+  const absY = offsetY + (props.y ?? ctx.cursorY);
 
   const isHovered =
     mouseX >= absX &&
@@ -98,6 +98,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   return box(
     {
       x: props.x,
+      y: props.y,
       width: w,
       height: h,
       border: filled || isGhost ? 'none' : props.border || 'rounded',
