@@ -21,8 +21,8 @@ export interface PlacedRectInput extends RectInput {
 }
 
 export interface PlacedRectOptions {
-  defaultX?: 'left' | 'center';
-  defaultY?: 'top' | 'center';
+  defaultX?: 'left' | 'center' | 'right';
+  defaultY?: 'top' | 'center' | 'bottom';
 }
 
 export type Direction = 'horizontal' | 'vertical';
@@ -70,20 +70,20 @@ export function resolvePlacedRect(
   let x = input.x;
   if (input.anchor === 'top' || input.anchor === 'bottom') x = 0;
   if (x === undefined) {
-    x =
-      defaultX === 'center'
-        ? Math.max(0, Math.floor((parent.width - width) / 2))
-        : 0;
+    if (defaultX === 'right') x = Math.max(0, parent.width - width);
+    else if (defaultX === 'center')
+      x = Math.max(0, Math.floor((parent.width - width) / 2));
+    else x = 0;
   }
 
   let y = input.y;
   if (input.anchor === 'top') y = 0;
   else if (input.anchor === 'bottom') y = parent.height - height;
   if (y === undefined) {
-    y =
-      defaultY === 'center'
-        ? Math.max(0, Math.floor((parent.height - height) / 2))
-        : 0;
+    if (defaultY === 'bottom') y = Math.max(0, parent.height - height);
+    else if (defaultY === 'center')
+      y = Math.max(0, Math.floor((parent.height - height) / 2));
+    else y = 0;
   }
 
   return {

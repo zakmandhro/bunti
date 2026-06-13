@@ -161,6 +161,23 @@ describe('Bunti Core Engine', () => {
     expect(rect).toEqual({ x: 30, y: 4, width: 20, height: 3 });
   });
 
+  test('context resolves right and bottom aligned local rects', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.height = 20;
+
+    const ctx = createScreenContext(state);
+    const rect = ctx.resolveLocalRect(
+      {
+        width: 20,
+        height: 3,
+      },
+      { defaultX: 'right', defaultY: 'bottom' },
+    );
+
+    expect(rect).toEqual({ x: 60, y: 17, width: 20, height: 3 });
+  });
+
   test('splitRect creates responsive tracks with fixed percent and fill sizes', () => {
     const areas = splitRect(
       { x: 0, y: 0, width: 100, height: 20 },

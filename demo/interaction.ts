@@ -1,4 +1,4 @@
-import { Button, Input } from '../src/components';
+import { Box, Button, Input } from '../src/components';
 import { demo } from './demo-layout';
 
 /**
@@ -6,29 +6,40 @@ import { demo } from './demo-layout';
  */
 
 demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
-  const { box, color, icon } = ctx;
+  const { color, icon } = ctx;
   const W = Math.min(bounds.w - 8, 72);
-  const X = bounds.centerW(W);
+  const panel = bounds.place({
+    y: 1,
+    width: W,
+    height: Math.min(bounds.h - 1, 13),
+  });
   const compact = W < 60;
 
-  box(
+  Box(
+    ctx,
     {
-      x: X,
-      y: bounds.y + 1,
-      width: W,
-      height: Math.min(bounds.h - 1, 13),
+      x: panel.x,
+      y: panel.y,
+      width: panel.width,
+      height: panel.height,
       border: 'rounded',
       borderColor: 'bunti-blue',
       padding: [1, compact ? 1 : 3],
       align: 'left',
     },
     (sub) => {
-      const panelInnerW = W - 2 - (compact ? 2 : 6);
       const ghostW = 5;
       const primaryW = compact ? 14 : 15;
       const actionGap = 2;
       const actionRowW = ghostW + actionGap + primaryW;
-      const actionLeft = Math.max(0, panelInnerW - actionRowW);
+      const actionRow = sub.resolveLocalRect(
+        {
+          y: 8,
+          width: actionRowW,
+          height: 1,
+        },
+        { defaultX: 'right', defaultY: 'top' },
+      );
       const actionY = 8;
 
       sub.text(color.cyan(color.bold('TACTICAL CONTROLS')));
@@ -53,7 +64,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
         label: 'Abort',
         variant: 'ghost',
         width: ghostW,
-        x: actionLeft,
+        x: actionRow.x,
         y: actionY,
         detach: true,
       }) as unknown as string;
@@ -64,7 +75,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
         icon: icon('rocket'),
         variant: 'primary',
         width: primaryW,
-        x: actionLeft + ghostW + actionGap,
+        x: actionRow.x + ghostW + actionGap,
         y: actionY,
         detach: true,
         onClick: () => {
@@ -73,7 +84,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
       }) as unknown as string;
 
       sub.text(
-        `${' '.repeat(actionLeft)}${abort}${' '.repeat(actionGap)}${deploy}`,
+        `${' '.repeat(actionRow.x)}${abort}${' '.repeat(actionGap)}${deploy}`,
       );
     },
   );
