@@ -37,9 +37,10 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
       : props.width === '100%'
         ? 0
         : Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
+  const relativeY = props.y ?? ctx.cursorY;
   const interaction = hitbox(props.id, {
     x: relativeX,
-    y: props.y,
+    y: relativeY,
     width: resolvedW,
     height: resolvedH,
   });
@@ -90,8 +91,8 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
 
   return box(
     {
-      x: props.x,
-      y: props.y,
+      x: relativeX,
+      y: relativeY,
       width: resolvedW,
       height: resolvedH,
       border: filled || isGhost ? 'none' : props.border || 'rounded',

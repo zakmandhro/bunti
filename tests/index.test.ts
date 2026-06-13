@@ -270,6 +270,23 @@ describe('Bunti Core Engine', () => {
     expect(topBorderWidth).toBe(64);
   });
 
+  test('Input centered sizing shares render and hitbox geometry', () => {
+    const state = createScreenState();
+    state.width = 80;
+
+    const ctx = createScreenContext(state);
+    Input(ctx, { id: 'mission', width: 20 });
+
+    expect(state.hitboxes.get('mission')).toEqual({
+      id: 'mission',
+      x: 30,
+      y: 0,
+      width: 20,
+      height: 3,
+    });
+    expect(state.backBuffer[30]?.char).toBe('╭');
+  });
+
   test('Input renders placeholder muted and typed value bright', () => {
     const placeholderState = createScreenState();
     let ctx = createScreenContext(placeholderState);

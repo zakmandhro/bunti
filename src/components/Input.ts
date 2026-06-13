@@ -24,10 +24,16 @@ export function Input(ctx: BuntiContext, props: InputProps) {
   const h = props.height ?? contentHeight;
   const resolvedW = ctx.measureWidth(w, contentWidth);
   const resolvedH = ctx.measureHeight(h, contentHeight);
+  const relativeX =
+    props.width === '100%'
+      ? 0
+      : Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
   const labelOffset = props.label ? 1 : 0;
+  const relativeY = ctx.cursorY + labelOffset;
 
   const interaction = hitbox(props.id, {
-    y: ctx.cursorY + labelOffset,
+    x: relativeX,
+    y: relativeY,
     width: resolvedW,
     height: resolvedH,
   });
@@ -93,6 +99,8 @@ export function Input(ctx: BuntiContext, props: InputProps) {
 
   const field = box(
     {
+      x: relativeX,
+      y: relativeY,
       width: resolvedW,
       height: resolvedH,
       border: 'rounded',
