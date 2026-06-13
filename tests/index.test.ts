@@ -4,6 +4,7 @@ import { Button, Input } from '../src/components';
 import { createScreenContext } from '../src/dsl';
 import {
   box,
+  createGradient,
   joinHorizontal,
   list,
   stripAnsi,
@@ -202,5 +203,18 @@ describe('Bunti Core Engine', () => {
     // border(1) + space(0) + content(18) + border(1) = 20
     expect(visibleWidth(lines[1] ?? '')).toBe(20);
     expect(lines[1]).toContain('…');
+  });
+
+  test('box string renderer ignores gradient backgrounds', () => {
+    const out = box('gradient', {
+      bgColor: {
+        colors: createGradient(['red', 'blue'], 2),
+        direction: 'horizontal',
+        steps: 2,
+      },
+    });
+
+    expect(out).toContain('gradient');
+    expect(out).not.toContain('[object Object]');
   });
 });

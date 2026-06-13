@@ -310,6 +310,11 @@ export function box(
     typeof color === 'function' ? color : (s: string) => fg(color, s);
   const wrapBg = (s: string) => {
     if (!options.bgColor) return s;
+    if (typeof options.bgColor === 'object' && 'colors' in options.bgColor) {
+      // Gradients cannot be wrapped as a single ANSI string because they change per-cell.
+      // In string-building mode, we must ignore gradients. They are handled in absolute rect mode.
+      return s;
+    }
     const { resolveColor } = require('./colors');
     const code = resolveColor(options.bgColor);
     const prefix =
