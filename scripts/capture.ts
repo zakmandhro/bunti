@@ -2,7 +2,7 @@ import { bunti } from '../src/index';
 
 // We'll run the dashboard demo and capture its exact ANSI buffer string.
 bunti.render(
-  ({ wallpaper, box, color, width, height, blit, list }) => {
+  ({ wallpaper, box, color, width, height, list }) => {
     wallpaper('#0a0a0b');
 
     // 1. Header
