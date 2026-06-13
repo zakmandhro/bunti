@@ -15,37 +15,21 @@ export interface InputProps extends StyleOptions {
  * Managed state HOC with cursor simulation, keyboard interception, and mouse focus.
  */
 export function Input(ctx: BuntiContext, props: InputProps) {
-  const {
-    box,
-    color,
-    focusable,
-    state,
-    useState,
-    offsetX,
-    offsetY,
-    mouseX,
-    mouseY,
-    isMouseDown,
-  } = ctx;
+  const { box, color, focusable, state, useState, hitbox } = ctx;
 
   // 1. Mouse Hit-Testing
   const _finalLabelLen = props.label ? props.label.length + 1 : 0;
   const w = props.width || 40;
   const h = props.height || 3;
 
-  // Calculate absolute coordinates based on parent offsets and current flow cursor
-  // Assuming 100% width, x offset is just parent's offsetX.
-  const absX = offsetX;
-  const absY = offsetY + ctx.cursorY;
-
-  const isHovered =
-    mouseX >= absX &&
-    mouseX < absX + (w as number) &&
-    mouseY >= absY &&
-    mouseY < absY + (h as number);
+  const interaction = hitbox(props.id, {
+    width: w as number,
+    height: h as number,
+  });
+  const isHovered = interaction.hovered;
 
   // If clicked, force focus state
-  if (isHovered && isMouseDown && state.mouseButton === 0) {
+  if (interaction.pressed) {
     state.focusedId = props.id;
   }
 

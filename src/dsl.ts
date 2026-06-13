@@ -36,6 +36,7 @@ import {
   type Cell,
   clearBackBuffer,
   createScreenState,
+  type Hitbox,
   type RGB,
   type ScreenOptions,
   type ScreenState,
@@ -139,6 +140,18 @@ export interface BuntiContext {
   isFocused(id: string): boolean;
   focus(id: string): void;
   focusNext(): void;
+  hitbox(
+    id: string,
+    bounds: { x?: number; y?: number; width: number; height: number },
+  ): {
+    box: Hitbox;
+    hovered: boolean;
+    pressed: boolean;
+    clicked: boolean;
+  };
+  isHovered(id: string): boolean;
+  isPressed(id: string): boolean;
+  isClicked(id: string): boolean;
 
   list(id: string, items: string[], options?: ListOptions): BuntiContext;
   table(rows: string[][], options?: TableOptions): BuntiContext;
@@ -313,6 +326,48 @@ function createDSLContext(
       const idx = state.focusableIds.indexOf(state.focusedId || '');
       const nextIdx = (idx + 1) % state.focusableIds.length;
       state.focusedId = state.focusableIds[nextIdx];
+    },
+
+    hitbox(
+      id: string,
+      bounds: { x?: number; y?: number; width: number; height: number },
+    ) {
+      const box: Hitbox = {
+        id,
+        x: offsetX + (bounds.x ?? 0),
+        y: offsetY + (bounds.y ?? ctx.cursorY),
+        width: bounds.width,
+        height: bounds.height,
+      };
+      state.hitboxes.set(id, box);
+      const hovered =
+        state.mouseX >= box.x &&
+        state.mouseX < box.x + box.width &&
+        state.mouseY >= box.y &&
+        state.mouseY < box.y + box.height;
+      const pressed = hovered && state.isMouseDown && state.mouseButton === 0;
+      const clicked = hovered && state.lastKey === 'click';
+
+      return { box, hovered, pressed, clicked };
+    },
+
+    isHovered(id: string) {
+      const box = state.hitboxes.get(id);
+      if (!box) return false;
+      return (
+        state.mouseX >= box.x &&
+        state.mouseX < box.x + box.width &&
+        state.mouseY >= box.y &&
+        state.mouseY < box.y + box.height
+      );
+    },
+
+    isPressed(id: string) {
+      return ctx.isHovered(id) && state.isMouseDown && state.mouseButton === 0;
+    },
+
+    isClicked(id: string) {
+      return ctx.isHovered(id) && state.lastKey === 'click';
     },
 
     list(id: string, items: string[], options: ListOptions = {}) {
@@ -508,6 +563,7 @@ export function createScreenContext(state: ScreenState): BuntiContext {
   }
 
   state.focusableIds = []; // Rebuild from this frame's rendered focusables.
+  state.hitboxes = new Map(); // Rebuild from this frame's interactive geometry.
 
   const dslState: DSLState = {
     activeContents: [],

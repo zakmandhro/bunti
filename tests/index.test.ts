@@ -83,6 +83,52 @@ describe('Bunti Core Engine', () => {
     expect(state.focusedId).toBe('two');
   });
 
+  test('context hitbox registers relative interactive geometry', () => {
+    const state = createScreenState();
+    state.mouseX = 12;
+    state.mouseY = 4;
+
+    const ctx = createScreenContext(state);
+    const result = ctx.hitbox('control', {
+      x: 10,
+      y: 3,
+      width: 5,
+      height: 2,
+    });
+
+    expect(result.hovered).toBe(true);
+    expect(ctx.isHovered('control')).toBe(true);
+    expect(state.hitboxes.get('control')).toEqual({
+      id: 'control',
+      x: 10,
+      y: 3,
+      width: 5,
+      height: 2,
+    });
+  });
+
+  test('context hitbox reports pressed and clicked states centrally', () => {
+    const state = createScreenState();
+    state.mouseX = 2;
+    state.mouseY = 1;
+    state.mouseButton = 0;
+    state.isMouseDown = true;
+    state.lastKey = 'click';
+
+    const ctx = createScreenContext(state);
+    const result = ctx.hitbox('control', {
+      x: 0,
+      y: 0,
+      width: 4,
+      height: 2,
+    });
+
+    expect(result.pressed).toBe(true);
+    expect(result.clicked).toBe(true);
+    expect(ctx.isPressed('control')).toBe(true);
+    expect(ctx.isClicked('control')).toBe(true);
+  });
+
   test('keyboard input is normalized and requests an immediate rerender', () => {
     const state = createScreenState();
     let ticks = 0;

@@ -14,17 +14,7 @@ export interface ButtonProps extends DSLBoxOptions {
  * Fully reactive to keyboard focus and action events.
  */
 export function Button(ctx: BuntiContext, props: ButtonProps) {
-  const {
-    box,
-    color,
-    focusable,
-    state,
-    offsetX,
-    offsetY,
-    mouseX,
-    mouseY,
-    isMouseDown,
-  } = ctx;
+  const { box, color, focusable, state, hitbox } = ctx;
 
   // 1. Register in the global focus loop (for TAB navigation)
   const isSelected = focusable(props.id);
@@ -38,19 +28,19 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const h = props.height || (filled || isGhost ? 1 : 3);
 
   const resolvedW = typeof w === 'number' ? w : ctx.width;
-  const absX =
+  const relativeX =
     props.x !== undefined
-      ? offsetX + props.x
+      ? props.x
       : props.width === '100%'
-        ? offsetX
-        : offsetX + Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
-  const absY = offsetY + (props.y ?? ctx.cursorY);
-
-  const isHovered =
-    mouseX >= absX &&
-    mouseX < absX + resolvedW &&
-    mouseY >= absY &&
-    mouseY < absY + (h as number);
+        ? 0
+        : Math.max(0, Math.floor((ctx.width - resolvedW) / 2));
+  const interaction = hitbox(props.id, {
+    x: relativeX,
+    y: props.y,
+    width: resolvedW,
+    height: h as number,
+  });
+  const isHovered = interaction.hovered;
   const isActive = isSelected || isHovered;
 
   // 3. Resolve Theme & State
@@ -75,14 +65,14 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   if (isActive) {
     if (props.variant !== 'primary' && !isGhost) {
       borderCol = 'black';
-      if (isMouseDown && isHovered) {
+      if (interaction.pressed) {
         bg = adjustBrightness(bg, -5); // Pressed state
       }
     }
   }
 
   // 4. Handle Interaction
-  const wasClicked = isHovered && isMouseDown && state.mouseButton === 0;
+  const wasClicked = interaction.pressed;
   const wasActivated =
     isSelected && (state.lastKey === 'enter' || state.lastKey === ' ');
 
