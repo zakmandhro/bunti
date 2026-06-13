@@ -69,7 +69,13 @@ export {
   createScreenState,
   resizeScreen,
 } from './state';
-export { charWidth, stripAnsi, truncate, visibleWidth } from './utils';
+export {
+  charWidth,
+  indentBlock,
+  stripAnsi,
+  truncate,
+  visibleWidth,
+} from './utils';
 
 // Namespaced export for bunti.render style usage
 export const bunti = {

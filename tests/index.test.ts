@@ -351,6 +351,30 @@ describe('Bunti Core Engine', () => {
     expect(state.backBuffer[30]?.char).toBe('╭');
   });
 
+  test('Input nested in a Box renders at the same rect as its hitbox', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.height = 20;
+
+    const ctx = createScreenContext(state);
+    Box(
+      ctx,
+      { x: 10, y: 2, width: 40, height: 7, border: 'rounded', align: 'left' },
+      (sub) => {
+        Input(sub, { id: 'mission', width: 20 });
+      },
+    );
+
+    expect(state.hitboxes.get('mission')).toEqual({
+      id: 'mission',
+      x: 20,
+      y: 3,
+      width: 20,
+      height: 3,
+    });
+    expect(state.backBuffer[3 * state.width + 20]?.char).toBe('╭');
+  });
+
   test('Input renders placeholder muted and typed value bright', () => {
     const placeholderState = createScreenState();
     let ctx = createScreenContext(placeholderState);

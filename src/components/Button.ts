@@ -1,5 +1,6 @@
 import { adjustBrightness } from '../colors';
 import type { BuntiContext, DSLBoxOptions } from '../dsl';
+import { indentBlock } from '../utils';
 
 export interface ButtonProps extends DSLBoxOptions {
   id: string;
@@ -85,7 +86,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     ? `${color.fg(bg, '')}${color.bg(bg, color.fg(fg, ` ${isActive ? color.bold(finalLabel) : finalLabel} `))}${color.fg(bg, '')}`
     : color.fg(fg, isActive ? color.bold(finalLabel) : finalLabel);
 
-  return box(
+  const rendered = box(
     {
       x: area.x,
       y: area.y,
@@ -103,4 +104,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
       text(renderLabel);
     },
   );
+  return !ctx.isRoot && props.detach && props.x === undefined
+    ? indentBlock(rendered, area.x)
+    : rendered;
 }

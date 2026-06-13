@@ -1,5 +1,6 @@
 import type { BuntiContext } from '../dsl';
 import type { StyleOptions } from '../layout';
+import { indentBlock } from '../utils';
 
 export interface InputProps extends StyleOptions {
   id: string;
@@ -116,8 +117,9 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     ctx.text(color.fg(labelColor, props.label));
     ctx.text('\n');
   }
+  const renderedField = ctx.isRoot ? field : indentBlock(field, area.x);
   if (!ctx.isRoot) {
-    ctx.text(field);
+    ctx.text(renderedField);
   }
-  return field;
+  return renderedField;
 }
