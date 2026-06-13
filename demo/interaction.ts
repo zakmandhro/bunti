@@ -16,7 +16,7 @@ demo('INTERACTIVE COMPONENTS', (ctx, bounds) => {
       x: X,
       y: bounds.y + 1,
       width: W,
-      height: Math.min(bounds.h - 1, 18),
+      height: Math.min(bounds.h - 1, 13),
       border: 'rounded',
       borderColor: 'bunti-blue',
       padding: [1, compact ? 1 : 3],

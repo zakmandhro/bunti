@@ -278,6 +278,25 @@ describe('Bunti Core Engine', () => {
     expect(renderedRows.size).toBe(1);
   });
 
+  test('ghost Button defaults to compact height', () => {
+    const state = createScreenState();
+    state.width = 80;
+
+    const ctx = createScreenContext(state);
+    Button(ctx, {
+      id: 'abort',
+      label: 'Abort',
+      variant: 'ghost',
+    });
+
+    const renderedRows = new Set<number>();
+    state.backBuffer.forEach((cell, index) => {
+      if (cell.char !== ' ') renderedRows.add(Math.floor(index / state.width));
+    });
+
+    expect(renderedRows.size).toBe(1);
+  });
+
   test('box respects maxWidth and truncates content', () => {
     const content = 'this is a very long line that should be truncated';
     const b = box(content, { maxWidth: 20, border: 'normal' });
