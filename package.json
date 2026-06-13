@@ -2,19 +2,41 @@
   "name": "@zakmandhro/bunti",
   "version": "0.1.4",
   "description": "A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API.",
-  "module": "src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./components": "./src/components/index.ts",
-    "./icons": "./src/icons.ts",
-    "./layout": "./src/layout.ts",
-    "./render": "./src/render.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.js"
+    },
+    "./geometry": {
+      "types": "./dist/geometry.d.ts",
+      "import": "./dist/geometry.js"
+    },
+    "./icons": {
+      "types": "./dist/icons.d.ts",
+      "import": "./dist/icons.js"
+    },
+    "./layout": {
+      "types": "./dist/layout.d.ts",
+      "import": "./dist/layout.js"
+    },
+    "./render": {
+      "types": "./dist/render.d.ts",
+      "import": "./dist/render.js"
+    }
   },
   "type": "module",
   "engines": {
     "bun": ">=1.0.0"
   },
   "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "test": "bun test",
     "bench": "bun scripts/bench.ts",
     "typecheck": "tsc --noEmit",
@@ -39,7 +61,9 @@
   "author": "Zak Mandhro <zakmandhro@gmail.com>",
   "license": "MIT",
   "files": [
-    "src"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "peerDependencies": {
     "picocolors": "^1.0.0"

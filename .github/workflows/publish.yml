@@ -30,6 +30,8 @@ jobs:
           bun run typecheck
           bun run lint
           bun run test
+          bun run build
+          npm pack --dry-run
 
       - name: Publish to NPM
         run: npm publish
