@@ -49,7 +49,8 @@ export function flush(state: ScreenState) {
         b!.char !== f!.char ||
         b!.fg !== f!.fg ||
         b!.bg !== f!.bg ||
-        !!b!.bold !== !!f!.bold
+        !!b!.bold !== !!f!.bold ||
+        !!b!.skip !== !!f!.skip
       ) {
         if (firstDirty === -1) firstDirty = x;
         lastDirty = x;
@@ -64,6 +65,17 @@ export function flush(state: ScreenState) {
         const cell = state.backBuffer[idx];
         const front = state.frontBuffer[idx];
 
+        if (cell!.skip) {
+          front!.char = cell!.char;
+          front!.fg = cell!.fg;
+          front!.bg = cell!.bg;
+          front!.fgCode = cell!.fgCode;
+          front!.bgCode = cell!.bgCode;
+          front!.bold = cell!.bold;
+          front!.skip = cell!.skip;
+          continue;
+        }
+
         if (cell!.char === '') {
           front!.char = '';
           front!.fg = cell!.fg;
@@ -71,6 +83,7 @@ export function flush(state: ScreenState) {
           front!.fgCode = cell!.fgCode;
           front!.bgCode = cell!.bgCode;
           front!.bold = cell!.bold;
+          front!.skip = cell!.skip;
           continue;
         }
 
@@ -128,6 +141,7 @@ export function flush(state: ScreenState) {
         front!.fgCode = cell!.fgCode;
         front!.bgCode = cell!.bgCode;
         front!.bold = cell!.bold;
+        front!.skip = cell!.skip;
       }
     }
   }

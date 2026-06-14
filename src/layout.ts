@@ -18,7 +18,14 @@ export function setCell(
 ) {
   if (x >= 0 && x < state.width && y >= 0 && y < state.height) {
     const target = state.backBuffer[y * state.width + x];
-    if (cell.char !== undefined) target!.char = replaceEmojis(cell.char);
+    let displayWidth = 1;
+    if (cell.char !== undefined) {
+      target!.char = replaceEmojis(cell.char);
+      displayWidth = charWidth(target!.char);
+      target!.fg = undefined;
+      target!.fgCode = undefined;
+      target!.bold = false;
+    }
     if (cell.fg !== undefined) {
       target!.fg = cell.fg;
       target!.fgCode = resolveColor(cell.fg);
@@ -28,6 +35,20 @@ export function setCell(
       target!.bgCode = resolveColor(cell.bg);
     }
     if (cell.bold !== undefined) target!.bold = cell.bold;
+    target!.skip = cell.skip ?? false;
+
+    for (let dx = 1; dx < displayWidth; dx++) {
+      const skipX = x + dx;
+      if (skipX >= state.width) break;
+      const skip = state.backBuffer[y * state.width + skipX]!;
+      skip.char = '';
+      skip.fg = target!.fg;
+      skip.bg = target!.bg;
+      skip.fgCode = target!.fgCode;
+      skip.bgCode = target!.bgCode;
+      skip.bold = target!.bold;
+      skip.skip = true;
+    }
   }
 }
 
@@ -147,12 +168,14 @@ export function blit(
         }
       } else if (match[2]) {
         const processedText = replaceEmojis(match[2]);
-        const chars = Array.from(processedText);
-        for (const char of chars) {
-          const w = charWidth(char);
+        const segmenter = new Intl.Segmenter('en', {
+          granularity: 'grapheme',
+        });
+        for (const { segment } of segmenter.segment(processedText)) {
+          const w = charWidth(segment);
           if (w === 0) continue;
 
-          const cell: Partial<Cell> = { char, ...style };
+          const cell: Partial<Cell> = { char: segment, ...style };
 
           // Only overwrite buffer colors if explicitly set in the string or style
           if (currentFg !== undefined) cell.fg = currentFg;

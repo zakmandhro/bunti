@@ -15,6 +15,7 @@ export interface Cell {
   bold?: boolean;
   fgCode?: string | number;
   bgCode?: string | number;
+  skip?: boolean;
   raw?: boolean; // Bypasses automatic emoji-to-NF replacement
 }
 
@@ -81,6 +82,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
       bg: undefined,
       fgCode: undefined,
       bgCode: undefined,
+      skip: false,
     })),
     backBuffer: Array.from({ length: size }, () => ({
       char: ' ',
@@ -88,6 +90,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
       bg: undefined,
       fgCode: undefined,
       bgCode: undefined,
+      skip: false,
     })),
     mouseX: 0,
     mouseY: 0,
@@ -120,6 +123,7 @@ export function resizeScreen(state: ScreenState) {
     bg: undefined,
     fgCode: undefined,
     bgCode: undefined,
+    skip: false,
   }));
   state.backBuffer = Array.from({ length: size }, () => ({
     char: ' ',
@@ -127,6 +131,7 @@ export function resizeScreen(state: ScreenState) {
     bg: undefined,
     fgCode: undefined,
     bgCode: undefined,
+    skip: false,
   }));
   state.lastFg = undefined;
   state.lastBg = undefined;
@@ -148,6 +153,7 @@ export function clearBackBuffer(state: ScreenState) {
     cell.fgCode = undefined;
     cell.bgCode = undefined;
     cell.bold = false;
+    cell.skip = false;
   }
 }
 

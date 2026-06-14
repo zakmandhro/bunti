@@ -3,6 +3,7 @@ import pc from 'picocolors';
 import { Box, Button, Input } from '../src/components';
 import { createScreenContext } from '../src/dsl';
 import {
+  blit,
   box,
   createGradient,
   joinHorizontal,
@@ -28,6 +29,37 @@ describe('Bunti Core Engine', () => {
   test('visibleWidth calculates correct length', () => {
     const colored = `${pc.bold(pc.green('✓'))} Done`;
     expect(visibleWidth(colored)).toBe(6);
+  });
+
+  test('blit marks trailing cells for wide emoji graphemes', () => {
+    const state = createScreenState();
+    state.width = 10;
+    state.height = 2;
+
+    blit(state, 0, 0, '🍭X');
+
+    expect(visibleWidth('🍭')).toBe(2);
+    expect(state.backBuffer[0]?.char).toBe('🍭');
+    expect(state.backBuffer[1]?.skip).toBe(true);
+    expect(state.backBuffer[1]?.char).toBe('');
+    expect(state.backBuffer[2]?.char).toBe('X');
+  });
+
+  test('blit clears inherited foreground when writing plain text', () => {
+    const state = createScreenState();
+    state.width = 10;
+    state.height = 2;
+
+    blit(state, 0, 0, '█', {
+      fg: { r: 255, g: 0, b: 255 },
+      bg: { r: 10, g: 10, b: 10 },
+    });
+    blit(state, 0, 0, 'A');
+
+    expect(state.backBuffer[0]?.char).toBe('A');
+    expect(state.backBuffer[0]?.fg).toBeUndefined();
+    expect(state.backBuffer[0]?.fgCode).toBeUndefined();
+    expect(state.backBuffer[0]?.bg).toEqual({ r: 10, g: 10, b: 10 });
   });
 
   test('box adds correct padding', () => {
