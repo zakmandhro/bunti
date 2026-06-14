@@ -452,11 +452,16 @@ function createDSLContext(
           setSelectedIndex(Math.min(items.length - 1, selectedIndex + 1));
       }
 
-      const content = layoutList(items, {
-        ...options,
-        focusedIndex: selectedIndex,
-        focusStyle: isFocused ? options.focusStyle : (s) => pc.dim(s),
-      });
+      const content = layoutList(
+        items,
+        {
+          ...options,
+          focusedIndex: selectedIndex,
+          focusStyle: isFocused ? options.focusStyle : (s) => pc.dim(s),
+          selectedBg: isFocused ? options.selectedBg : undefined,
+        },
+        availableW,
+      );
 
       dslState.activeContents.push(content);
       return ctx;

@@ -32,6 +32,8 @@ bunti.render(
     blit,
     lastKey,
     resolveLocalRect,
+    requestStop,
+    focusable,
   }) => {
     wallpaper('#0a0a0b');
 
@@ -55,6 +57,12 @@ bunti.render(
       constraints: ['1fr', '1fr'],
       gap: 2,
     });
+    const fleetFocused = focusable('planets');
+    const telemetryFocused = focusable('issues');
+    const quietBorder = { r: 150, g: 150, b: 150 };
+    const focusedBorder = { r: 90, g: 200, b: 230 };
+    const muted = { r: 135, g: 135, b: 135 };
+    const issueLabel = { r: 120, g: 120, b: 120 };
 
     // Planets Panel
     box(
@@ -64,16 +72,19 @@ bunti.render(
         y: fleet?.y,
         width: fleet?.width,
         height: fleet?.height,
-        border: 'frame',
+        border: 'default',
         title: ' PLANETARY FLEET ',
+        borderColor: fleetFocused ? focusedBorder : quietBorder,
+        titleStyle: fleetFocused ? color.cyan : color.gray,
       },
       (sub) => {
         const planetLines = PLANETS.map(
           (p) =>
-            `${color.green('✔')} ${p.name.padEnd(10)} ${color.gray(p.branch.padEnd(15))} ${p.status}`,
+            `${color.green('✔')} ${p.name.padEnd(10)} ${color.fg(muted, p.branch.padEnd(15))} ${p.status}`,
         );
         sub.list('planets', planetLines, {
-          focusStyle: (s) => color.bold(color.cyan(`> ${s.trim()}`)),
+          width: '100%',
+          selectedBg: 236,
         });
       },
     );
@@ -86,16 +97,21 @@ bunti.render(
         y: telemetry?.y,
         width: telemetry?.width,
         height: telemetry?.height,
-        border: 'frame',
+        border: 'default',
         title: ' CRITICAL TELEMETRY ',
+        borderColor: telemetryFocused ? focusedBorder : quietBorder,
+        titleStyle: telemetryFocused ? color.cyan : color.gray,
       },
       (sub) => {
-        const issueLines = ISSUES.map(
-          (i) =>
-            `${color.magenta(`#${i.number}`)} ${i.title} ${color.gray(`[${i.labels.join(',')}]`)}`,
-        );
+        const issueLines = ISSUES.map((i) => {
+          const number = color.magenta(`#${i.number.toString().padStart(3)}`);
+          const title = i.title.padEnd(36);
+          const labels = color.fg(issueLabel, `[${i.labels.join(',')}]`);
+          return `${number}  ${title} ${labels}`;
+        });
         sub.list('issues', issueLines, {
-          focusStyle: (s) => color.bold(color.magenta(`! ${s.trim()}`)),
+          width: '100%',
+          selectedBg: 236,
         });
       },
     );
@@ -111,7 +127,12 @@ bunti.render(
     blit(statusX + 52, statusY, color.white('q'));
     blit(statusX + 54, statusY, color.gray(' to abort mission.'));
 
-    if (lastKey === 'q') process.exit(0);
+    if (lastKey === 'q') requestStop();
   },
-  { fps: 60 },
+  {
+    fps: 60,
+    keyboard: true,
+    hideCursor: true,
+    alternateBuffer: true,
+  },
 );

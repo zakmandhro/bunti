@@ -6,7 +6,7 @@ import { demo } from './demo-layout';
  */
 
 demo('AUTHENTICATION', (ctx, bounds) => {
-  const { color, icon, useState, lastKey, focus, isFocused } = ctx;
+  const { color, icon, useState, lastKey, focus, isFocused, requestStop } = ctx;
 
   const [email] = useState('input-email', '');
   const [password] = useState('input-password', '');
@@ -36,7 +36,7 @@ demo('AUTHENTICATION', (ctx, bounds) => {
     setProgress(0);
   };
 
-  if (lastKey === 'q') process.exit(0);
+  if (lastKey === 'q') requestStop();
 
   if (status === 'loading') {
     if (progress < 1) {

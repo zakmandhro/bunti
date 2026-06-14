@@ -35,6 +35,11 @@ describe('Bunti Core Engine', () => {
     expect(visibleWidth(b.split('\n')[0] ?? '')).toBe(6); // "  hi  "
   });
 
+  test('box renders title in bordered top edge', () => {
+    const b = box('hi', { width: 14, border: 'default', title: 'Title' });
+    expect(stripAnsi(b.split('\n')[0] ?? '')).toBe('┌─ Title ────┐');
+  });
+
   test('box preserves intentional leading spaces', () => {
     const b = box('  indented', { align: 'left' });
     expect(b).toStartWith('  indented');
@@ -59,6 +64,29 @@ describe('Bunti Core Engine', () => {
     const items = ['one', 'two'];
     const out = list(items, { bullet: '- ', indent: 2 });
     expect(out).toBe('  - one\n  - two');
+  });
+
+  test('list renders selected row background without marker characters', () => {
+    const out = list(['one', 'two'], {
+      focusedIndex: 1,
+      selectedBg: 238,
+      width: 8,
+    });
+    const lines = out.split('\n');
+
+    expect(stripAnsi(lines[1] ?? '')).toBe('two     ');
+    expect(lines[1]).toContain('\x1b[48;5;238m');
+  });
+
+  test('list preserves selected background across nested color resets', () => {
+    const out = list([pc.green('ok')], {
+      focusedIndex: 0,
+      selectedBg: 236,
+      width: 6,
+    });
+
+    expect(stripAnsi(out)).toBe('ok    ');
+    expect(out).toContain('\x1b[48;5;236m');
   });
 
   test('context list responds to normalized arrow keys', () => {

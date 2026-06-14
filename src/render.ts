@@ -134,7 +134,10 @@ export function flush(state: ScreenState) {
 
   if (renderString) {
     writer.write(
-      ANSI.syncStart + ANSI.hideCursor + renderString + ANSI.syncEnd,
+      ANSI.syncStart +
+        (state.options.hideCursor ? ANSI.hideCursor : '') +
+        renderString +
+        ANSI.syncEnd,
     );
     writer.flush();
   }
@@ -200,7 +203,7 @@ export function loop(
       if (options.mouse) cmd += ANSI.mouseDisable;
       if (options.focus) cmd += ANSI.focusDisable;
       if (options.alternateBuffer) cmd += ANSI.mainBuffer;
-      if (options.hideCursor) cmd += ANSI.showCursor;
+      cmd += ANSI.showCursor;
       cmd += ANSI.reset;
 
       process.stdout.write(cmd);

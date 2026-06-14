@@ -57,7 +57,7 @@ bunti.render(
       }
     });
 
-    if (ctx.lastKey === 'q') process.exit(0);
+    if (ctx.lastKey === 'q') ctx.requestStop();
   },
   { fps: 60 },
 );
