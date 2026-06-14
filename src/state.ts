@@ -45,9 +45,12 @@ export interface ScreenState {
   lastFg?: any;
   lastBg?: any;
   lastBold?: boolean;
+  needsFullRedraw?: boolean;
   id?: string;
   options: ScreenOptions;
   requestStop?: () => void;
+  isResizing?: boolean;
+  resizeSettlesAt?: number;
 }
 
 export interface ScreenOptions {
@@ -58,6 +61,7 @@ export interface ScreenOptions {
   alternateBuffer?: boolean;
   hideCursor?: boolean;
   nerdFont?: boolean;
+  resizeDebounceMs?: number;
 }
 
 /**
@@ -124,6 +128,12 @@ export function resizeScreen(state: ScreenState) {
     fgCode: undefined,
     bgCode: undefined,
   }));
+  state.lastFg = undefined;
+  state.lastBg = undefined;
+  state.lastBold = false;
+  state.needsFullRedraw = true;
+  state.isResizing = true;
+  state.resizeSettlesAt = Date.now() + (state.options.resizeDebounceMs ?? 1);
 }
 
 /**

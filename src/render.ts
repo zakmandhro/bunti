@@ -2,14 +2,33 @@
  * Bunti Functional Rendering & Diffing
  */
 
-import { ANSI, type ScreenState } from './state';
+import { ANSI, resizeScreen, type ScreenState } from './state';
+
+export function syncScreenSize(state: ScreenState) {
+  const width = process.stdout.columns || 80;
+  const height = process.stdout.rows || 24;
+  if (state.width !== width || state.height !== height) {
+    resizeScreen(state);
+    return true;
+  }
+  return false;
+}
+
+export function isResizeSettled(state: ScreenState, now = Date.now()) {
+  return !state.isResizing || now >= (state.resizeSettlesAt ?? 0);
+}
+
+export function clearTerminalForResize(state: ScreenState) {
+  process.stdout.write(ANSI.syncStart + ANSI.clear + ANSI.home + ANSI.syncEnd);
+  state.needsFullRedraw = true;
+}
 
 /**
  * Diffs back and front buffers surgically.
  */
 export function flush(state: ScreenState) {
   const writer = Bun.stdout.writer();
-  let renderString = '';
+  let renderString = state.needsFullRedraw ? ANSI.clear + ANSI.home : '';
   let lastFg: any = state.lastFg;
   let lastBg: any = state.lastBg;
   let lastBold: boolean = state.lastBold ?? false;
@@ -120,6 +139,7 @@ export function flush(state: ScreenState) {
     writer.flush();
   }
 
+  state.needsFullRedraw = false;
   state.lastFg = lastFg;
   state.lastBg = lastBg;
   state.lastBold = lastBold;
@@ -189,7 +209,8 @@ export function loop(
 
     const resizeHandler = () => {
       resizeScreen(state);
-      tick();
+      clearTerminalForResize(state);
+      requestTick();
     };
 
     let ticking = false;
@@ -205,6 +226,14 @@ export function loop(
       try {
         do {
           tickAgain = false;
+          const resized = syncScreenSize(state);
+          if (resized) {
+            clearTerminalForResize(state);
+          }
+          if (!isResizeSettled(state)) {
+            continue;
+          }
+          state.isResizing = false;
           renderCallback(state);
           flush(state);
           state.lastKey = undefined;
@@ -303,5 +332,3 @@ export function applyInputToState(
     (state as { requestTick?: () => void }).requestTick!();
   }
 }
-
-import { resizeScreen } from './state';

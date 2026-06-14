@@ -12,7 +12,11 @@ import {
   truncate,
   visibleWidth,
 } from '../src/index';
-import { applyInputToState } from '../src/render';
+import {
+  applyInputToState,
+  isResizeSettled,
+  syncScreenSize,
+} from '../src/render';
 import { createScreenState, resizeScreen } from '../src/state';
 
 describe('Bunti Core Engine', () => {
@@ -306,12 +310,64 @@ describe('Bunti Core Engine', () => {
       expect(state.height).toBe(11);
       expect(state.frontBuffer).toHaveLength(42 * 11);
       expect(state.backBuffer).toHaveLength(42 * 11);
+      expect(state.needsFullRedraw).toBe(true);
+      expect(state.isResizing).toBe(true);
+      expect(state.resizeSettlesAt).toBeGreaterThan(Date.now());
     } finally {
       if (columns) Object.defineProperty(process.stdout, 'columns', columns);
       else delete (process.stdout as { columns?: number }).columns;
       if (rows) Object.defineProperty(process.stdout, 'rows', rows);
       else delete (process.stdout as { rows?: number }).rows;
     }
+  });
+
+  test('syncScreenSize rebuilds buffers when terminal dimensions drift', () => {
+    const columns = Object.getOwnPropertyDescriptor(process.stdout, 'columns');
+    const rows = Object.getOwnPropertyDescriptor(process.stdout, 'rows');
+
+    Object.defineProperty(process.stdout, 'columns', {
+      configurable: true,
+      value: 80,
+    });
+    Object.defineProperty(process.stdout, 'rows', {
+      configurable: true,
+      value: 24,
+    });
+
+    try {
+      const state = createScreenState();
+
+      Object.defineProperty(process.stdout, 'columns', {
+        configurable: true,
+        value: 51,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        configurable: true,
+        value: 13,
+      });
+
+      const resized = syncScreenSize(state);
+
+      expect(resized).toBe(true);
+      expect(state.width).toBe(51);
+      expect(state.height).toBe(13);
+      expect(state.frontBuffer).toHaveLength(51 * 13);
+      expect(state.backBuffer).toHaveLength(51 * 13);
+      expect(state.needsFullRedraw).toBe(true);
+    } finally {
+      if (columns) Object.defineProperty(process.stdout, 'columns', columns);
+      else delete (process.stdout as { columns?: number }).columns;
+      if (rows) Object.defineProperty(process.stdout, 'rows', rows);
+      else delete (process.stdout as { rows?: number }).rows;
+    }
+  });
+
+  test('isResizeSettled waits until the resize debounce window passes', () => {
+    const state = createScreenState({ resizeDebounceMs: 250 });
+    resizeScreen(state);
+
+    expect(isResizeSettled(state, state.resizeSettlesAt! - 1)).toBe(false);
+    expect(isResizeSettled(state, state.resizeSettlesAt!)).toBe(true);
   });
 
   test('Input updates managed state from normalized keyboard input', () => {
