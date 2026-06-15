@@ -6,6 +6,7 @@ import {
   blit,
   box,
   createGradient,
+  fade,
   joinHorizontal,
   list,
   splitRect,
@@ -29,6 +30,55 @@ describe('Bunti Core Engine', () => {
   test('visibleWidth calculates correct length', () => {
     const colored = `${pc.bold(pc.green('✓'))} Done`;
     expect(visibleWidth(colored)).toBe(6);
+  });
+
+  test('fade interpolates colors and clamps progress', () => {
+    expect(fade('black', 'white', 0.5)).toEqual({
+      r: 128,
+      g: 128,
+      b: 128,
+    });
+    expect(fade('#000000', '#ffffff', -1)).toEqual({ r: 0, g: 0, b: 0 });
+    expect(fade('#000000', '#ffffff', 2)).toEqual({
+      r: 255,
+      g: 255,
+      b: 255,
+    });
+  });
+
+  test('context exposes fade for animation colors', () => {
+    const ctx = createScreenContext(createScreenState());
+
+    expect(ctx.fade('red', 'green', 0.25)).toEqual({
+      r: 163,
+      g: 88,
+      b: 50,
+    });
+  });
+
+  test('typewriter reveals text over time with a block cursor', () => {
+    const state = createScreenState();
+    state.startTime = Date.now() - 5200;
+    const ctx = createScreenContext(state);
+
+    expect(ctx.typewriter('hello world', { cps: 1 })).toEqual({
+      text: 'hello',
+      cursor: '█',
+      done: false,
+      index: 5,
+      progress: 5 / 11,
+    });
+  });
+
+  test('typewriter slices wide emoji by grapheme', () => {
+    const state = createScreenState();
+    state.startTime = Date.now() - 1200;
+    const ctx = createScreenContext(state);
+
+    const typed = ctx.typewriter('🍭abc', { cps: 1 });
+
+    expect(typed.text).toBe('🍭');
+    expect(visibleWidth(typed.text)).toBe(2);
   });
 
   test('blit marks trailing cells for wide emoji graphemes', () => {

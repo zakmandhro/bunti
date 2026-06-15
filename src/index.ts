@@ -8,12 +8,17 @@ import * as render from './render';
 import * as state from './state';
 import * as utils from './utils';
 
-export { bg, createGradient, fg, hexToRGB, PALETTE, rgb } from './colors';
+export { bg, createGradient, fade, fg, hexToRGB, PALETTE, rgb } from './colors';
 // Type Exports
 export type { TerminalCapabilities } from './detect';
 // Functional API Individual Exports
 export { detectCapabilities } from './detect';
-export type { BuntiContext, DSLBoxOptions } from './dsl';
+export type {
+  BuntiContext,
+  DSLBoxOptions,
+  TypewriterOptions,
+  TypewriterState,
+} from './dsl';
 export { KEYS, render } from './dsl';
 export type {
   PlacedRectInput,

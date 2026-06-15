@@ -213,6 +213,25 @@ export function adjustBrightness(color: any, amount: number): RGB {
 }
 
 /**
+ * Interpolates between two colors and returns an RGB value.
+ */
+export function fade(
+  from: string | number | RGB,
+  to: string | number | RGB,
+  progress: number,
+): RGB {
+  const start = resolveColorToRGB(from);
+  const end = resolveColorToRGB(to);
+  const t = Math.max(0, Math.min(1, progress));
+
+  return {
+    r: Math.round(start.r + (end.r - start.r) * t),
+    g: Math.round(start.g + (end.g - start.g) * t),
+    b: Math.round(start.b + (end.b - start.b) * t),
+  };
+}
+
+/**
  * Returns a function that darkens a color and can be used as a style wrapper.
  */
 export function darken(color: any, amount: number = 20) {

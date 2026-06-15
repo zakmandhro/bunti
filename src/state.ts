@@ -50,6 +50,7 @@ export interface ScreenState {
   id?: string;
   options: ScreenOptions;
   requestStop?: () => void;
+  isStopped?: boolean;
   isResizing?: boolean;
   resizeSettlesAt?: number;
 }
