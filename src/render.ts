@@ -197,6 +197,7 @@ export function loop(
     const stop = () => {
       if (stopped) return;
       stopped = true;
+      state.isStopped = true;
 
       if (interval) clearInterval(interval);
 
@@ -216,6 +217,7 @@ export function loop(
       let cmd = '';
       if (options.mouse) cmd += ANSI.mouseDisable;
       if (options.focus) cmd += ANSI.focusDisable;
+      cmd += ANSI.reset + ANSI.clear + ANSI.home;
       if (options.alternateBuffer) cmd += ANSI.mainBuffer;
       cmd += ANSI.showCursor;
       cmd += ANSI.reset;
@@ -251,7 +253,9 @@ export function loop(
             continue;
           }
           state.isResizing = false;
+          if (stopped || state.isStopped) return;
           renderCallback(state);
+          if (stopped || state.isStopped) return;
           flush(state);
           state.lastKey = undefined;
         } while (tickAgain);

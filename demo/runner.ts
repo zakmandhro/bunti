@@ -56,7 +56,10 @@ const proc = spawn(args, {
 });
 
 // Handle termination signals in the parent runner
+let isShuttingDown = false;
 const cleanup = () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
   proc.kill('SIGINT');
 };
 
@@ -64,4 +67,7 @@ process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
 
 const exitCode = await proc.exited;
-process.exit(exitCode);
+process.removeListener('SIGINT', cleanup);
+process.removeListener('SIGTERM', cleanup);
+
+process.exit(exitCode === 130 || isShuttingDown ? 0 : exitCode);

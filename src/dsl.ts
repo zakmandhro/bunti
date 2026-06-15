@@ -8,6 +8,7 @@ import {
   bg,
   createGradient,
   darken,
+  fade,
   fg,
   type Gradient,
   lighten,
@@ -77,6 +78,24 @@ export interface DSLBoxOptions extends StyleOptions {
   id?: string;
   borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
   detach?: boolean; // If true, the string is returned but NOT appended to the flow
+}
+
+export interface TypewriterOptions {
+  id?: string;
+  cps?: number;
+  delay?: number;
+  loop?: boolean;
+  cursor?: string;
+  blink?: boolean;
+  blinkRate?: number;
+}
+
+export interface TypewriterState {
+  text: string;
+  cursor: string;
+  done: boolean;
+  index: number;
+  progress: number;
 }
 
 /**
@@ -175,6 +194,12 @@ export interface BuntiContext {
     duration: number,
     options?: { loop?: boolean; delay?: number; id?: string },
   ): number;
+  fade(
+    from: string | number | RGB,
+    to: string | number | RGB,
+    progress: number,
+  ): RGB;
+  typewriter(text: string, options?: TypewriterOptions): TypewriterState;
   flicker(intensity?: number): boolean;
 
   // Async data
@@ -237,6 +262,27 @@ function resolveBoxInnerArea(area: Rect, options: DSLBoxOptions): Rect {
   };
 }
 
+function graphemes(text: string): string[] {
+  const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+  return Array.from(segmenter.segment(text), ({ segment }) => segment);
+}
+
+const buntiColor = {
+  ...pc,
+  darken,
+  lighten,
+  rgb,
+  fg,
+  bg,
+  dim: (text: string) => fg({ r: 96, g: 102, b: 118 }, text),
+} as typeof pc & {
+  darken: typeof darken;
+  lighten: typeof lighten;
+  rgb: typeof rgb;
+  fg: typeof fg;
+  bg: typeof bg;
+};
+
 /**
  * Common Context Factory: Provided to every closure.
  */
@@ -250,7 +296,7 @@ function createDSLContext(
   isRoot: boolean = false,
 ): BuntiContext {
   const ctx: BuntiContext = {
-    color: { ...pc, darken, lighten, rgb, fg, bg } as any,
+    color: buntiColor,
     state,
     width: availableW,
     height: availableH,
@@ -292,6 +338,37 @@ function createDSLContext(
       if (elapsed < 0) return 0;
       if (options.loop) return (elapsed % duration) / duration;
       return Math.min(1, elapsed / duration);
+    },
+
+    fade,
+
+    typewriter(text: string, options: TypewriterOptions = {}) {
+      const now = Date.now();
+      const start = options.id
+        ? ctx.useState(`${options.id}_start`, now)[0]
+        : state.startTime;
+      const delay = options.delay ?? 0;
+      const elapsed = Math.max(0, now - start - delay);
+      const cps = options.cps ?? 24;
+      const chars = graphemes(text);
+      const rawIndex = Math.floor((elapsed / 1000) * cps);
+      const index =
+        options.loop && chars.length > 0
+          ? rawIndex % (chars.length + 1)
+          : Math.min(chars.length, rawIndex);
+      const blinkRate = options.blinkRate ?? 450;
+      const showCursor =
+        options.blink === false ||
+        Math.floor(elapsed / blinkRate) % 2 === 0 ||
+        index < chars.length;
+
+      return {
+        text: chars.slice(0, index).join(''),
+        cursor: showCursor ? (options.cursor ?? '█') : ' ',
+        done: index >= chars.length,
+        index,
+        progress: chars.length === 0 ? 1 : index / chars.length,
+      };
     },
 
     flicker(intensity: number = 0.5) {
@@ -731,7 +808,9 @@ export async function render(
     } else {
       callback(b);
     }
+    if (state.isStopped) return;
     b.flushFlow();
+    if (state.isStopped) return;
     flush(state);
   };
 
