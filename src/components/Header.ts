@@ -1,5 +1,6 @@
 import type { BuntiContext } from '../dsl';
 import { box as engineBox } from '../layout';
+import { Box } from './Box';
 
 export interface HeaderProps {
   title: string;
@@ -13,7 +14,7 @@ export interface HeaderProps {
  * A full-width, high-signal branding bar.
  */
 export function Header(ctx: BuntiContext, props: HeaderProps) {
-  const { box, color, width, joinHorizontal } = ctx;
+  const { color, joinHorizontal } = ctx;
 
   // Resolve Theme Colors
   const isLight = props.theme !== 'dark';
@@ -21,7 +22,8 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
   const fg = isLight ? 236 : 'silver';
 
   // Master Background Box
-  box(
+  Box(
+    ctx,
     {
       anchor: 'top',
       width: '100%',
@@ -30,11 +32,16 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
       border: 'none',
       padding: [0, 2],
     },
-    ({ text }) => {
+    ({ text, split }) => {
+      const [leftArea, midArea, rightArea] = split({
+        direction: 'horizontal',
+        constraints: [12, '1fr', 12],
+      });
+
       // 1. Left: Branding
       const leftStr = props.leftIcon ? color.fg('plasma', props.leftIcon) : '';
       const leftNode = engineBox(leftStr, {
-        width: 12,
+        width: leftArea?.width ?? 0,
         align: 'left',
         border: 'none',
         padding: [0, 0],
@@ -43,7 +50,7 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
       // 2. Center: Title
       const midStr = color.fg(fg, color.bold(props.title));
       const midNode = engineBox(midStr, {
-        width: width - 28,
+        width: midArea?.width ?? 0,
         align: 'center',
         border: 'none',
         padding: [0, 0],
@@ -52,7 +59,7 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
       // 3. Right: Telemetry / Exit
       const rightStr = props.rightLabel ? color.dim(props.rightLabel) : '';
       const rightNode = engineBox(rightStr, {
-        width: 12,
+        width: rightArea?.width ?? 0,
         align: 'right',
         border: 'none',
         padding: [0, 0],

@@ -1,4 +1,4 @@
-import { bunti } from '../src/index';
+import { bunti, innerRect, splitRect, visibleWidth } from '../src/index';
 
 /**
  * Bunti Responsive Standard
@@ -6,21 +6,48 @@ import { bunti } from '../src/index';
  */
 
 bunti.render(
-  ({ wallpaper, box, color, width, height, blit, icon }) => {
+  ({ wallpaper, box, color, width, height, blit, icon, resolveLocalRect }) => {
     wallpaper(233);
 
     // 1. Header
     const header = ` ${color.bold(color.white('BUNTI :: RESPONSIVE FLUIDITY'))} `;
-    blit(Math.floor((width - header.length) / 2), 1, color.bgGreen(header));
+    const headerArea = resolveLocalRect({
+      y: 1,
+      width: visibleWidth(header),
+      height: 1,
+    });
+    blit(headerArea.x, headerArea.y, color.bgGreen(header));
 
     const isSmall = width < 70;
+    const screen = { x: 0, y: 0, width, height };
+    const bodyBounds = innerRect(screen, {
+      left: 2,
+      right: 2,
+      top: 4,
+      bottom: 2,
+    });
+    const body = resolveLocalRect(
+      {
+        x: bodyBounds.x,
+        y: bodyBounds.y,
+        width: bodyBounds.width,
+        height: bodyBounds.height,
+      },
+      { defaultX: 'left', defaultY: 'top' },
+    );
+    const [wrapPanel, truncPanel] = splitRect(body, {
+      direction: isSmall ? 'vertical' : 'horizontal',
+      constraints: ['1fr', '1fr'],
+      gap: 2,
+    });
 
     // Box 1: Surgical Wrapping + Min-Width
     box(
       {
-        x: 2,
-        y: 4,
-        width: isSmall ? width - 4 : Math.floor(width * 0.45),
+        x: wrapPanel?.x,
+        y: wrapPanel?.y,
+        width: wrapPanel?.width,
+        height: wrapPanel?.height,
         minWidth: 30,
         wrap: true,
         border: 'frame',
@@ -41,9 +68,10 @@ bunti.render(
     // Box 2: Default Truncation + Relative Positioning
     box(
       {
-        x: isSmall ? 2 : Math.floor(width * 0.5) + 2,
-        y: isSmall ? Math.floor(height * 0.45) + 6 : 4,
-        width: isSmall ? width - 4 : Math.floor(width * 0.45),
+        x: truncPanel?.x,
+        y: truncPanel?.y,
+        width: truncPanel?.width,
+        height: truncPanel?.height,
         border: 'frame',
         borderColor: color.red,
         bgColor: 233,
@@ -61,11 +89,12 @@ bunti.render(
 
     // Footer
     const footer = ` WIDTH: ${color.yellow(width.toString())} | ${isSmall ? color.red('SMALL-VIEW') : color.green('FULL-VIEW')} | ANSI-Aware Reflow `;
-    blit(
-      Math.floor((width - footer.length) / 2),
-      height - 1,
-      color.gray(footer),
-    );
+    const footerArea = resolveLocalRect({
+      y: height - 1,
+      width: visibleWidth(footer),
+      height: 1,
+    });
+    blit(footerArea.x, footerArea.y, color.gray(footer));
   },
   { fps: 10 },
 );

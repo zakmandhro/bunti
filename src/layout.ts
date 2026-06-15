@@ -18,7 +18,14 @@ export function setCell(
 ) {
   if (x >= 0 && x < state.width && y >= 0 && y < state.height) {
     const target = state.backBuffer[y * state.width + x];
-    if (cell.char !== undefined) target!.char = replaceEmojis(cell.char);
+    let displayWidth = 1;
+    if (cell.char !== undefined) {
+      target!.char = replaceEmojis(cell.char);
+      displayWidth = charWidth(target!.char);
+      target!.fg = undefined;
+      target!.fgCode = undefined;
+      target!.bold = false;
+    }
     if (cell.fg !== undefined) {
       target!.fg = cell.fg;
       target!.fgCode = resolveColor(cell.fg);
@@ -28,6 +35,20 @@ export function setCell(
       target!.bgCode = resolveColor(cell.bg);
     }
     if (cell.bold !== undefined) target!.bold = cell.bold;
+    target!.skip = cell.skip ?? false;
+
+    for (let dx = 1; dx < displayWidth; dx++) {
+      const skipX = x + dx;
+      if (skipX >= state.width) break;
+      const skip = state.backBuffer[y * state.width + skipX]!;
+      skip.char = '';
+      skip.fg = target!.fg;
+      skip.bg = target!.bg;
+      skip.fgCode = target!.fgCode;
+      skip.bgCode = target!.bgCode;
+      skip.bold = target!.bold;
+      skip.skip = true;
+    }
   }
 }
 
@@ -147,12 +168,14 @@ export function blit(
         }
       } else if (match[2]) {
         const processedText = replaceEmojis(match[2]);
-        const chars = Array.from(processedText);
-        for (const char of chars) {
-          const w = charWidth(char);
+        const segmenter = new Intl.Segmenter('en', {
+          granularity: 'grapheme',
+        });
+        for (const { segment } of segmenter.segment(processedText)) {
+          const w = charWidth(segment);
           if (w === 0) continue;
 
-          const cell: Partial<Cell> = { char, ...style };
+          const cell: Partial<Cell> = { char: segment, ...style };
 
           // Only overwrite buffer colors if explicitly set in the string or style
           if (currentFg !== undefined) cell.fg = currentFg;
@@ -207,6 +230,8 @@ export interface StyleOptions {
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'middle' | 'bottom';
   wrap?: boolean;
+  title?: string;
+  titleStyle?: (s: string) => string;
 }
 
 const BORDERS: Record<string, any> = {
@@ -310,6 +335,11 @@ export function box(
     typeof color === 'function' ? color : (s: string) => fg(color, s);
   const wrapBg = (s: string) => {
     if (!options.bgColor) return s;
+    if (typeof options.bgColor === 'object' && 'colors' in options.bgColor) {
+      // Gradients cannot be wrapped as a single ANSI string because they change per-cell.
+      // In string-building mode, we must ignore gradients. They are handled in absolute rect mode.
+      return s;
+    }
     const { resolveColor } = require('./colors');
     const code = resolveColor(options.bgColor);
     const prefix =
@@ -368,10 +398,21 @@ export function box(
 
   // Top Border
   if (b) {
+    const title =
+      options.title && targetInnerW > 2
+        ? truncate(` ${options.title.trim()} `, targetInnerW)
+        : '';
+    const styledTitle = options.titleStyle ? options.titleStyle(title) : title;
+    const titleW = visibleWidth(title);
+    const beforeTitle = title ? 1 : 0;
+    const afterTitle = Math.max(0, targetInnerW - beforeTitle - titleW);
+
     out.push(
       wrapBg(
         colors.top(b.tl) +
-          colors.top(hTop.repeat(targetInnerW)) +
+          colors.top(hTop.repeat(beforeTitle)) +
+          styledTitle +
+          colors.top(hTop.repeat(afterTitle)) +
           colors.top(b.tr),
       ),
     );
@@ -387,12 +428,12 @@ export function box(
 
   // Content Lines
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!.trim();
+    const line = lines[i]!.trimEnd();
     const lineW = visibleWidth(line);
     const extra = Math.max(0, targetInnerW - lineW - px * 2);
     let left = 0,
       right = 0;
-    const align = options.align || 'center';
+    const align = options.align || 'left';
 
     if (align === 'center') {
       left = px + Math.floor(extra / 2);
@@ -569,13 +610,32 @@ export interface ListOptions {
   indent?: number;
   focusedIndex?: number;
   focusStyle?: (s: string) => string;
+  selectedBg?: string | number | RGB;
+  width?: SizeUnit;
   maxVisible?: number;
   interactive?: boolean;
 }
 
-export function list(items: string[], options: ListOptions = {}): string {
+export function list(
+  items: string[],
+  options: ListOptions = {},
+  parentW?: number,
+): string {
   const bullet = options.bullet || '';
   const indent = ' '.repeat(options.indent || 0);
+  const resolvedW = resolveSize(options.width, parentW || 0, 0);
+  const { resolveColor } = require('./colors');
+  const wrapSelectedBg = (line: string) => {
+    if (!options.selectedBg) return line;
+    const code = resolveColor(options.selectedBg);
+    const codeStr = String(code);
+    const prefix =
+      typeof options.selectedBg === 'object' || codeStr.startsWith('2;')
+        ? '48'
+        : '48;5';
+    const bgOn = `\x1b[${prefix};${codeStr}m`;
+    return `${bgOn + line.replace(/\x1b\[0m/g, `\x1b[0m${bgOn}`)}\x1b[0m`;
+  };
   let targetItems = items,
     offset = 0,
     hasMoreAbove = false,
@@ -591,8 +651,16 @@ export function list(items: string[], options: ListOptions = {}): string {
     .map((item, idx) => {
       const actualIdx = offset + idx;
       const line = `${indent}${bullet}${item}`;
-      if (options.focusedIndex === actualIdx && options.focusStyle)
-        return options.focusStyle(line);
+      if (options.focusedIndex === actualIdx) {
+        const styledLine = options.focusStyle ? options.focusStyle(line) : line;
+        if (!options.selectedBg) return styledLine;
+        const paddedLine =
+          resolvedW > 0
+            ? styledLine +
+              ' '.repeat(Math.max(0, resolvedW - visibleWidth(styledLine)))
+            : styledLine;
+        return wrapSelectedBg(paddedLine);
+      }
       return line;
     })
     .join('\n');

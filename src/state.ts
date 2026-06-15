@@ -15,7 +15,16 @@ export interface Cell {
   bold?: boolean;
   fgCode?: string | number;
   bgCode?: string | number;
+  skip?: boolean;
   raw?: boolean; // Bypasses automatic emoji-to-NF replacement
+}
+
+export interface Hitbox {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface ScreenState {
@@ -31,14 +40,18 @@ export interface ScreenState {
   lastKey?: string;
   focusedId?: string;
   focusableIds: string[];
+  hitboxes: Map<string, Hitbox>;
   componentState: Map<string, any>;
   startTime: number;
   lastFg?: any;
   lastBg?: any;
   lastBold?: boolean;
+  needsFullRedraw?: boolean;
   id?: string;
   options: ScreenOptions;
   requestStop?: () => void;
+  isResizing?: boolean;
+  resizeSettlesAt?: number;
 }
 
 export interface ScreenOptions {
@@ -49,6 +62,7 @@ export interface ScreenOptions {
   alternateBuffer?: boolean;
   hideCursor?: boolean;
   nerdFont?: boolean;
+  resizeDebounceMs?: number;
 }
 
 /**
@@ -68,6 +82,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
       bg: undefined,
       fgCode: undefined,
       bgCode: undefined,
+      skip: false,
     })),
     backBuffer: Array.from({ length: size }, () => ({
       char: ' ',
@@ -75,6 +90,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
       bg: undefined,
       fgCode: undefined,
       bgCode: undefined,
+      skip: false,
     })),
     mouseX: 0,
     mouseY: 0,
@@ -82,6 +98,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
     isMouseDown: false,
     hasFocus: true,
     focusableIds: [],
+    hitboxes: new Map(),
     componentState: new Map(),
     startTime: Date.now(),
     options,
@@ -106,6 +123,7 @@ export function resizeScreen(state: ScreenState) {
     bg: undefined,
     fgCode: undefined,
     bgCode: undefined,
+    skip: false,
   }));
   state.backBuffer = Array.from({ length: size }, () => ({
     char: ' ',
@@ -113,7 +131,14 @@ export function resizeScreen(state: ScreenState) {
     bg: undefined,
     fgCode: undefined,
     bgCode: undefined,
+    skip: false,
   }));
+  state.lastFg = undefined;
+  state.lastBg = undefined;
+  state.lastBold = false;
+  state.needsFullRedraw = true;
+  state.isResizing = true;
+  state.resizeSettlesAt = Date.now() + (state.options.resizeDebounceMs ?? 1);
 }
 
 /**
@@ -128,6 +153,7 @@ export function clearBackBuffer(state: ScreenState) {
     cell.fgCode = undefined;
     cell.bgCode = undefined;
     cell.bold = false;
+    cell.skip = false;
   }
 }
 

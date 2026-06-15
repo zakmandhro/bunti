@@ -1,5 +1,6 @@
 import type { BuntiContext } from '../dsl';
 import type { StyleOptions } from '../layout';
+import { indentBlock } from '../utils';
 
 export interface InputProps extends StyleOptions {
   id: string;
@@ -15,37 +16,31 @@ export interface InputProps extends StyleOptions {
  * Managed state HOC with cursor simulation, keyboard interception, and mouse focus.
  */
 export function Input(ctx: BuntiContext, props: InputProps) {
-  const {
-    box,
-    color,
-    focusable,
-    state,
-    useState,
-    offsetX,
-    offsetY,
-    mouseX,
-    mouseY,
-    isMouseDown,
-  } = ctx;
+  const { box, color, focusable, state, useState, hitbox, resolveLocalRect } =
+    ctx;
 
   // 1. Mouse Hit-Testing
-  const _finalLabelLen = props.label ? props.label.length + 1 : 0;
-  const w = props.width || 40;
-  const h = props.height || 3;
+  const contentWidth = 40;
+  const contentHeight = 3;
+  const labelOffset = props.label ? 1 : 0;
+  const area = resolveLocalRect({
+    y: ctx.cursorY + labelOffset,
+    width: props.width ?? contentWidth,
+    height: props.height ?? contentHeight,
+    contentWidth,
+    contentHeight,
+  });
 
-  // Calculate absolute coordinates based on parent offsets and current flow cursor
-  // Assuming 100% width, x offset is just parent's offsetX.
-  const absX = offsetX;
-  const absY = offsetY + ctx.cursorY;
-
-  const isHovered =
-    mouseX >= absX &&
-    mouseX < absX + (w as number) &&
-    mouseY >= absY &&
-    mouseY < absY + (h as number);
+  const interaction = hitbox(props.id, {
+    x: area.x,
+    y: area.y,
+    width: area.width,
+    height: area.height,
+  });
+  const isHovered = interaction.hovered;
 
   // If clicked, force focus state
-  if (isHovered && isMouseDown && state.mouseButton === 0) {
+  if (interaction.pressed) {
     state.focusedId = props.id;
   }
 
@@ -85,40 +80,46 @@ export function Input(ctx: BuntiContext, props: InputProps) {
 
   // 5. Resolve Theme
   const neutralGray = { r: 217, g: 216, b: 213 };
-  const borderCol = isSelected ? 'black' : isHovered ? 'ash' : neutralGray;
-  const _bgColor = { r: 255, g: 255, b: 255 };
-  const textColor = 'black';
+  const borderCol = isSelected ? 'bunti-blue' : isHovered ? 'ash' : neutralGray;
+  const labelColor = 'silver';
+  const placeholderColor = 'ash';
+  const textColor = 'white';
 
-  // 6. Render
-  return box(
+  let fieldValue = '';
+  if (value.length === 0 && props.placeholder) {
+    fieldValue = color.fg(placeholderColor, props.placeholder);
+  } else {
+    const displayValue =
+      props.type === 'password' ? '*'.repeat(value.length) : value;
+    fieldValue = color.fg(textColor, displayValue);
+  }
+  if (isSelected) {
+    fieldValue += color.fg('silver', '█');
+  }
+
+  const field = box(
     {
-      width: w,
-      height: h,
+      x: area.x,
+      y: area.y,
+      width: area.width,
+      height: area.height,
       border: 'rounded',
       borderColor: borderCol,
       padding: [0, 1],
       align: 'left',
       valign: 'middle',
+      detach: true,
     },
-    ({ text }) => {
-      // Label
-      if (props.label) {
-        text(color.dim(`${props.label} `));
-      }
-
-      // Value Display with simulated cursor
-      if (value.length === 0 && props.placeholder) {
-        text(color.dim(props.placeholder));
-      } else {
-        const displayValue =
-          props.type === 'password' ? '*'.repeat(value.length) : value;
-        text(color.fg(textColor, displayValue));
-      }
-
-      // Cursor (blinking)
-      if (isSelected && ctx.flicker(0.8)) {
-        text(color.black('█'));
-      }
-    },
+    ({ text }) => text(fieldValue),
   );
+
+  if (props.label) {
+    ctx.text(color.fg(labelColor, props.label));
+    ctx.text('\n');
+  }
+  const renderedField = ctx.isRoot ? field : indentBlock(field, area.x);
+  if (!ctx.isRoot) {
+    ctx.text(renderedField);
+  }
+  return renderedField;
 }

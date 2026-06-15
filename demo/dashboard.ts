@@ -1,4 +1,4 @@
-import { bunti } from '../src/index';
+import { bunti, innerRect, splitRect } from '../src/index';
 
 /**
  * Bunti Mission Control Dashboard
@@ -23,7 +23,18 @@ const ISSUES = [
 ];
 
 bunti.render(
-  ({ wallpaper, box, color, width, height, blit, list, lastKey }) => {
+  ({
+    wallpaper,
+    box,
+    color,
+    width,
+    height,
+    blit,
+    lastKey,
+    resolveLocalRect,
+    requestStop,
+    focusable,
+  }) => {
     wallpaper('#0a0a0b');
 
     // 1. Header
@@ -35,27 +46,45 @@ bunti.render(
     });
 
     // 2. Main Layout Grid
-    const panelW = Math.floor(width * 0.45);
-    const panelH = 10;
+    const screen = { x: 0, y: 0, width, height: 24 };
+    const mainBounds = innerRect(screen, { left: 2, right: 2 });
+    const main = resolveLocalRect(
+      { x: mainBounds.x, y: 5, width: mainBounds.width, height: 10 },
+      { defaultX: 'left', defaultY: 'top' },
+    );
+    const [fleet, telemetry] = splitRect(main, {
+      direction: 'horizontal',
+      constraints: ['1fr', '1fr'],
+      gap: 2,
+    });
+    const fleetFocused = focusable('planets');
+    const telemetryFocused = focusable('issues');
+    const quietBorder = { r: 150, g: 150, b: 150 };
+    const focusedBorder = { r: 90, g: 200, b: 230 };
+    const muted = { r: 135, g: 135, b: 135 };
+    const issueLabel = { r: 120, g: 120, b: 120 };
 
     // Planets Panel
     box(
       {
         id: 'planets',
-        x: 2,
-        y: 5,
-        width: panelW,
-        height: panelH,
-        border: 'frame',
+        x: fleet?.x,
+        y: fleet?.y,
+        width: fleet?.width,
+        height: fleet?.height,
+        border: 'default',
         title: ' PLANETARY FLEET ',
+        borderColor: fleetFocused ? focusedBorder : quietBorder,
+        titleStyle: fleetFocused ? color.cyan : color.gray,
       },
       (sub) => {
         const planetLines = PLANETS.map(
           (p) =>
-            `${color.green('✔')} ${p.name.padEnd(10)} ${color.gray(p.branch.padEnd(15))} ${p.status}`,
+            `${color.green('✔')} ${p.name.padEnd(10)} ${color.fg(muted, p.branch.padEnd(15))} ${p.status}`,
         );
         sub.list('planets', planetLines, {
-          focusStyle: (s) => color.bold(color.cyan(`> ${s.trim()}`)),
+          width: '100%',
+          selectedBg: 236,
         });
       },
     );
@@ -64,20 +93,25 @@ bunti.render(
     box(
       {
         id: 'issues',
-        x: width - panelW - 2,
-        y: 5,
-        width: panelW,
-        height: panelH,
-        border: 'frame',
+        x: telemetry?.x,
+        y: telemetry?.y,
+        width: telemetry?.width,
+        height: telemetry?.height,
+        border: 'default',
         title: ' CRITICAL TELEMETRY ',
+        borderColor: telemetryFocused ? focusedBorder : quietBorder,
+        titleStyle: telemetryFocused ? color.cyan : color.gray,
       },
       (sub) => {
-        const issueLines = ISSUES.map(
-          (i) =>
-            `${color.magenta(`#${i.number}`)} ${i.title} ${color.gray(`[${i.labels.join(',')}]`)}`,
-        );
+        const issueLines = ISSUES.map((i) => {
+          const number = color.magenta(`#${i.number.toString().padStart(3)}`);
+          const title = i.title.padEnd(36);
+          const labels = color.fg(issueLabel, `[${i.labels.join(',')}]`);
+          return `${number}  ${title} ${labels}`;
+        });
         sub.list('issues', issueLines, {
-          focusStyle: (s) => color.bold(color.magenta(`! ${s.trim()}`)),
+          width: '100%',
+          selectedBg: 236,
         });
       },
     );
@@ -93,7 +127,12 @@ bunti.render(
     blit(statusX + 52, statusY, color.white('q'));
     blit(statusX + 54, statusY, color.gray(' to abort mission.'));
 
-    if (lastKey === 'q') process.exit(0);
+    if (lastKey === 'q') requestStop();
   },
-  { fps: 60 },
+  {
+    fps: 60,
+    keyboard: true,
+    hideCursor: true,
+    alternateBuffer: true,
+  },
 );

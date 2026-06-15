@@ -2,14 +2,33 @@
  * Bunti Functional Rendering & Diffing
  */
 
-import { ANSI, type ScreenState } from './state';
+import { ANSI, resizeScreen, type ScreenState } from './state';
+
+export function syncScreenSize(state: ScreenState) {
+  const width = process.stdout.columns || 80;
+  const height = process.stdout.rows || 24;
+  if (state.width !== width || state.height !== height) {
+    resizeScreen(state);
+    return true;
+  }
+  return false;
+}
+
+export function isResizeSettled(state: ScreenState, now = Date.now()) {
+  return !state.isResizing || now >= (state.resizeSettlesAt ?? 0);
+}
+
+export function clearTerminalForResize(state: ScreenState) {
+  process.stdout.write(ANSI.syncStart + ANSI.clear + ANSI.home + ANSI.syncEnd);
+  state.needsFullRedraw = true;
+}
 
 /**
  * Diffs back and front buffers surgically.
  */
 export function flush(state: ScreenState) {
   const writer = Bun.stdout.writer();
-  let renderString = '';
+  let renderString = state.needsFullRedraw ? ANSI.clear + ANSI.home : '';
   let lastFg: any = state.lastFg;
   let lastBg: any = state.lastBg;
   let lastBold: boolean = state.lastBold ?? false;
@@ -30,7 +49,8 @@ export function flush(state: ScreenState) {
         b!.char !== f!.char ||
         b!.fg !== f!.fg ||
         b!.bg !== f!.bg ||
-        !!b!.bold !== !!f!.bold
+        !!b!.bold !== !!f!.bold ||
+        !!b!.skip !== !!f!.skip
       ) {
         if (firstDirty === -1) firstDirty = x;
         lastDirty = x;
@@ -45,6 +65,17 @@ export function flush(state: ScreenState) {
         const cell = state.backBuffer[idx];
         const front = state.frontBuffer[idx];
 
+        if (cell!.skip) {
+          front!.char = cell!.char;
+          front!.fg = cell!.fg;
+          front!.bg = cell!.bg;
+          front!.fgCode = cell!.fgCode;
+          front!.bgCode = cell!.bgCode;
+          front!.bold = cell!.bold;
+          front!.skip = cell!.skip;
+          continue;
+        }
+
         if (cell!.char === '') {
           front!.char = '';
           front!.fg = cell!.fg;
@@ -52,6 +83,7 @@ export function flush(state: ScreenState) {
           front!.fgCode = cell!.fgCode;
           front!.bgCode = cell!.bgCode;
           front!.bold = cell!.bold;
+          front!.skip = cell!.skip;
           continue;
         }
 
@@ -109,17 +141,22 @@ export function flush(state: ScreenState) {
         front!.fgCode = cell!.fgCode;
         front!.bgCode = cell!.bgCode;
         front!.bold = cell!.bold;
+        front!.skip = cell!.skip;
       }
     }
   }
 
   if (renderString) {
     writer.write(
-      ANSI.syncStart + ANSI.hideCursor + renderString + ANSI.syncEnd,
+      ANSI.syncStart +
+        (state.options.hideCursor ? ANSI.hideCursor : '') +
+        renderString +
+        ANSI.syncEnd,
     );
     writer.flush();
   }
 
+  state.needsFullRedraw = false;
   state.lastFg = lastFg;
   state.lastBg = lastBg;
   state.lastBold = lastBold;
@@ -154,7 +191,8 @@ export function loop(
       }
     };
 
-    const inputHandler = (data: unknown) => handleInput(state, data, stop);
+    const inputHandler = (data: unknown) =>
+      applyInputToState(state, data, stop);
 
     const stop = () => {
       if (stopped) return;
@@ -179,7 +217,7 @@ export function loop(
       if (options.mouse) cmd += ANSI.mouseDisable;
       if (options.focus) cmd += ANSI.focusDisable;
       if (options.alternateBuffer) cmd += ANSI.mainBuffer;
-      if (options.hideCursor) cmd += ANSI.showCursor;
+      cmd += ANSI.showCursor;
       cmd += ANSI.reset;
 
       process.stdout.write(cmd);
@@ -188,7 +226,8 @@ export function loop(
 
     const resizeHandler = () => {
       resizeScreen(state);
-      tick();
+      clearTerminalForResize(state);
+      requestTick();
     };
 
     let ticking = false;
@@ -204,6 +243,14 @@ export function loop(
       try {
         do {
           tickAgain = false;
+          const resized = syncScreenSize(state);
+          if (resized) {
+            clearTerminalForResize(state);
+          }
+          if (!isResizeSettled(state)) {
+            continue;
+          }
+          state.isResizing = false;
           renderCallback(state);
           flush(state);
           state.lastKey = undefined;
@@ -243,8 +290,12 @@ export function loop(
   });
 }
 
-function handleInput(state: ScreenState, data: any, stop: () => void) {
-  const input = data.toString();
+export function applyInputToState(
+  state: ScreenState,
+  data: unknown,
+  stop?: () => void,
+) {
+  const input = data instanceof Buffer ? data.toString() : String(data);
 
   // 1. Focus Tracking
   if (input === '\x1b[I') {
@@ -265,20 +316,20 @@ function handleInput(state: ScreenState, data: any, stop: () => void) {
     state.mouseX = parseInt(match[2], 10) - 1;
     state.mouseY = parseInt(match[3], 10) - 1;
     state.isMouseDown = match[4] === 'M';
+    if ((state as { requestTick?: () => void }).requestTick) {
+      (state as { requestTick?: () => void }).requestTick!();
+    }
     if (match[4] === 'M') {
       if (state.mouseButton === 64) state.lastKey = 'wheel_up';
       else if (state.mouseButton === 65) state.lastKey = 'wheel_down';
       else if (state.mouseButton === 0) state.lastKey = 'click';
-      if ((state as { requestTick?: () => void }).requestTick) {
-        (state as { requestTick?: () => void }).requestTick!();
-      }
     }
     return;
   }
 
   // 3. Signal Interception
   if (input === '\u0003') {
-    stop(); // Ctrl+C
+    stop?.(); // Ctrl+C
     return;
   }
 
@@ -298,5 +349,3 @@ function handleInput(state: ScreenState, data: any, stop: () => void) {
     (state as { requestTick?: () => void }).requestTick!();
   }
 }
-
-import { resizeScreen } from './state';
