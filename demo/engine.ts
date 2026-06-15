@@ -40,103 +40,71 @@ const addGlow = (
   return mix(base, color, strength);
 };
 
-function fractalGlassColor(nx: number, ny: number, phase: number): RGB {
-  let color: RGB = { r: 4, g: 10, b: 28 };
-  const drift = Math.sin(phase * Math.PI * 2) * 0.018;
+function vividTextureColor(nx: number, ny: number): RGB {
+  let color: RGB = mix(
+    { r: 207, g: 74, b: 236 },
+    { r: 255, g: 184, b: 72 },
+    clamp01((nx + ny * 0.78) / 1.55),
+  );
 
   color = addGlow(
     color,
-    { r: 0, g: 166, b: 190 },
-    0.88,
-    0.08 + drift,
-    0.18,
+    { r: 113, g: 230, b: 248 },
+    0.74,
+    0.5,
+    0.12,
     nx,
     ny,
+    0.48,
     0.36,
-    0.56,
   );
   color = addGlow(
     color,
-    { r: 236, g: 0, b: 126 },
-    0.92,
-    0.42 - drift,
-    0.38,
+    { r: 245, g: 72, b: 218 },
+    0.44,
+    0.1,
+    0.28,
+    nx,
+    ny,
+    0.34,
+    0.54,
+  );
+  color = addGlow(
+    color,
+    { r: 255, g: 236, b: 98 },
+    0.58,
+    0.82,
+    0.78,
     nx,
     ny,
     0.32,
-    0.5,
+    0.36,
   );
   color = addGlow(
     color,
-    { r: 255, g: 135, b: 52 },
-    0.95,
-    0.72 + drift,
-    0.7,
+    { r: 255, g: 246, b: 222 },
+    0.22,
+    0.56,
+    0.42,
     nx,
     ny,
-    0.28,
-    0.48,
-  );
-  color = addGlow(
-    color,
-    { r: 242, g: 234, b: 190 },
-    0.65,
-    0.88,
-    0.88,
-    nx,
-    ny,
-    0.16,
-    0.26,
-  );
-  color = addGlow(
-    color,
-    { r: 0, g: 196, b: 220 },
-    0.52,
-    0.93,
-    0.2,
-    nx,
-    ny,
-    0.08,
+    0.62,
     0.42,
   );
 
-  const vignette =
-    0.28 +
-    0.72 *
-      clamp01(1 - Math.hypot((nx - 0.54) / 0.86, (ny - 0.52) / 0.9) * 0.72);
-
   return {
-    r: Math.round(color.r * vignette),
-    g: Math.round(color.g * vignette),
-    b: Math.round(color.b * vignette),
+    r: Math.round(color.r),
+    g: Math.round(color.g),
+    b: Math.round(color.b),
   };
 }
 
 function drawEngineField(state: ScreenState, width: number, height: number) {
-  const phase = 0.34;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const nx = x / Math.max(1, width - 1);
       const ny = y / Math.max(1, height - 1);
-      const slat = x % 4;
-      const seam = slat === 0 ? 0.42 : slat === 1 ? 0.12 : 0;
-      const prism =
-        Math.sin((nx * 18 + ny * 4 + phase * 3) * Math.PI) * 0.08 +
-        Math.cos((nx * 5 - ny * 9 - phase * 2) * Math.PI) * 0.06;
-      const glassShade = clamp01(0.13 + seam - prism);
-      const highlight =
-        slat === 3 && Math.sin((ny * 3.4 + nx * 1.8 + phase) * Math.PI) > 0.18
-          ? 0.2
-          : 0;
-      const gradientColor = mix(
-        mix(
-          fractalGlassColor(nx, ny, phase),
-          { r: 1, g: 4, b: 18 },
-          glassShade,
-        ),
-        { r: 220, g: 245, b: 255 },
-        highlight,
-      );
+      const gradientColor = vividTextureColor(nx, ny);
       setCell(state, x, y, {
         char: '█',
         fg: gradientColor,
@@ -146,8 +114,31 @@ function drawEngineField(state: ScreenState, width: number, height: number) {
   }
 }
 
-function metric(label: string, value: string, color: (s: string) => string) {
-  return `${label.padEnd(13)} ${color(value)}`;
+function metric(
+  label: string,
+  value: string,
+  valueColor: (s: string) => string,
+  labelColor: (s: string) => string,
+) {
+  return `${labelColor(label.padEnd(13))} ${valueColor(value)}`;
+}
+
+function wrapWords(text: string, width: number) {
+  const lines: string[] = [];
+  let line = '';
+
+  for (const word of text.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (visibleWidth(next) > width && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+
+  if (line) lines.push(line);
+  return lines;
 }
 
 bunti.render(
@@ -172,14 +163,23 @@ bunti.render(
     drawEngineField(state, width, height);
 
     const frame = frameCount++;
+    const textFg = { r: 205, g: 212, b: 224 };
+    const softTextFg = { r: 145, g: 152, b: 166 };
+    const panelText = (s: string) => color.fg(textFg, s);
+    const softText = (s: string) => color.fg(softTextFg, s);
     const shell = innerRect({ x: 0, y: 0, width, height }, 2);
     const compact = width < 92;
+    const stageTop = Math.min(6, Math.max(3, Math.floor(height * 0.12)));
     const title = ' 🍭  BUNTI RENDER ENGINE ';
-    const titleArea = resolveLocalRect({
-      y: 1,
-      width: Math.min(width - 4, visibleWidth(title) + 10),
-      height: 1,
-    });
+    const titleArea = resolveLocalRect(
+      {
+        x: 2,
+        y: Math.max(1, Math.floor((shell.y + stageTop) / 2)),
+        width: Math.max(0, width - 4),
+        height: 1,
+      },
+      { defaultX: 'left', defaultY: 'top' },
+    );
 
     box(
       {
@@ -188,14 +188,14 @@ bunti.render(
         width: titleArea.width,
         height: titleArea.height,
         border: 'none',
-        bgColor: { r: 24, g: 24, b: 30 },
         align: 'center',
       },
-      ({ text }) => text(color.bold(color.white(title))),
+      ({ text }) =>
+        text(color.bold(color.fg({ r: 255, g: 255, b: 255 }, title))),
     );
 
     const stage = innerRect(shell, {
-      top: Math.min(6, Math.max(3, Math.floor(height * 0.12))),
+      top: stageTop,
       left: compact ? 1 : 4,
       right: compact ? 1 : 4,
       bottom: 2,
@@ -223,7 +223,7 @@ bunti.render(
         width: telemetry!.width,
         height: telemetry!.height,
         border: 'none',
-        bgColor: { r: 12, g: 14, b: 18 },
+        bgColor: { r: 8, g: 10, b: 14 },
         padding: [1, 2],
       },
       ({ text }) => {
@@ -231,16 +231,22 @@ bunti.render(
           [
             color.cyan('CORE TELEMETRY'),
             '',
-            metric('TICK', frame.toString().padStart(6, '0'), color.yellow),
-            metric('RESOLUTION', `${width}x${height}`, color.green),
-            metric('MOUSE', `${mouseX},${mouseY}`, color.magenta),
+            metric(
+              'TICK',
+              frame.toString().padStart(6, '0'),
+              color.yellow,
+              panelText,
+            ),
+            metric('RESOLUTION', `${width}x${height}`, color.green, panelText),
+            metric('MOUSE', `${mouseX},${mouseY}`, color.magenta, panelText),
             metric(
               'MODE',
               compact ? 'STACKED RECTS' : 'SPLIT RECTS',
               color.cyan,
+              panelText,
             ),
             '',
-            `${color.gray('q')} quits  ${color.gray('resize')} reflows  ${color.gray('mouse')} lights hitboxes`,
+            `${color.gray('q')} ${softText('quits')}  ${color.gray('resize')} ${softText('reflows')}  ${color.gray('mouse')} ${softText('lights hitboxes')}`,
           ].join('\n'),
         );
       },
@@ -248,6 +254,17 @@ bunti.render(
 
     const clippingText =
       'This panel proves ANSI-aware clipping and wrapping. The same sentence can fold inside one Rect while the neighbor truncates sharply at its boundary without escape-sequence damage.';
+    const clippingTextWidth = Math.max(12, clipping!.width - 4);
+    const wrappedClipping = wrapWords(clippingText, clippingTextWidth)
+      .map(panelText)
+      .join('\n');
+    const truncatedClipping = wrapWords(
+      clippingText.repeat(2),
+      clippingTextWidth,
+    )
+      .slice(0, Math.max(1, clipping!.height - 10))
+      .map((line) => color.fg({ r: 160, g: 160, b: 170 }, line))
+      .join('\n');
     box(
       {
         x: clipping!.x,
@@ -255,15 +272,16 @@ bunti.render(
         width: clipping!.width,
         height: clipping!.height,
         border: 'none',
-        bgColor: { r: 15, g: 15, b: 18 },
+        bgColor: { r: 8, g: 8, b: 12 },
         padding: [1, 2],
-        wrap: true,
       },
       ({ text }) => {
         text(`${color.yellow('CLIPPING + WRAP')}\n\n`);
-        text(`${color.bold('WRAPPED')}\n${clippingText}\n\n`);
-        text(`${color.bold('TRUNCATED')}\n`);
-        text(color.fg({ r: 160, g: 160, b: 170 }, clippingText.repeat(2)));
+        text(
+          `${color.fg(textFg, color.bold('WRAPPED'))}\n${wrappedClipping}\n\n`,
+        );
+        text(`${color.fg(textFg, color.bold('TRUNCATED'))}\n`);
+        text(truncatedClipping);
       },
     );
 
@@ -274,12 +292,12 @@ bunti.render(
         width: hitTargets!.width,
         height: hitTargets!.height,
         border: 'none',
-        bgColor: { r: 10, g: 14, b: 12 },
+        bgColor: { r: 7, g: 11, b: 9 },
         padding: [1, 2],
       },
       ({ text }) => {
         text(`${color.green('HITBOX MAP')}\n\n`);
-        text(`${color.gray('Move the mouse over the bars.')}\n\n`);
+        text(`${softText('Move the mouse over the bars.')}\n\n`);
       },
     );
 
@@ -329,7 +347,7 @@ bunti.render(
         width: colorStack!.width,
         height: colorStack!.height,
         border: 'none',
-        bgColor: { r: 16, g: 12, b: 22 },
+        bgColor: { r: 11, g: 8, b: 16 },
         padding: [1, 2],
       },
       ({ text }) => {
@@ -338,7 +356,7 @@ bunti.render(
             color.magenta('COLOR ISOLATION'),
             '',
             `${color.bgBlue(color.white(' nested bg '))} ${color.red('red')} ${color.green('green')} ${color.yellow('yellow')}`,
-            `${color.fg({ r: 190, g: 200, b: 215 }, 'ANSI resets stay contained inside composed rows.')}`,
+            panelText('ANSI resets stay contained inside composed rows.'),
             '',
             `${color.magenta('████')}${color.cyan('████')}${color.magenta('████')}`,
           ].join('\n'),
