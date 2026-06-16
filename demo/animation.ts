@@ -167,5 +167,6 @@ demo(
     nerdFont: true,
     keyboard: true,
     mouse: true,
+    footer: false,
   },
 );

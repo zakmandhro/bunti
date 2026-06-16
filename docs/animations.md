@@ -25,6 +25,48 @@ box({}, ({ text, animate }) => {
 - `id` (string): Identifies the animation instance so the start time isn't reset on subsequent layout diffs.
 - `delay` (number): Wait X ms before starting the progress counter.
 
+### `ctx.fade(from, to, progress)`
+
+Interpolates between two colors and returns an RGB tuple. It is useful for text, borders, backgrounds, and sequenced state transitions.
+
+```typescript
+bunti.render((ctx) => {
+  const progress = ctx.animate(650, { id: "panel-fade" });
+  const borderColor = ctx.fade("#0a0a0b", "mint", progress);
+
+  ctx.box({ width: 40, border: "rounded", borderColor }, ({ text }) => {
+    text(ctx.color.fg(ctx.fade("gray", "white", progress), "Fading in"));
+  });
+});
+```
+
+### `ctx.typewriter(text, options)`
+
+Reveals text over time and returns a state object with a block cursor. The helper is grapheme-safe, so wide emoji and composed characters are not sliced in half.
+
+```typescript
+bunti.render((ctx) => {
+  const line = ctx.typewriter("Bunti features terminal animations", {
+    id: "intro-copy",
+    cps: 28,
+    delay: 800,
+    cursor: "█",
+  });
+
+  ctx.text(ctx.color.fg("silver", line.text));
+  ctx.text(ctx.color.fg("gold", line.cursor));
+});
+```
+
+**Options:**
+- `id` (string): Identifies the typewriter timeline.
+- `cps` (number): Characters per second. Defaults to `24`.
+- `delay` (number): Wait X ms before typing starts.
+- `loop` (boolean): Restart after the full text has been revealed.
+- `cursor` (string): Cursor glyph. Defaults to `█`.
+- `blink` (boolean): Disable with `false`.
+- `blinkRate` (number): Cursor blink interval in ms. Defaults to `450`.
+
 ### `ctx.flicker(intensity)`
 
 Returns `true` or `false` randomly based on the `intensity` (0.0 to 1.0). Useful for simulating failing hardware or blinking UI elements in tactical dashboards.

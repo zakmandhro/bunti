@@ -10,7 +10,7 @@ import {
 } from '../src/index';
 import type { ScreenOptions } from '../src/state';
 
-export interface DemoBounds {
+export interface DemoViewport {
   x: number;
   y: number;
   w: number;
@@ -20,63 +20,100 @@ export interface DemoBounds {
   split: (options: SplitOptions) => Rect[];
 }
 
+export type DemoBounds = DemoViewport;
+
+export interface DemoOptions extends ScreenOptions {
+  header?: boolean;
+  footer?: boolean | 'telemetry';
+  wallpaper?: Parameters<BuntiContext['wallpaper']>[0];
+  exitHint?: string;
+  padding?: number | [x: number, y: number];
+  headerTheme?: 'light' | 'dark';
+}
+
+const DEFAULT_DEMO_OPTIONS = {
+  fps: 10,
+  alternateBuffer: true,
+  hideCursor: true,
+  nerdFont: true,
+  mouse: true,
+  keyboard: true,
+  defaultFg: 'silver',
+  header: true,
+  footer: 'telemetry',
+  wallpaper: '#0a0a0b',
+  exitHint: 'q',
+  padding: 0,
+  headerTheme: 'light',
+} satisfies DemoOptions;
+
+function viewportPadding(padding: DemoOptions['padding']) {
+  if (Array.isArray(padding)) return { x: padding[0], y: padding[1] };
+  return { x: padding ?? 0, y: padding ?? 0 };
+}
+
 export async function demo(
   title: string,
-  contentRender: (ctx: BuntiContext, bounds: DemoBounds) => void,
-  options: ScreenOptions = {
-    fps: 10,
-    alternateBuffer: true,
-    hideCursor: true,
-    nerdFont: true,
-    mouse: true,
-    keyboard: true,
-  },
+  contentRender: (ctx: BuntiContext, bounds: DemoViewport) => void,
+  options: DemoOptions = {},
 ) {
   await bunti.init({ nerdFont: true });
+  const config = { ...DEFAULT_DEMO_OPTIONS, ...options };
+  const {
+    header,
+    footer,
+    wallpaper: wallpaperColor,
+    exitHint,
+    padding,
+    headerTheme,
+    ...screenOptions
+  } = config;
 
   bunti.render((ctx) => {
     const { color, width, height, wallpaper, icon } = ctx;
+    if (ctx.lastKey === 'q') ctx.requestStop();
 
-    // 1. Base Layer (Dark Mode optimized)
-    wallpaper('#0a0a0b');
+    wallpaper(wallpaperColor);
 
-    // 2. High-Order Header Component
-    Header(ctx, {
-      title: title.toUpperCase(),
-      leftIcon: icon('bunti'),
-      rightLabel: '^C',
-      theme: 'light',
-    });
+    if (header) {
+      Header(ctx, {
+        title: title.toUpperCase(),
+        leftIcon: icon('bunti'),
+        rightLabel: exitHint,
+        theme: headerTheme,
+      });
+    }
 
-    // 3. Standardized Footer (Anchored Bottom)
-    Box(
-      ctx,
-      {
-        anchor: 'bottom',
-        width: '100%',
-        align: 'center',
-        border: 'none',
-        padding: [0, 0],
-      },
-      ({ text }) => {
-        text(
-          color.dim(
-            ` 󰇄 Screen: ${width}x${height} | Mouse: ${ctx.mouseX},${ctx.mouseY} | Logic: Stateless `,
-          ),
-        );
-      },
-    );
+    if (footer) {
+      Box(
+        ctx,
+        {
+          anchor: 'bottom',
+          width: '100%',
+          align: 'center',
+          border: 'none',
+          padding: [0, 0],
+        },
+        ({ text }) => {
+          text(
+            color.dim(
+              ` 󰇄 Screen: ${width}x${height} | Mouse: ${ctx.mouseX},${ctx.mouseY} | Logic: Stateless `,
+            ),
+          );
+        },
+      );
+    }
 
-    // 4. Calculate Inner Safe Bounds
-    // Header takes y: 0. Spacer at y: 1. Content starts at y: 2.
-    // Footer takes row y: height - 1. Spacer at height - 2. End at height - 3.
+    const chromeTop = header ? 2 : 0;
+    const chromeBottom = footer ? 2 : 0;
+    const pad = viewportPadding(padding);
     const rect: Rect = {
-      x: 0,
-      y: 2,
-      width,
-      height: height - 4,
+      x: pad.x,
+      y: chromeTop + pad.y,
+      width: Math.max(0, width - pad.x * 2),
+      height: Math.max(0, height - chromeTop - chromeBottom - pad.y * 2),
     };
-    const bounds: DemoBounds = {
+    const bounds: DemoViewport = {
       x: rect.x,
       y: rect.y,
       w: rect.width,
@@ -86,7 +123,6 @@ export async function demo(
       split: (options) => splitRect(rect, options),
     };
 
-    // 5. Render Core Content
     contentRender(ctx, bounds);
-  }, options);
+  }, screenOptions);
 }

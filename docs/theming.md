@@ -83,3 +83,17 @@ box({
   color: "blank" // Will automatically resolve to black text
 }, ({ text }) => text("Visible!"));
 ```
+
+## 🖋️ Default Foreground
+
+Terminals can use light or dark system themes, so unstyled text may become unreadable over an application-controlled wallpaper. Pass `defaultFg` to `bunti.render` to give plain text a stable foreground while still allowing explicit ANSI colors to win.
+
+```typescript
+bunti.render((ctx) => {
+  ctx.wallpaper("#0a0a0b");
+  ctx.text("Plain text uses silver.");
+  ctx.text(ctx.color.fg("gold", " Explicit colors still win."));
+}, {
+  defaultFg: "silver",
+});
+```

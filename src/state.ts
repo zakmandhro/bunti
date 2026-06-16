@@ -64,6 +64,7 @@ export interface ScreenOptions {
   hideCursor?: boolean;
   nerdFont?: boolean;
   resizeDebounceMs?: number;
+  defaultFg?: string | number | RGB;
 }
 
 /**
