@@ -17,24 +17,34 @@ const target = process.argv.find(
 
 const isNoHot = process.argv.includes('--no-hot');
 
-const registry: Record<string, string> = {
-  gallery: './gallery.ts',
-  responsive: './responsive.ts',
+const publicDemos: Record<string, string> = {
+  animation: './animation.ts',
   interaction: './interaction.ts',
   dashboard: './dashboard.ts',
   engine: './engine.ts',
-  animation: './animation.ts',
+  login: './login.ts',
+  showcase: './showcase.ts',
+};
+
+const internalDemos: Record<string, string> = {
+  gallery: './gallery.ts',
   layout: './layout.ts',
   colors: './colors.ts',
+  responsive: './responsive.ts',
   'color-isolation': './color-isolation.ts',
-  login: './login.ts',
 };
+
+const registry = { ...publicDemos, ...internalDemos };
 
 if (!target || !registry[target]) {
   console.log(`\n🥟  BUNTI RUNNER`);
   console.log(`Usage: bun demo <name>\n`);
-  console.log(`Available Demos:`);
-  for (const k of Object.keys(registry)) {
+  console.log(`Public Demos:`);
+  for (const k of Object.keys(publicDemos)) {
+    console.log(`  - ${k}`);
+  }
+  console.log(`\nInternal Demos:`);
+  for (const k of Object.keys(internalDemos)) {
     console.log(`  - ${k}`);
   }
   process.exit(1);

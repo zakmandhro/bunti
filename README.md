@@ -12,6 +12,7 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 - 📐 **Tactical Standard**: Opinionated border styles (`default`, `rounded`, `frame`, `thick-frame`).
 - 🌈 **24-bit TrueColor**: High-fidelity RGB gradients with native hex parsing and relative contrast.
 - 🖱️ **Interactive**: Built-in SGR mouse tracking and focus detection with automatic FPS throttling.
+- 🎞️ **Animation Helpers**: Timeline progress, color fades, flicker, and typewriter text with block cursors.
 
 ## 📦 Installation
 
@@ -42,7 +43,7 @@ bunti.render((ctx) => {
     width: 48,
     border: 'frame',
     bgColor: 'white',
-    color: 'blank'
+    color: 'black'
   }, (sub) => {
     const { text } = sub;
     text(` ${icon('rocket')} `);
@@ -61,7 +62,7 @@ bunti.render((ctx) => {
       variant: 'primary'
     });
   });
-}, { fps: 60, mouse: true });
+}, { fps: 60, mouse: true, keyboard: true, defaultFg: 'silver' });
 ```
 
 ## 📏 Layout Model
@@ -87,6 +88,21 @@ Bunti categorizes containers into three visual archetypes:
 ## 🏁 Performance
 
 Bunti is built for speed. By leveraging `Bun.stdout.writer()` and surgical diffing, it can maintain **60-120 FPS** on complex layouts while keeping TTY bytes significantly lower than standard stream-based libraries.
+
+## 🎮 Demos
+
+Run a public demo:
+
+```bash
+bun demo showcase
+bun demo animation
+bun demo interaction
+bun demo dashboard
+bun demo engine
+bun demo login
+```
+
+Internal/debug demos are still available by name in the runner, but the public list favors fewer, richer examples.
 
 ## 🛠️ Tooling
 

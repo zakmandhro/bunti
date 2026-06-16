@@ -112,6 +112,17 @@ describe('Bunti Core Engine', () => {
     expect(state.backBuffer[0]?.bg).toEqual({ r: 10, g: 10, b: 10 });
   });
 
+  test('blit applies configured default foreground to plain text', () => {
+    const state = createScreenState({ defaultFg: 'silver' });
+    state.width = 10;
+    state.height = 2;
+
+    blit(state, 0, 0, 'A\x1b[31mB\x1b[39m');
+
+    expect(state.backBuffer[0]?.fg).toBe('silver');
+    expect(state.backBuffer[1]?.fg).toBe('1');
+  });
+
   test('box adds correct padding', () => {
     const b = box('hi', { padding: [0, 2] });
     expect(visibleWidth(b.split('\n')[0] ?? '')).toBe(6); // "  hi  "

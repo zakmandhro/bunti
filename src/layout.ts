@@ -180,6 +180,8 @@ export function blit(
           // Only overwrite buffer colors if explicitly set in the string or style
           if (currentFg !== undefined) cell.fg = currentFg;
           else if (style.fg !== undefined) cell.fg = style.fg;
+          else if (state.options.defaultFg !== undefined)
+            cell.fg = state.options.defaultFg;
 
           if (currentBg !== undefined) cell.bg = currentBg;
           else if (style.bg !== undefined) cell.bg = style.bg;
