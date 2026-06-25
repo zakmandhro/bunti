@@ -5,12 +5,14 @@ This document tracks the technical gaps between the **Bunti TUI Engine** and the
 ## 🔴 Critical Gaps (Architectural)
 
 ### 1. Async Data Lifecycle (`useAsync`)
+- **Status**: ✅ Completed
 - **Problem**: `space-station` needs to fetch data (GitHub, Git, Hooks) in the background. Currently, `bunti.render` is a synchronous loop.
 - **Requirement**: A hook that handles async state without blocking the UI thread or requiring manual `setInterval` management outside the engine.
 - **Target API**:
   ```typescript
   const { data, loading, error } = useAsync(fetchData, { interval: 30000 });
   ```
+- **Details**: Added full keyless signature support to `useAsync`. State resolution and completion automatically trigger a terminal tick rerender.
 
 ### 2. Relative & Flex Layouts
 - **Problem**: Current layouts are "Absolute" or "Auto" (based on content size). There is no way to define "30% width" or "fill remaining height".
@@ -40,8 +42,10 @@ This document tracks the technical gaps between the **Bunti TUI Engine** and the
   ```
 
 ### 5. Component Local State
+- **Status**: ✅ Completed
 - **Problem**: `useState` requires manual string keys (`useState('my-index', 0)`), which leads to collisions in complex UIs.
 - **Requirement**: Automatic key generation based on component call-stack position (similar to React hooks).
+- **Details**: Added full index-based keyless signature support to `useState` that operates deterministically across rendering ticks.
 
 ---
 
@@ -64,7 +68,7 @@ This document tracks the technical gaps between the **Bunti TUI Engine** and the
 
 ## 🗺️ Resolution Roadmap
 
-1. [ ] **Phase 1**: Implement `useAsync` and background data fetching.
+1. [x] **Phase 1**: Implement `useAsync` and background data fetching.
 2. [ ] **Phase 2**: Refactor Layout engine to support Flex/Percentages.
 3. [ ] **Phase 3**: Formalize Focus and Input capture system.
 4. [ ] **Phase 4**: Add Overlay/Layering support.

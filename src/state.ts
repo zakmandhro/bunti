@@ -42,6 +42,7 @@ export interface ScreenState {
   focusableIds: string[];
   hitboxes: Map<string, Hitbox>;
   componentState: Map<string, any>;
+  hookCounter?: number;
   startTime: number;
   lastFg?: any;
   lastBg?: any;

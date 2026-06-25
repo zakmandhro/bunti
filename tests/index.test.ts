@@ -796,4 +796,53 @@ describe('Bunti Core Engine', () => {
     expect(out).toContain('gradient');
     expect(out).not.toContain('[object Object]');
   });
+
+  test('useState supports both keyed and keyless usage', () => {
+    const state = createScreenState();
+    const ctx1 = createScreenContext(state);
+
+    const [val1, setVal1] = ctx1.useState('myKey', 'first');
+    const [val2, setVal2] = ctx1.useState('second');
+
+    expect(val1).toBe('first');
+    expect(val2).toBe('second');
+
+    setVal1('first-updated');
+    setVal2('second-updated');
+
+    const ctx2 = createScreenContext(state);
+    const [val1New] = ctx2.useState('myKey', 'first');
+    const [val2New] = ctx2.useState('second');
+
+    expect(val1New).toBe('first-updated');
+    expect(val2New).toBe('second-updated');
+  });
+
+  test('useAsync supports both keyed and keyless usage and updates state', async () => {
+    const state = createScreenState();
+    let tickCalled = false;
+    (state as any).requestTick = () => {
+      tickCalled = true;
+    };
+
+    const ctx1 = createScreenContext(state);
+
+    // Call keyless useAsync
+    const fetcher = () => Promise.resolve('hello-async');
+    const res1 = ctx1.useAsync(fetcher);
+
+    expect(res1.loading).toBe(true);
+    expect(res1.data).toBeUndefined();
+
+    // Let the promise resolve
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(tickCalled).toBe(true);
+
+    const ctx2 = createScreenContext(state);
+    const res2 = ctx2.useAsync(fetcher);
+
+    expect(res2.loading).toBe(false);
+    expect(res2.data).toBe('hello-async');
+  });
 });

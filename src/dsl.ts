@@ -165,6 +165,7 @@ export interface BuntiContext {
   rgb(r: number, g: number, b: number): RGB;
 
   // State & Focus
+  useState<T>(initial: T): [T, (val: T) => void];
   useState<T>(key: string, initial: T): [T, (val: T) => void];
   focusable(id: string): boolean;
   isFocused(id: string): boolean;
@@ -203,6 +204,14 @@ export interface BuntiContext {
   flicker(intensity?: number): boolean;
 
   // Async data
+  useAsync<T>(
+    fetcher: () => Promise<T>,
+    options?: { interval?: number },
+  ): {
+    data: T | undefined;
+    loading: boolean;
+    error: Error | undefined;
+  };
   useAsync<T>(
     key: string,
     fetcher: () => Promise<T>,
@@ -376,11 +385,29 @@ function createDSLContext(
     },
 
     useAsync<T>(
-      key: string,
-      fetcher: () => Promise<T>,
-      options: { interval?: number } = {},
+      keyOrFetcher: string | (() => Promise<T>),
+      fetcherOrOptions?: (() => Promise<T>) | { interval?: number },
+      maybeOptions?: { interval?: number },
     ) {
-      const interval = options.interval ?? 0;
+      let key: string;
+      let fetcher: () => Promise<T>;
+      let options: { interval?: number } | undefined;
+
+      if (typeof keyOrFetcher === 'string') {
+        key = keyOrFetcher;
+        fetcher = fetcherOrOptions as () => Promise<T>;
+        options = maybeOptions;
+      } else {
+        if (state.hookCounter === undefined) {
+          state.hookCounter = 0;
+        }
+        const index = state.hookCounter++;
+        key = `_async_hook_${index}`;
+        fetcher = keyOrFetcher;
+        options = fetcherOrOptions as { interval?: number } | undefined;
+      }
+
+      const interval = options?.interval ?? 0;
       const dataKey = `${key}_data`;
       const loadingKey = `${key}_loading`;
       const errorKey = `${key}_error`;
@@ -409,10 +436,12 @@ function createDSLContext(
             state.componentState.set(dataKey, result);
             state.componentState.set(loadingKey, false);
             state.componentState.set(errorKey, undefined);
+            (state as any).requestTick?.();
           })
           .catch((err: Error) => {
             state.componentState.set(errorKey, err);
             state.componentState.set(loadingKey, false);
+            (state as any).requestTick?.();
           })
           .finally(() => {
             state.componentState.set(fetchingKey, false);
@@ -426,13 +455,34 @@ function createDSLContext(
       };
     },
 
-    useState<T>(key: string, initial: T): [T, (val: T) => void] {
+    useState<T>(
+      keyOrInitial: string | T,
+      maybeInitial?: T,
+    ): [T, (val: T) => void] {
+      let key: string;
+      let initial: T;
+
+      if (maybeInitial === undefined) {
+        if (state.hookCounter === undefined) {
+          state.hookCounter = 0;
+        }
+        const index = state.hookCounter++;
+        key = `_state_hook_${index}`;
+        initial = keyOrInitial as T;
+      } else {
+        key = keyOrInitial as string;
+        initial = maybeInitial as T;
+      }
+
       if (!state.componentState.has(key)) {
         state.componentState.set(key, initial);
       }
       return [
         state.componentState.get(key),
-        (val: T) => state.componentState.set(key, val),
+        (val: T) => {
+          state.componentState.set(key, val);
+          (state as any).requestTick?.();
+        },
       ];
     },
 
@@ -680,6 +730,7 @@ function createDSLContext(
  * Top-level Screen Context
  */
 export function createScreenContext(state: ScreenState): BuntiContext {
+  state.hookCounter = 0;
   const previousFocusableIds = state.focusableIds;
 
   if (state.lastKey === KEYS.TAB && previousFocusableIds.length > 0) {
