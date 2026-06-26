@@ -343,6 +343,15 @@ function getTileColors(val: number): TileColors {
 
 const SLIDE_ANIMATION_DURATION = 220;
 const PEAK_MERGE_DURATION = 380;
+const GRID_SIZE = 4;
+const TILE_W = 8;
+const TILE_H = 3;
+const TILE_GAP_X = 2;
+const TILE_GAP_Y = 1;
+const TILE_STEP_X = TILE_W + TILE_GAP_X;
+const TILE_STEP_Y = TILE_H + TILE_GAP_Y;
+const BOARD_W = GRID_SIZE * TILE_W + (GRID_SIZE - 1) * TILE_GAP_X + 2;
+const BOARD_H = GRID_SIZE * TILE_H + (GRID_SIZE - 1) * TILE_GAP_Y + 2;
 
 function drawPeakMergeCelebration(
   ctx: Parameters<Parameters<typeof Box>[2]>[0],
@@ -356,8 +365,8 @@ function drawPeakMergeCelebration(
   const progress = clamp01(age / PEAK_MERGE_DURATION);
   const glow = 1 - easeOutCubic(progress);
   const flash = Math.sin(progress * Math.PI) * (1 - progress * 0.35);
-  const tileX = ctx.offsetX + 1 + celebration.col * 9;
-  const tileY = ctx.offsetY + 1 + celebration.row * 4;
+  const tileX = ctx.offsetX + 1 + celebration.col * TILE_STEP_X;
+  const tileY = ctx.offsetY + 1 + celebration.row * TILE_STEP_Y;
   const { bg: tileBg, fg: tileFg } = getTileColors(celebration.value);
   const glowColor = mixRGB(
     { r: 62, g: 52, b: 30 },
@@ -368,13 +377,13 @@ function drawPeakMergeCelebration(
   const tileColor = mixRGB(tileBg, { r: 255, g: 226, b: 86 }, flash * 0.22);
 
   ctx.layer(8, (fx) => {
-    fx.rect(tileX - 1, tileY - 1, 10, 5, { bg: glowColor });
+    fx.rect(tileX - 1, tileY - 1, TILE_W + 2, TILE_H + 2, { bg: glowColor });
 
-    fx.rect(tileX, tileY, 8, 3, { bg: tileColor });
+    fx.rect(tileX, tileY, TILE_W, TILE_H, { bg: tileColor });
     fx.blit(
       tileX,
       tileY + 1,
-      fx.color.bold(centerText(celebration.value.toString(), 8)),
+      fx.color.bold(centerText(celebration.value.toString(), TILE_W)),
       {
         fg: numberColor,
         bg: tileColor,
@@ -542,8 +551,8 @@ demo(
     // Calculate layout sizing and center the game board
     const W = bounds.w;
     const H = bounds.h;
-    const boardW = 39;
-    const boardH = 19;
+    const boardW = BOARD_W;
+    const boardH = BOARD_H;
     const boardX = bounds.x + Math.max(0, Math.floor((W - boardW) / 2));
 
     // Calculate vertical layout based on available bounds.h to ensure y >= 0 and avoid any overlapping.
@@ -595,14 +604,14 @@ demo(
           elapsed < SLIDE_ANIMATION_DURATION && activeMoves.length > 0;
 
         // 1. Draw empty grid cells in background first
-        for (let r = 0; r < 4; r++) {
-          for (let c = 0; c < 4; c++) {
-            const relX = 1 + c * 9;
-            const relY = 1 + r * 4;
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            const relX = 1 + c * TILE_STEP_X;
+            const relY = 1 + r * TILE_STEP_Y;
             const absX = sub.offsetX + relX;
             const absY = sub.offsetY + relY;
             const { bg: bgCol } = getTileColors(0);
-            sub.rect(absX, absY, 8, 3, { bg: bgCol });
+            sub.rect(absX, absY, TILE_W, TILE_H, { bg: bgCol });
           }
         }
 
@@ -611,10 +620,10 @@ demo(
           const eased = easeInOutCubic(progress);
 
           for (const m of activeMoves) {
-            const startX = 1 + m.fromCol * 9;
-            const startY = 1 + m.fromRow * 4;
-            const endX = 1 + m.toCol * 9;
-            const endY = 1 + m.toRow * 4;
+            const startX = 1 + m.fromCol * TILE_STEP_X;
+            const startY = 1 + m.fromRow * TILE_STEP_Y;
+            const endX = 1 + m.toCol * TILE_STEP_X;
+            const endY = 1 + m.toRow * TILE_STEP_Y;
 
             const currX = startX + eased * (endX - startX);
             const currY = startY + eased * (endY - startY);
@@ -623,9 +632,9 @@ demo(
             const absY = Math.round(sub.offsetY + currY);
 
             const { bg: bgCol, fg: fgCol } = getTileColors(m.value);
-            sub.rect(absX, absY, 8, 3, { bg: bgCol });
+            sub.rect(absX, absY, TILE_W, TILE_H, { bg: bgCol });
             const valStr = m.value.toString();
-            const centered = color.bold(centerText(valStr, 8));
+            const centered = color.bold(centerText(valStr, TILE_W));
             sub.blit(absX, absY + 1, centered, {
               fg: fgCol,
               bg: bgCol,
@@ -634,21 +643,21 @@ demo(
           }
         } else {
           // Render static tiles
-          for (let r = 0; r < 4; r++) {
-            for (let c = 0; c < 4; c++) {
+          for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
               const val = grid[r]![c]!;
               if (val === 0) continue; // Already drawn empty background
 
-              const relX = 1 + c * 9;
-              const relY = 1 + r * 4;
+              const relX = 1 + c * TILE_STEP_X;
+              const relY = 1 + r * TILE_STEP_Y;
               const absX = sub.offsetX + relX;
               const absY = sub.offsetY + relY;
 
               const { bg: bgCol, fg: fgCol } = getTileColors(val);
 
-              sub.rect(absX, absY, 8, 3, { bg: bgCol });
+              sub.rect(absX, absY, TILE_W, TILE_H, { bg: bgCol });
               const valStr = val.toString();
-              const centered = color.bold(centerText(valStr, 8));
+              const centered = color.bold(centerText(valStr, TILE_W));
               sub.blit(absX, absY + 1, centered, {
                 fg: fgCol,
                 bg: bgCol,
