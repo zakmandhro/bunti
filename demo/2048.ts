@@ -677,8 +677,7 @@ demo(
               {
                 width: 27,
                 height: 7,
-                border: 'double',
-                borderColor: 'error',
+                border: 'none',
                 bgColor: { r: 35, g: 0, b: 0 },
                 align: 'center',
               },
@@ -697,8 +696,7 @@ demo(
               {
                 width: 27,
                 height: 7,
-                border: 'double',
-                borderColor: 'gold',
+                border: 'none',
                 bgColor: { r: 35, g: 35, b: 0 },
                 align: 'center',
               },
