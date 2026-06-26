@@ -30,9 +30,10 @@ export function Modal(
   const modalW = props.width;
   const modalH = props.height;
 
-  // Center coordinate relative to current context bounds
-  const x = ctx.offsetX + Math.max(0, Math.floor((parentW - modalW) / 2));
-  const y = ctx.offsetY + Math.max(0, Math.floor((parentH - modalH) / 2));
+  const localX = Math.max(0, Math.floor((parentW - modalW) / 2));
+  const localY = Math.max(0, Math.floor((parentH - modalH) / 2));
+  const x = ctx.offsetX + localX;
+  const y = ctx.offsetY + localY;
 
   // 1. Draw solid background rect for the modal
   ctx.rect(x, y, modalW, modalH, {
@@ -43,8 +44,8 @@ export function Modal(
   // 2. Draw the Box enclosing the modal content
   return ctx.box(
     {
-      x,
-      y,
+      x: localX,
+      y: localY,
       width: modalW,
       height: modalH,
       border: props.border ?? 'double',
