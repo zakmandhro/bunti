@@ -3,6 +3,8 @@
  * Scoped closure API with contextual capabilities via trait-based composition.
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import pc from 'picocolors';
 import {
   bg,
@@ -71,6 +73,7 @@ export interface DSLBoxOptions extends StyleOptions {
   color?: string | number | RGB | 'blank';
   x?: number;
   y?: number;
+  zIndex?: number;
   anchor?: 'top' | 'bottom';
   size?: 'auto' | number;
   title?: string;
@@ -96,6 +99,10 @@ export interface TypewriterState {
   done: boolean;
   index: number;
   progress: number;
+}
+
+export interface LayerOptions {
+  zIndex?: number;
 }
 
 /**
@@ -152,6 +159,11 @@ export interface BuntiContext {
     callback: (sub: BuntiContext) => void,
   ): string;
   box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void): string;
+  layer(
+    zIndexOrOptions: number | LayerOptions,
+    callback: (sub: BuntiContext) => void,
+  ): BuntiContext;
+  layer(callback: (sub: BuntiContext) => void): BuntiContext;
   joinHorizontal(...blocks: string[]): string;
   joinVertical(...blocks: string[]): string;
   wallpaper(
@@ -167,6 +179,7 @@ export interface BuntiContext {
   // State & Focus
   useState<T>(initial: T): [T, (val: T) => void];
   useState<T>(key: string, initial: T): [T, (val: T) => void];
+  usePersistentState<T>(key: string, initial: T): [T, (val: T) => void];
   focusable(id: string): boolean;
   isFocused(id: string): boolean;
   focus(id: string): void;
@@ -232,6 +245,14 @@ export interface BuntiContext {
 interface DSLState {
   activeContents: string[];
   stack: string[][];
+  layers: RenderLayer[];
+  layerOrder: number;
+}
+
+interface RenderLayer {
+  zIndex: number;
+  order: number;
+  buffer: Cell[];
 }
 
 function boxBorderInset(options: DSLBoxOptions): number {
@@ -269,6 +290,44 @@ function resolveBoxInnerArea(area: Rect, options: DSLBoxOptions): Rect {
     width: Math.max(0, area.width - borderInset * 2 - px * 2),
     height: Math.max(0, area.height - borderInset * 2 - py * 2),
   };
+}
+
+function createTransparentBuffer(size: number): Cell[] {
+  return Array.from({ length: size }, () => ({
+    char: ' ',
+    fg: undefined,
+    bg: undefined,
+    fgCode: undefined,
+    bgCode: undefined,
+    bold: false,
+    skip: true,
+  }));
+}
+
+function createLayerScreenState(state: ScreenState): ScreenState {
+  const size = state.width * state.height;
+  return {
+    ...state,
+    frontBuffer: createTransparentBuffer(size),
+    backBuffer: createTransparentBuffer(size),
+  };
+}
+
+function compositeLayer(state: ScreenState, buffer: Cell[]) {
+  for (let i = 0; i < buffer.length; i++) {
+    const source = buffer[i]!;
+    if (source.skip) continue;
+
+    const target = state.backBuffer[i]!;
+    target.char = source.char;
+    target.fg = source.fg;
+    target.bg = source.bg;
+    target.bold = source.bold;
+    target.fgCode = source.fgCode;
+    target.bgCode = source.bgCode;
+    target.skip = source.skip;
+    target.raw = source.raw;
+  }
 }
 
 function graphemes(text: string): string[] {
@@ -486,6 +545,57 @@ function createDSLContext(
       ];
     },
 
+    usePersistentState<T>(key: string, initial: T): [T, (val: T) => void] {
+      if (!state.componentState.has(key)) {
+        const storeDir = join(process.cwd(), '.tmp');
+        const storeFile = join(storeDir, 'bunti_store.json');
+        let fileVal: any;
+        try {
+          if (existsSync(storeFile)) {
+            const data = readFileSync(storeFile, 'utf-8');
+            const parsed = JSON.parse(data);
+            fileVal = parsed[key];
+          }
+        } catch {
+          // Ignore
+        }
+        const finalVal = fileVal !== undefined ? fileVal : initial;
+        state.componentState.set(key, finalVal);
+      }
+
+      return [
+        state.componentState.get(key),
+        (val: T) => {
+          state.componentState.set(key, val);
+
+          const storeDir = join(process.cwd(), '.tmp');
+          const storeFile = join(storeDir, 'bunti_store.json');
+          try {
+            if (!existsSync(storeDir)) {
+              mkdirSync(storeDir, { recursive: true });
+            }
+            let currentStore: Record<string, any> = {};
+            if (existsSync(storeFile)) {
+              try {
+                currentStore = JSON.parse(readFileSync(storeFile, 'utf-8'));
+              } catch {
+                currentStore = {};
+              }
+            }
+            currentStore[key] = val;
+            writeFileSync(
+              storeFile,
+              JSON.stringify(currentStore, null, 2),
+              'utf-8',
+            );
+          } catch {
+            // Ignore
+          }
+          (state as any).requestTick?.();
+        },
+      ];
+    },
+
     focusable(id: string) {
       if (!state.focusableIds.includes(id)) {
         state.focusableIds.push(id);
@@ -645,6 +755,14 @@ function createDSLContext(
     },
 
     box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void) {
+      if (options.zIndex !== undefined) {
+        const { zIndex, ...layeredOptions } = options;
+        ctx.layer(zIndex, (layerCtx) => {
+          layerCtx.box(layeredOptions, callback);
+        });
+        return '';
+      }
+
       const preContentW = options.width === undefined ? availableW : 0;
       const preContentH = options.height === undefined ? availableH : 0;
       const preArea = resolveBoxArea(
@@ -683,6 +801,59 @@ function createDSLContext(
         dslState.activeContents.push(styledBox);
       }
       return styledBox;
+    },
+
+    layer(
+      zIndexOrOptions: number | LayerOptions | ((sub: BuntiContext) => void),
+      maybeCallback?: (sub: BuntiContext) => void,
+    ) {
+      const callback =
+        typeof zIndexOrOptions === 'function' ? zIndexOrOptions : maybeCallback;
+      if (!callback) return ctx;
+
+      const zIndex =
+        typeof zIndexOrOptions === 'number'
+          ? zIndexOrOptions
+          : typeof zIndexOrOptions === 'object'
+            ? (zIndexOrOptions.zIndex ?? 0)
+            : 0;
+
+      const layerState = createLayerScreenState(state);
+      const layerDslState: DSLState = {
+        activeContents: [],
+        stack: [],
+        layers: dslState.layers,
+        layerOrder: dslState.layerOrder,
+      };
+
+      const layerCtx = createDSLContext(
+        layerState,
+        layerDslState,
+        availableW,
+        availableH,
+        offsetX,
+        offsetY,
+        isRoot,
+      );
+      layerCtx.box = createDirectBoxRenderer(
+        layerState,
+        layerDslState,
+        layerCtx,
+      );
+
+      callback(layerCtx);
+
+      const flow = layerDslState.activeContents.join('');
+      if (flow) layoutBlit(layerState, offsetX, offsetY, flow);
+
+      dslState.layerOrder = layerDslState.layerOrder + 1;
+      dslState.layers.push({
+        zIndex,
+        order: layerDslState.layerOrder,
+        buffer: layerState.backBuffer,
+      });
+
+      return ctx;
     },
 
     joinHorizontal(...blocks: string[]) {
@@ -726,70 +897,106 @@ function createDSLContext(
   return ctx;
 }
 
-/**
- * Top-level Screen Context
- */
-export function createScreenContext(state: ScreenState): BuntiContext {
-  state.hookCounter = 0;
-  const previousFocusableIds = state.focusableIds;
-
-  if (state.lastKey === KEYS.TAB && previousFocusableIds.length > 0) {
-    const idx = previousFocusableIds.indexOf(state.focusedId || '');
-    const nextIdx = (idx + 1) % previousFocusableIds.length;
-    state.focusedId = previousFocusableIds[nextIdx];
-  }
-
-  state.focusableIds = []; // Rebuild from this frame's rendered focusables.
-  state.hitboxes = new Map(); // Rebuild from this frame's interactive geometry.
-
-  const dslState: DSLState = {
-    activeContents: [],
-    stack: [],
-  };
-
-  const base = createDSLContext(
-    state,
-    dslState,
-    state.width,
-    state.height,
-    0,
-    0,
-    true,
-  );
-
-  const flushFlow = () => {
-    const flow = dslState.activeContents.join('');
-    if (flow) layoutBlit(state, 0, 0, flow);
-  };
-
-  // Override box for top-level to handle auto-centering and direct-to-buffer rendering
-  const boxOverride = (
+function createDirectBoxRenderer(
+  state: ScreenState,
+  dslState: DSLState,
+  base: BuntiContext,
+) {
+  return (
     options: DSLBoxOptions,
     callback: (ctx: BuntiContext) => void,
-  ) => {
+  ): string => {
+    if (options.zIndex !== undefined) {
+      const { zIndex, ...layeredOptions } = options;
+      base.layer(zIndex, (layerCtx) => {
+        layerCtx.box(layeredOptions, callback);
+      });
+      return '';
+    }
+
     const boxOptions: DSLBoxOptions =
       options.anchor === 'top' || options.anchor === 'bottom'
-        ? { ...options, width: state.width }
+        ? { ...options, width: base.width }
         : options;
-    const preArea = resolveBoxArea(
-      base.area,
-      boxOptions,
-      boxOptions.width === undefined ? state.width : 0,
-      boxOptions.height === undefined ? state.height : 0,
-    );
-    const innerArea = resolveBoxInnerArea(preArea, boxOptions);
+
+    const hasFixedSize =
+      boxOptions.width !== undefined &&
+      boxOptions.width !== 'auto' &&
+      boxOptions.height !== undefined &&
+      boxOptions.height !== 'auto';
+
+    if (hasFixedSize) {
+      const preArea = resolveBoxArea(base.area, boxOptions, 0, 0);
+      const innerArea = resolveBoxInnerArea(preArea, boxOptions);
+
+      if (boxOptions.bgColor || boxOptions.color) {
+        rect(state, preArea.x, preArea.y, preArea.width, preArea.height, {
+          char: ' ',
+          bg: boxOptions.bgColor,
+          fg: boxOptions.color === 'blank' ? undefined : boxOptions.color,
+        });
+      }
+
+      const styledBox = layoutBox('', boxOptions, base.width, base.height);
+      layoutBlit(state, preArea.x, preArea.y, styledBox);
+
+      const subContents: string[] = [];
+      dslState.stack.push(dslState.activeContents);
+      dslState.activeContents = subContents;
+
+      const subCtx = createDSLContext(
+        state,
+        dslState,
+        innerArea.width,
+        innerArea.height,
+        innerArea.x,
+        innerArea.y,
+      );
+      callback(subCtx);
+
+      dslState.activeContents = dslState.stack.pop()!;
+
+      const contentStr = subContents.join('');
+      if (contentStr) {
+        const styledContent = layoutBox(
+          contentStr,
+          {
+            width: innerArea.width,
+            height: innerArea.height,
+            align: boxOptions.align,
+            valign: boxOptions.valign,
+            wrap: boxOptions.wrap,
+            border: 'none',
+            padding: [0, 0],
+          },
+          innerArea.width,
+          innerArea.height,
+        );
+        layoutBlit(state, innerArea.x, innerArea.y, styledContent);
+      }
+
+      return styledBox;
+    }
 
     const subContents: string[] = [];
     dslState.stack.push(dslState.activeContents);
     dslState.activeContents = subContents;
 
+    const preAreaTemp = resolveBoxArea(
+      base.area,
+      boxOptions,
+      base.width,
+      base.height,
+    );
+    const innerAreaTemp = resolveBoxInnerArea(preAreaTemp, boxOptions);
+
     const subCtx = createDSLContext(
       state,
       dslState,
-      innerArea.width,
-      innerArea.height,
-      innerArea.x,
-      innerArea.y,
+      innerAreaTemp.width,
+      innerAreaTemp.height,
+      innerAreaTemp.x,
+      innerAreaTemp.y,
     );
     callback(subCtx);
 
@@ -799,8 +1006,8 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     const styledBox = layoutBox(
       contentStr,
       boxOptions,
-      state.width,
-      state.height,
+      base.width,
+      base.height,
     );
 
     const lines = styledBox.split('\n');
@@ -823,6 +1030,53 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     layoutBlit(state, boxArea.x, boxArea.y, styledBox);
     return styledBox;
   };
+}
+
+/**
+ * Top-level Screen Context
+ */
+export function createScreenContext(state: ScreenState): BuntiContext {
+  state.hookCounter = 0;
+  const previousFocusableIds = state.focusableIds;
+
+  if (state.lastKey === KEYS.TAB && previousFocusableIds.length > 0) {
+    const idx = previousFocusableIds.indexOf(state.focusedId || '');
+    const nextIdx = (idx + 1) % previousFocusableIds.length;
+    state.focusedId = previousFocusableIds[nextIdx];
+  }
+
+  state.focusableIds = []; // Rebuild from this frame's rendered focusables.
+  state.hitboxes = new Map(); // Rebuild from this frame's interactive geometry.
+
+  const dslState: DSLState = {
+    activeContents: [],
+    stack: [],
+    layers: [],
+    layerOrder: 0,
+  };
+
+  const base = createDSLContext(
+    state,
+    dslState,
+    state.width,
+    state.height,
+    0,
+    0,
+    true,
+  );
+
+  const flushFlow = () => {
+    const flow = dslState.activeContents.join('');
+    if (flow) layoutBlit(state, 0, 0, flow);
+
+    dslState.layers
+      .sort((a, b) => a.zIndex - b.zIndex || a.order - b.order)
+      .forEach((layer) => {
+        compositeLayer(state, layer.buffer);
+      });
+  };
+
+  const boxOverride = createDirectBoxRenderer(state, dslState, base);
 
   return {
     ...base,

@@ -94,6 +94,7 @@ Bunti is built for speed. By leveraging `Bun.stdout.writer()` and surgical diffi
 Run a public demo:
 
 ```bash
+bun demo 2048
 bun demo showcase
 bun demo animation
 bun demo interaction

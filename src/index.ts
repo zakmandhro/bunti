@@ -1,6 +1,7 @@
 import * as colors from './colors';
 import * as detect from './detect';
 import * as dsl from './dsl';
+import * as easing from './easing';
 import * as geometry from './geometry';
 import * as icons from './icons';
 import * as layout from './layout';
@@ -16,10 +17,12 @@ export { detectCapabilities } from './detect';
 export type {
   BuntiContext,
   DSLBoxOptions,
+  LayerOptions,
   TypewriterOptions,
   TypewriterState,
 } from './dsl';
 export { KEYS, render } from './dsl';
+export { clamp01, easeInOutCubic, easeOutBack, easeOutCubic } from './easing';
 export type {
   PlacedRectInput,
   PlacedRectOptions,
@@ -92,6 +95,7 @@ export const bunti = {
   ...colors,
   ...state,
   ...dsl,
+  ...easing,
   ...geometry,
 };
 

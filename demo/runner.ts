@@ -18,6 +18,7 @@ const target = process.argv.find(
 const isNoHot = process.argv.includes('--no-hot');
 
 const publicDemos: Record<string, string> = {
+  2048: './2048.ts',
   animation: './animation.ts',
   interaction: './interaction.ts',
   dashboard: './dashboard.ts',
