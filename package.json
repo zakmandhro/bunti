@@ -39,6 +39,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepublishOnly": "bun run typecheck && bun run lint && bun run test && bun run build",
     "test": "bun test",
+    "smoke": "bun scripts/smoke-demos.ts",
     "bench": "bun scripts/bench.ts",
     "typecheck": "tsc --noEmit",
     "type-check": "tsc --noEmit",
