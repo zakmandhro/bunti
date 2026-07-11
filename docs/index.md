@@ -11,7 +11,7 @@ hero:
       link: /layout
     - theme: alt
       text: View on GitHub
-      link: https://github.com/zak/bunti
+      link: https://github.com/zakmandhro/bunti
 
 features:
   - title: 🏗️ Contextual DSL
