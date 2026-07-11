@@ -8,6 +8,7 @@ import {
   contrastText,
   createGradient,
   darken,
+  fade,
   fg,
   type Gradient,
   lighten,
@@ -26,6 +27,8 @@ import {
 } from '../geometry';
 import { icon, replaceEmojis } from '../icons';
 import {
+  dimRect,
+  getWindow,
   joinHorizontal,
   joinVertical,
   type ListOptions,
@@ -37,6 +40,7 @@ import {
   viewport as layoutViewport,
   wallpaper as layoutWallpaper,
   rect,
+  resolveSize,
   type TableOptions,
 } from '../layout';
 import type { Cell, RGB, ScreenState } from '../state';
@@ -51,7 +55,11 @@ import { visibleWidth } from '../utils';
 import { type BuntiColor, colors } from '../vendor/colors';
 import { createHooks } from './hooks';
 import { createInteraction } from './interaction';
-import { compositeLayer, createLayerScreenState } from './layers';
+import {
+  compositeLayer,
+  createLayerScreenState,
+  layerContentBounds,
+} from './layers';
 import { createMotion } from './motion';
 import {
   type BuntiContext,
@@ -60,6 +68,9 @@ import {
   KEYS,
   type LayerOptions,
 } from './types';
+
+/** Luminance scale applied by layer drop shadows at composite time. */
+const LAYER_SHADOW_DIM = 0.45;
 
 function boxBorderInset(options: DSLBoxOptions): number {
   return options.border === 'none' || !options.border ? 0 : 1;
@@ -267,6 +278,40 @@ function createDSLContext(
           setSelectedIndex(Math.min(items.length - 1, selectedIndex + 1));
       }
 
+      // Mouse: each visible row registers a `${id}:row:${index}` hitbox.
+      // Clicking a row selects it (and focuses the list so the selection is
+      // visible); the hovered row gets a soft selection wash. Keyboard
+      // behavior is unchanged.
+      let hoveredIndex: number | undefined;
+      if (state.options.mouse && options.interactive !== false) {
+        const startY = ctx.cursorY;
+        let visibleItems = items;
+        let offset = 0;
+        let hasMoreAbove = false;
+        if (options.maxVisible && items.length > options.maxVisible) {
+          const win = getWindow(items, selectedIndex, options.maxVisible);
+          visibleItems = win.visible;
+          offset = win.start;
+          hasMoreAbove = win.hasMoreAbove;
+        }
+        const resolvedW = resolveSize(options.width, availableW, 0);
+        const rowW = resolvedW > 0 ? resolvedW : availableW;
+        for (let i = 0; i < visibleItems.length; i++) {
+          const actualIdx = offset + i;
+          const row = ctx.hitbox(`${id}:row:${actualIdx}`, {
+            x: 0,
+            y: startY + (hasMoreAbove ? 1 : 0) + i,
+            width: rowW,
+            height: 1,
+          });
+          if (row.hovered) hoveredIndex = actualIdx;
+          if (row.clicked) {
+            setSelectedIndex(actualIdx);
+            ctx.focus(id);
+          }
+        }
+      }
+
       // Theme-token fallbacks: focused rows highlight with theme.selection /
       // theme.focus, unfocused lists mute their selected row via theme.muted.
       // Explicit options always win.
@@ -282,6 +327,10 @@ function createDSLContext(
           selectedBg: isFocused
             ? (options.selectedBg ?? theme.selection)
             : undefined,
+          hoveredIndex: options.hoveredIndex ?? hoveredIndex,
+          hoverBg:
+            options.hoverBg ??
+            fade(theme.selection.rgb, theme.background.rgb, 0.55),
         },
         availableW,
       );
@@ -397,12 +446,13 @@ function createDSLContext(
         typeof zIndexOrOptions === 'function' ? zIndexOrOptions : maybeCallback;
       if (!callback) return ctx;
 
-      const zIndex =
+      const layerOptions: LayerOptions =
         typeof zIndexOrOptions === 'number'
-          ? zIndexOrOptions
+          ? { zIndex: zIndexOrOptions }
           : typeof zIndexOrOptions === 'object'
-            ? (zIndexOrOptions.zIndex ?? 0)
-            : 0;
+            ? zIndexOrOptions
+            : {};
+      const zIndex = layerOptions.zIndex ?? 0;
 
       const layerState = createLayerScreenState(state);
       const layerDslState: DSLState = {
@@ -438,6 +488,9 @@ function createDSLContext(
         zIndex,
         order: layerDslState.layerOrder,
         buffer: layerState.backBuffer,
+        shadow: layerOptions.shadow,
+        backdrop: layerOptions.backdrop,
+        bounds: layerContentBounds(layerState.backBuffer, state.width),
       });
 
       return ctx;
@@ -665,9 +718,27 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     const flow = dslState.activeContents.join('');
     if (flow) layoutBlit(state, 0, 0, flow);
 
+    // Layers composite in ascending z-order. Right before each layer lands,
+    // its backdrop dims the whole screen and its shadow dims an offset rect
+    // (+2 cols, +1 row) under its painted bounds — both darken everything
+    // already composited, lower layers included.
+    const screenRect = { x: 0, y: 0, width: state.width, height: state.height };
     dslState.layers
       .sort((a, b) => a.zIndex - b.zIndex || a.order - b.order)
       .forEach((layer) => {
+        if (layer.backdrop) dimRect(state, screenRect, layer.backdrop);
+        if (layer.shadow && layer.bounds) {
+          dimRect(
+            state,
+            {
+              x: layer.bounds.x + 2,
+              y: layer.bounds.y + 1,
+              width: layer.bounds.width,
+              height: layer.bounds.height,
+            },
+            LAYER_SHADOW_DIM,
+          );
+        }
         compositeLayer(state, layer.buffer);
       });
   };

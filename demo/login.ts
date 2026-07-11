@@ -1,4 +1,4 @@
-import { Button, Card, Input } from '../src/components';
+import { Button, Card, Input, Link, Progress } from '../src/components';
 import { demo } from './demo-layout';
 
 /**
@@ -13,13 +13,11 @@ demo('AUTHENTICATION', (ctx, bounds) => {
   const [status, setStatus] = useState('login-status', 'idle');
   const [error, setError] = useState('login-error', '');
   const [progress, setProgress] = useState('login-progress', 0);
-  const [forgotHovered, setForgotHovered] = useState('forgot-hovered', false);
   const [forgotNotice, setForgotNotice] = useState('forgot-notice', '');
 
   const subtleTitle = { r: 140, g: 140, b: 140 };
   const mutedText = { r: 110, g: 110, b: 110 };
   const linkColor = { r: 37, g: 99, b: 235 }; // bootstrap-ish blue
-  const linkHover = { r: 29, g: 78, b: 200 };
 
   const handleLogin = () => {
     if (!email.includes('@')) {
@@ -99,6 +97,7 @@ demo('AUTHENTICATION', (ctx, bounds) => {
   Card(
     ctx,
     {
+      id: 'auth-card', // hover: border lifts to theme.focus, bg shifts a step
       x: form.x,
       y: form.y,
       width: form.width,
@@ -152,14 +151,15 @@ demo('AUTHENTICATION', (ctx, bounds) => {
       sub.text('\n\n');
 
       if (status === 'loading') {
-        const barW = W - 14;
-        const filled = Math.floor(barW * progress);
-        const bar =
-          color.black('█'.repeat(filled)) +
-          color.dim('░'.repeat(barW - filled));
-        sub.text(
-          ` ${icon('loading')} ${color.dim('Signing in ')} [${bar}] ${color.bold(`${Math.floor(progress * 100)}%`)}`,
-        );
+        const barW = W - 26;
+        sub.text(` ${icon('loading')} ${color.dim('Signing in ')} `);
+        Progress(sub, {
+          value: progress,
+          width: barW,
+          fillColor: { r: 37, g: 99, b: 235 },
+          trackColor: { r: 210, g: 208, b: 200 },
+          showPercent: true,
+        });
       } else {
         Button(sub, {
           id: 'btn-login',
@@ -173,30 +173,23 @@ demo('AUTHENTICATION', (ctx, bounds) => {
 
       sub.text('\n');
 
-      // "Forgot password?" link — hover + click
+      // "Forgot password?" link — underlined, hover-brightened, clickable
       const linkText = 'Forgot password?';
       const link = sub.resolveLocalRect({
         y: sub.cursorY,
         width: linkText.length,
         height: 1,
       });
-      const interaction = sub.hitbox('forgot-password', {
+      Link(sub, {
+        id: 'forgot-password',
+        label: linkText,
+        color: linkColor,
         x: link.x,
         y: link.y,
-        width: link.width,
-        height: link.height,
+        onClick: () => {
+          setForgotNotice('Password reset link sent to your email.');
+        },
       });
-      const hovered = interaction.hovered;
-      if (hovered !== forgotHovered) setForgotHovered(hovered);
-      if (interaction.clicked) {
-        setForgotNotice('Password reset link sent to your email.');
-      }
-
-      const styled = hovered
-        ? color.fg(linkHover, color.bold(linkText))
-        : color.fg(linkColor, linkText);
-      const padLeft = ' '.repeat(link.x);
-      sub.text(padLeft + styled);
 
       if (error) {
         sub.text(`\n\n ${color.fg('error', `${icon('warning')} ${error}`)}`);

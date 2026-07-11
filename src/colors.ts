@@ -336,6 +336,16 @@ export function resolveColorToRGB(color: unknown): RGB {
   if (typeof color === 'number') return ansi256ToRGB(color);
   if (typeof color === 'string') {
     if (color.startsWith('#')) return hexToRGB(color);
+    // Resolved truecolor code ('2;r;g;b') — cells store these after
+    // resolveColor(); dimRect and friends must round-trip them.
+    if (color.startsWith('2;')) {
+      const parts = color.split(';');
+      return {
+        r: Number(parts[1]) || 0,
+        g: Number(parts[2]) || 0,
+        b: Number(parts[3]) || 0,
+      };
+    }
     if (RGB_REGISTRY[color]) return RGB_REGISTRY[color];
     const paletteValue =
       (PALETTE as Record<string, string>)[color] ?? NAME_TO_ANSI[color];

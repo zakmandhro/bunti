@@ -3,4 +3,7 @@ export * from './Button';
 export * from './Card';
 export * from './Header';
 export * from './Input';
+export * from './Link';
 export * from './Modal';
+export * from './Progress';
+export * from './Spinner';

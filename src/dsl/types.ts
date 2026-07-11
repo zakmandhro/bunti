@@ -80,6 +80,18 @@ export interface TypewriterState {
 
 export interface LayerOptions {
   zIndex?: number;
+  /**
+   * Paints a drop shadow under the layer's painted content bounds
+   * (offset +2 columns, +1 row) at composite time. The shadow darkens
+   * whatever sits below it, including lower layers.
+   */
+  shadow?: boolean;
+  /**
+   * Dims everything below this layer by 0..1 (backdrop luminance scale
+   * toward black) before the layer composites. Applied in z-order, so
+   * lower layers are dimmed too.
+   */
+  backdrop?: number;
 }
 
 /**
@@ -327,4 +339,10 @@ export interface RenderLayer {
   zIndex: number;
   order: number;
   buffer: Cell[];
+  /** Composite-time drop shadow under the painted bounds. */
+  shadow?: boolean;
+  /** Composite-time whole-screen dim (0..1) below this layer. */
+  backdrop?: number;
+  /** Tight bounds of the layer's painted cells (null when empty). */
+  bounds: Rect | null;
 }

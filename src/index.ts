@@ -125,6 +125,7 @@ export {
   blit,
   box,
   createStyle,
+  dimRect,
   getWindow,
   gradient,
   joinHorizontal,
@@ -143,6 +144,7 @@ export {
   loop,
   renderFrame,
   restoreTerminal,
+  updatePointerShape,
 } from './render';
 export type { Cell, RGB, ScreenOptions, ScreenState } from './state';
 export {

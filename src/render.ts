@@ -29,6 +29,10 @@ export function restoreTerminal(state: ScreenState) {
 
   const options = state.options;
   let cmd = '';
+  if (state.pointerShape === 'pointer') {
+    cmd += OSC_POINTER_DEFAULT;
+    state.pointerShape = 'default';
+  }
   if (options.mouse) cmd += ANSI.mouseDisable;
   if (options.focus) cmd += ANSI.focusDisable;
   cmd += ANSI.reset + ANSI.clear + ANSI.home;
@@ -145,6 +149,44 @@ function syncFrontCell(
   front.dim = cell.dim;
   front.strike = cell.strike;
   front.skip = cell.skip;
+}
+
+/** OSC 22 mouse-cursor shapes (xterm pointer-shape protocol). */
+const OSC_POINTER = '\x1b]22;pointer\x1b\\';
+const OSC_POINTER_DEFAULT = '\x1b]22;default\x1b\\';
+
+/**
+ * OSC 22 pointer cursor: emits the 'pointer' shape when any hitbox
+ * registered this frame is under the mouse, and resets to 'default' on the
+ * hover-off edge. Emission is edge-triggered (once per state change, never
+ * per frame). Gated off for Apple Terminal, which does not understand
+ * OSC 22; everywhere else an unsupported sequence is harmlessly ignored.
+ */
+export function updatePointerShape(state: ScreenState) {
+  if (!state.options.mouse) return;
+  if (state.terminal?.app === 'apple-terminal') return;
+
+  let hovered = false;
+  for (const box of state.hitboxes.values()) {
+    if (
+      state.mouseX >= box.x &&
+      state.mouseX < box.x + box.width &&
+      state.mouseY >= box.y &&
+      state.mouseY < box.y + box.height
+    ) {
+      hovered = true;
+      break;
+    }
+  }
+
+  const shape = hovered ? 'pointer' : 'default';
+  if (shape === (state.pointerShape ?? 'default')) return;
+  state.pointerShape = shape;
+  try {
+    process.stdout.write(hovered ? OSC_POINTER : OSC_POINTER_DEFAULT);
+  } catch {
+    // stdout may already be gone during teardown
+  }
 }
 
 /**
@@ -439,6 +481,8 @@ export function loop(
           renderCallback(state);
           if (stopped || state.isStopped) return;
           flush(state);
+          // OSC 22 mouse-cursor shape reacts to this frame's hitboxes.
+          updatePointerShape(state);
         } while (tickAgain);
       } catch (err) {
         // Never write errors into the alt screen and never keep looping over

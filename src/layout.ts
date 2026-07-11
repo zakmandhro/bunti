@@ -3,7 +3,14 @@
  * Strictly functional primitives for buffer manipulation and layout generation.
  */
 
-import { fg as fgColor, isThemeColor, resolveColor } from './colors';
+import {
+  fg as fgColor,
+  isThemeColor,
+  resolveColor,
+  resolveColorToRGB,
+} from './colors';
+import { colorTier } from './detect';
+import type { Rect } from './geometry';
 import { replaceEmojis } from './icons';
 import type { Cell, RGB, ScreenState } from './state';
 import type { ThemeColor } from './theme';
@@ -65,6 +72,54 @@ export function setCell(
       skip.dim = target!.dim;
       skip.strike = target!.strike;
       skip.skip = true;
+    }
+  }
+}
+
+/**
+ * Repaints existing back-buffer cells inside `area` at reduced luminance.
+ * Each cell's current fg/bg is resolved to exact RGB (numeric ANSI-256 codes
+ * via the xterm table) and scaled toward black by `amount` (0 = unchanged,
+ * 1 = fully black). Cells with an undefined bg keep their transparent
+ * background (fg-only dim); undefined fg is left alone (there is no color to
+ * scale). Wide-glyph tail cells (skip) are dimmed too so they stay in sync
+ * with their head cell. No-op on the mono tier — there is no color to dim.
+ */
+export function dimRect(state: ScreenState, area: Rect, amount: number) {
+  if (colorTier() === 'mono') return;
+  const t = Math.max(0, Math.min(1, amount));
+  if (t === 0) return;
+  const keep = 1 - t;
+
+  const x0 = Math.max(0, area.x);
+  const y0 = Math.max(0, area.y);
+  const x1 = Math.min(state.width, area.x + area.width);
+  const y1 = Math.min(state.height, area.y + area.height);
+
+  for (let y = y0; y < y1; y++) {
+    const rowOffset = y * state.width;
+    for (let x = x0; x < x1; x++) {
+      const cell = state.backBuffer[rowOffset + x]!;
+      if (cell.fg !== undefined) {
+        const rgb = resolveColorToRGB(cell.fg);
+        const dimmed: RGB = {
+          r: Math.round(rgb.r * keep),
+          g: Math.round(rgb.g * keep),
+          b: Math.round(rgb.b * keep),
+        };
+        cell.fg = dimmed;
+        cell.fgCode = resolveColor(dimmed);
+      }
+      if (cell.bg !== undefined) {
+        const rgb = resolveColorToRGB(cell.bg);
+        const dimmed: RGB = {
+          r: Math.round(rgb.r * keep),
+          g: Math.round(rgb.g * keep),
+          b: Math.round(rgb.b * keep),
+        };
+        cell.bg = dimmed;
+        cell.bgCode = resolveColor(dimmed);
+      }
     }
   }
 }
@@ -661,6 +716,10 @@ export interface ListOptions {
   focusedIndex?: number;
   focusStyle?: (s: string) => string;
   selectedBg?: string | number | RGB | ThemeColor;
+  /** Mouse-hovered row (styled with hoverBg; selection wins over hover). */
+  hoveredIndex?: number;
+  /** Background wash for the hovered row. */
+  hoverBg?: string | number | RGB | ThemeColor;
   width?: SizeUnit;
   maxVisible?: number;
   interactive?: boolean;
@@ -674,15 +733,18 @@ export function list(
   const bullet = options.bullet || '';
   const indent = ' '.repeat(options.indent || 0);
   const resolvedW = resolveSize(options.width, parentW || 0, 0);
-  const wrapSelectedBg = (line: string) => {
-    if (!options.selectedBg) return line;
-    const code = resolveColor(options.selectedBg);
+  const wrapLineBg = (line: string, bg: string | number | RGB | ThemeColor) => {
+    const code = resolveColor(bg);
     if (code === undefined) return line; // mono tier: no color output
     const codeStr = String(code);
     const prefix = codeStr.startsWith('2;') ? '48' : '48;5';
     const bgOn = `\x1b[${prefix};${codeStr}m`;
     return `${bgOn + line.replace(/\x1b\[0m/g, `\x1b[0m${bgOn}`)}\x1b[0m`;
   };
+  const padToWidth = (line: string) =>
+    resolvedW > 0
+      ? line + ' '.repeat(Math.max(0, resolvedW - visibleWidth(line)))
+      : line;
   let targetItems = items,
     offset = 0,
     hasMoreAbove = false,
@@ -701,12 +763,11 @@ export function list(
       if (options.focusedIndex === actualIdx) {
         const styledLine = options.focusStyle ? options.focusStyle(line) : line;
         if (!options.selectedBg) return styledLine;
-        const paddedLine =
-          resolvedW > 0
-            ? styledLine +
-              ' '.repeat(Math.max(0, resolvedW - visibleWidth(styledLine)))
-            : styledLine;
-        return wrapSelectedBg(paddedLine);
+        return wrapLineBg(padToWidth(styledLine), options.selectedBg);
+      }
+      // Hover wash (selection wins: checked above).
+      if (options.hoveredIndex === actualIdx && options.hoverBg) {
+        return wrapLineBg(padToWidth(line), options.hoverBg);
       }
       return line;
     })

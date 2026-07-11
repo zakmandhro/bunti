@@ -1,3 +1,4 @@
+import { Spinner } from '../src/components';
 import { bunti, innerRect, splitRect } from '../src/index';
 
 /**
@@ -38,11 +39,12 @@ bunti.render(
     wallpaper('#0a0a0b');
 
     // 1. Header
-    box({ border: 'none', padding: [1, 2], x: 2, y: 1 }, ({ span, text }) => {
-      span({ color: color.cyan }, (s) => s.text(' MISSION CONTROL '));
-      span({ color: color.gray }, (s) =>
-        s.text(` v1.0 • ${new Date().toLocaleTimeString()}`),
+    box({ border: 'none', padding: [1, 2], x: 2, y: 1 }, (sub) => {
+      sub.span({ color: color.cyan }, (s) => s.text(' MISSION CONTROL '));
+      sub.span({ color: color.gray }, (s) =>
+        s.text(` v1.0 • ${new Date().toLocaleTimeString()}  `),
       );
+      Spinner(sub, { label: color.gray('telemetry live') });
     });
 
     // 2. Main Layout Grid
@@ -121,15 +123,16 @@ bunti.render(
     blit(statusX + 8, statusY, color.white('TAB'));
     blit(statusX + 12, statusY, color.gray(' to switch focus, '));
     blit(statusX + 30, statusY, color.white('UP/DOWN'));
-    blit(statusX + 38, statusY, color.gray(' to navigate, '));
-    blit(statusX + 52, statusY, color.white('q'));
-    blit(statusX + 54, statusY, color.gray(' to abort mission.'));
+    blit(statusX + 38, statusY, color.gray(' or click rows, '));
+    blit(statusX + 54, statusY, color.white('q'));
+    blit(statusX + 56, statusY, color.gray(' to abort mission.'));
 
     if (lastKey === 'q') requestStop();
   },
   {
     fps: 60,
     keyboard: true,
+    mouse: true, // list rows are hoverable + clickable
     hideCursor: true,
     alternateBuffer: true,
   },

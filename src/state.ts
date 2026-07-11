@@ -100,6 +100,8 @@ export interface ScreenState {
   lastUnderline?: boolean;
   lastDim?: boolean;
   lastStrike?: boolean;
+  /** Last OSC 22 mouse-cursor shape emitted ('pointer' over hitboxes). */
+  pointerShape?: 'default' | 'pointer';
   needsFullRedraw?: boolean;
   id?: string;
   options: ScreenOptions;
