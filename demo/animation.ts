@@ -1,11 +1,29 @@
+/**
+ * Animation Sequence demo — dogfoods the motion minimum:
+ * - animate() with easing curves
+ * - stagger() cascading entrances (restartable id clock)
+ * - transition() enter/exit progress (SPACE toggles the status overlay)
+ * - restartAnimation() timeline restarts (no componentState poking)
+ * - time-based flicker() and the dt/frame counters
+ */
+
 import { Box } from '../src/components';
 import type { BuntiContext } from '../src/dsl';
+import { easeOutBack, easeOutCubic, lerp } from '../src/index';
 import { demo } from './demo-layout';
 
 const LOGO = [
   ' ┏┓  ┳ ┳ ┏┓┓ ┏┳┓ ┳ ',
   ' ┣┻┓ ┃ ┃ ┃┃┃  ┃  ┃ ',
   ' ┗━┛ ┗━┛ ┛┗┛  ┻  ┻ ',
+];
+
+const TIMELINE_IDS = [
+  'container',
+  'progress',
+  'bunti-logo',
+  'boot-copy',
+  'restart-hint',
 ];
 
 function gradientLogoLine(
@@ -35,13 +53,11 @@ demo(
     const { color, elapsedTime, lastKey, requestStop } = ctx;
     if (lastKey === 'q') requestStop();
     if (lastKey === 'enter') {
-      const now = Date.now();
-      ctx.state.componentState.set('container_start', now);
-      ctx.state.componentState.set('progress_start', now);
-      ctx.state.componentState.set('bunti-logo_start', now);
-      ctx.state.componentState.set('boot-copy_start', now);
-      ctx.state.componentState.set('restart-hint_start', now);
+      for (const id of TIMELINE_IDS) ctx.restartAnimation(id);
     }
+
+    const [showStatus, setShowStatus] = ctx.useState('show-status', false);
+    if (lastKey === ' ') setShowStatus(!showStatus);
 
     const panelWidth = Math.min(Math.max(bounds.w - 4, 28), 76);
     const panel = bounds.place({
@@ -54,7 +70,10 @@ demo(
     const innerW = Math.max(1, panel.width - 4);
     const innerH = Math.max(1, panel.height - 2);
 
-    const containerProgress = ctx.animate(650, { id: 'container' });
+    const containerProgress = ctx.animate(650, {
+      id: 'container',
+      easing: easeOutCubic,
+    });
     const progress = ctx.animate(1800, {
       id: 'progress',
       loop: true,
@@ -64,10 +83,11 @@ demo(
     const hintProgress = ctx.animate(650, {
       id: 'restart-hint',
       delay: 2850,
+      easing: easeOutCubic,
     });
     const logoReady = logoProgress >= 1;
-    const showLogo = logoReady || ctx.flicker(0.72);
-    const pulse = Math.sin(elapsedTime / 220) * 0.5 + 0.5;
+    const showLogo = logoReady || ctx.flicker(0.72, { id: 'logo-boot' });
+    const pulse = ctx.animate(440, { loop: 'yoyo' });
     const amber = ctx.rgb(255, Math.floor(170 + pulse * 70), 40);
     const muted = { r: 92, g: 98, b: 112 };
     const panelBg = ctx.fade('#0a0a0b', '#101118', containerProgress);
@@ -129,14 +149,23 @@ demo(
         sub.text(color.cyan(color.bold('BOOT SEQUENCE')));
         sub.text('\n\n');
 
-        for (const line of LOGO) {
+        // Staggered cascade: each logo line rides its own slice of the
+        // 'bunti-logo' clock, so ENTER replays the whole cascade.
+        // (+4 index slots ≈ 640ms base delay so the container lands first.)
+        LOGO.forEach((line, index) => {
+          const lineProgress = ctx.stagger(index + 4, {
+            id: 'bunti-logo',
+            delay: 160,
+            duration: 520,
+            easing: easeOutCubic,
+          });
           sub.text(
             showLogo
-              ? gradientLogoLine(ctx, line, logoProgress, muted)
+              ? gradientLogoLine(ctx, line, lineProgress, muted)
               : ' '.repeat(line.length),
           );
           sub.text('\n');
-        }
+        });
 
         sub.text('\n');
         sub.text(
@@ -150,7 +179,52 @@ demo(
       },
     );
 
-    const hint = 'ENTER to restart animation  |  q to quit';
+    // Status overlay: transition() keeps it mounted through the exit leg,
+    // so it slides/fades out instead of vanishing.
+    const status = ctx.transition('status-overlay', showStatus, {
+      duration: 320,
+      exitDuration: 220,
+      easing: easeOutBack,
+    });
+    if (status.mounted) {
+      const overlayW = Math.min(34, Math.max(24, panel.width - 12));
+      const overlayX = panel.x + Math.floor((panel.width - overlayW) / 2);
+      const overlayY = Math.round(
+        lerp(panel.y + panel.height + 2, panel.y + 3, status.progress),
+      );
+      const overlayBorder = ctx.fade('#0a0a0b', '#39d7ff', status.progress);
+      const overlayText = ctx.fade('#0a0a0b', '#e8ecf4', status.progress);
+
+      ctx.layer(10, (layer) => {
+        layer.box(
+          {
+            x: overlayX,
+            y: overlayY,
+            width: overlayW,
+            height: 6,
+            border: 'rounded',
+            borderColor: overlayBorder,
+            bgColor: '#101426',
+            padding: [0, 2],
+            align: 'left',
+            title: 'STATUS',
+          },
+          (sub) => {
+            sub.text(color.fg(overlayText, `frame     ${ctx.frame}`));
+            sub.text('\n');
+            sub.text(color.fg(overlayText, `dt        ${ctx.dt}ms`));
+            sub.text('\n');
+            sub.text(
+              color.fg(overlayText, `elapsed   ${Math.round(elapsedTime)}ms`),
+            );
+            sub.text('\n');
+            sub.text(color.fg(overlayText, 'SPACE to dismiss'));
+          },
+        );
+      });
+    }
+
+    const hint = 'ENTER restart  |  SPACE status  |  q quit';
     ctx.blit(
       panel.x + Math.max(0, Math.floor((panel.width - hint.length) / 2)),
       panel.y + panel.height + 1,

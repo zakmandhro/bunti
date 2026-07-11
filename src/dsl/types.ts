@@ -229,9 +229,15 @@ export interface BuntiContext {
   table(rows: string[][], options?: TableOptions): BuntiContext;
 
   // Animation
+  /** 0→1 progress over duration ms. loop: true wraps, 'yoyo' bounces 0→1→0. */
   animate(
     duration: number,
-    options?: { loop?: boolean; delay?: number; id?: string },
+    options?: {
+      loop?: boolean | 'yoyo';
+      delay?: number;
+      id?: string;
+      easing?: (t: number) => number;
+    },
   ): number;
   fade(
     from: string | number | RGB,
@@ -239,7 +245,11 @@ export interface BuntiContext {
     progress: number,
   ): RGB;
   typewriter(text: string, options?: TypewriterOptions): TypewriterState;
-  flicker(intensity?: number): boolean;
+  /** Deterministic time-bucketed flicker (fps-independent). */
+  flicker(
+    intensity?: number,
+    options?: { id?: string; interval?: number },
+  ): boolean;
 
   // Async data
   useAsync<T>(
@@ -262,6 +272,43 @@ export interface BuntiContext {
 
   requestStop(): void;
   flushFlow(): void;
+
+  // --- motion & text attrs ---
+  /** Milliseconds since the previous frame, clamped to 100 (0 outside loop()). */
+  readonly dt: number;
+  /** Frame counter, incremented once per render tick (0 outside loop()). */
+  readonly frame: number;
+  /**
+   * Enter/exit progress keyed on a visibility flag. progress runs 0→1
+   * (eased) when `visible` turns on and 1→0 when it turns off; `mounted`
+   * stays true through the exit so callers keep rendering while animating
+   * out. THE primitive for modal/panel entrances and exits.
+   */
+  transition(
+    id: string,
+    visible: boolean,
+    options?: {
+      duration?: number;
+      easing?: (t: number) => number;
+      exitDuration?: number;
+    },
+  ): { progress: number; mounted: boolean };
+  /**
+   * Cascading entrance progress: item `index` starts index*delay ms into
+   * the timeline and animates for `duration` ms. Pass `id` to drive it from
+   * an animate()-style clock (restartable via restartAnimation).
+   */
+  stagger(
+    index: number,
+    options: {
+      delay: number;
+      duration: number;
+      easing?: (t: number) => number;
+      id?: string;
+    },
+  ): number;
+  /** Resets an animate()/typewriter()/stagger() id clock to "now". */
+  restartAnimation(id: string): void;
 }
 
 /**

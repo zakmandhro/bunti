@@ -57,7 +57,25 @@ export type {
   TypewriterState,
 } from './dsl';
 export { KEYS, render } from './dsl';
-export { clamp01, easeInOutCubic, easeOutBack, easeOutCubic } from './easing';
+export {
+  clamp01,
+  easeInCubic,
+  easeInOutCubic,
+  easeInOutQuad,
+  easeInOutQuart,
+  easeInQuad,
+  easeInQuart,
+  easeOutBack,
+  easeOutBounce,
+  easeOutCubic,
+  easeOutElastic,
+  easeOutExpo,
+  easeOutQuad,
+  easeOutQuart,
+  lerp,
+  lerpRect,
+  linear,
+} from './easing';
 export type {
   PlacedRectInput,
   PlacedRectOptions,
@@ -123,6 +141,7 @@ export {
   drainFrameInput,
   flush,
   loop,
+  renderFrame,
   restoreTerminal,
 } from './render';
 export type { Cell, RGB, ScreenOptions, ScreenState } from './state';
