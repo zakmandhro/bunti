@@ -44,6 +44,12 @@ export const KEYS = {
   PAGE_UP: 'pageup',
   PAGE_DOWN: 'pagedown',
   INSERT: 'insert',
+  /** Left-button click (emitted once, on release; requires `mouse: true`). */
+  CLICK: 'click',
+  /** Mouse wheel scrolled up (requires `mouse: true`). */
+  WHEEL_UP: 'wheel_up',
+  /** Mouse wheel scrolled down (requires `mouse: true`). */
+  WHEEL_DOWN: 'wheel_down',
 };
 
 /**

@@ -7,7 +7,13 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["bun", "node"]
+    "types": ["bun", "node"],
+    "paths": {
+      "@zakmandhro/bunti": ["./src/index.ts"],
+      "@zakmandhro/bunti/components": ["./src/components/index.ts"],
+      "@zakmandhro/bunti/themes": ["./src/themes/index.ts"],
+      "@zakmandhro/bunti/icons-full": ["./src/icons-full.ts"]
+    }
   },
   "include": ["src/**/*.ts", "demo/**/*.ts", "examples/**/*.ts"]
 }

@@ -63,13 +63,34 @@ bunti.render((ctx) => {
 
 ## 📏 Layout Model
 
-Bunti's public layout direction is Rect-first:
+Everything is a cell rect, and coordinates are **local to the current
+context**: the whole screen at the root, the padded interior inside a
+`box()`. A root-level `box()` paints directly into the screen buffer and
+**centers itself** unless you pass `x`/`y`; a nested `box()` joins its
+parent's text flow instead. Every drawing call also *returns* the rendered
+string, so you can compose with `joinHorizontal`/`joinVertical` or place
+output manually. Carve responsive layouts with tracks instead of column
+math:
+
+```typescript
+const [sidebar, main] = ctx.split({
+  direction: 'horizontal',
+  constraints: [24, '1fr'], // cells, percentages, and fr fill units
+});
+ctx.box({ x: sidebar.x, y: 2, width: sidebar.width, border: 'rounded' }, drawNav);
+```
+
+Under the hood it is Rect-first:
 
 - `Rect` is the geometry primitive.
 - `Box`, `Button`, `Input`, `Card`, and `Header` resolve a rect before rendering.
 - Hitboxes and rendered output share the same resolved rect.
 - `splitRect()` and `ctx.split()` create responsive tracks from fixed sizes, percentages, and `fr` fill units.
 - `ctx.resolveLocalRect()` places components within the current parent area, including left/center/right and top/center/bottom defaults.
+
+A complete, runnable dashboard template lives at
+[`examples/starter.ts`](./examples/starter.ts) — copy it as your app's
+starting point.
 
 ## 📐 Border Archetypes
 
@@ -84,6 +105,50 @@ Bunti categorizes containers into three visual archetypes:
 ## 🏁 Performance
 
 Bunti is built for speed. By leveraging `Bun.stdout.writer()` and surgical diffing, it can maintain **60-120 FPS** on complex layouts while keeping TTY bytes significantly lower than standard stream-based libraries.
+
+## 🤖 Agent & CI testing
+
+Bunti renders fine to plain pipes — `bun app.ts | cat` produces real ANSI
+frames, so screenshot-style assertions work anywhere. **Keyboard input is
+different: it needs a real TTY.** When stdin is a pipe (CI, agent
+harnesses, `echo q | bun app.ts`), raw-mode input is never attached and
+keys are silently ignored — Bunti prints a dev hint to stderr on exit when
+this happens (silence hints with `BUNTI_NO_HINTS=1`).
+
+To drive keyboard input headlessly, wrap the run in a PTY. On macOS and
+Linux, `script` is the zero-dependency way — mind the argument-order trap:
+
+```bash
+# macOS: the transcript file comes BEFORE the command.
+(sleep 2; printf 'q') | script -q /dev/null bun app.ts
+
+# Linux (util-linux script): the command is passed via -c.
+(sleep 2; printf 'q') | script -qec "bun app.ts" /dev/null
+```
+
+Using the Linux syntax on macOS (`script -q bun app.ts`) does not run your
+app — it clobbers a file literally named `bun` with the session transcript
+and drops you into an interactive shell.
+
+A copy-paste PTY smoke test (spawn, send a key, assert clean exit):
+
+```typescript
+// pty-test.ts — bun pty-test.ts
+const proc = Bun.spawn(
+  ['script', '-q', '/dev/null', 'bun', 'app.ts'], // macOS arg order
+  { stdin: 'pipe', stdout: 'pipe', stderr: 'inherit' },
+);
+await Bun.sleep(2000);        // let it render a few frames
+proc.stdin.write('q');        // your app's quit key
+proc.stdin.end();
+const code = await proc.exited;
+const frames = await new Response(proc.stdout).text();
+if (code !== 0 || !frames.includes('MISSION CONTROL')) process.exit(1);
+console.log('PTY smoke test passed');
+```
+
+For pure rendering checks, skip the PTY entirely: `render(cb, { once:
+true })` draws one frame and returns.
 
 ## 🎮 Demos
 
@@ -117,11 +182,20 @@ npm pack --dry-run
 
 ## 📚 Documentation
 
-Dive deeper into Bunti's architecture and layout engine:
+Dive deeper into Bunti's architecture and layout engine at
+[zakmandhro.github.io/bunti](https://zakmandhro.github.io/bunti/):
 
-- [The Box Model & Layout Math](./docs/layout.md)
-- [Bunti Components & Primitives](./docs/components.md)
-- [Bunti vs. The TUI Ecosystem](./docs/comparison.md)
+- [The Box Model & Layout Math](https://zakmandhro.github.io/bunti/layout.html)
+- [Bunti Components & Primitives](https://zakmandhro.github.io/bunti/components.html)
+- [Theming & Colors](https://zakmandhro.github.io/bunti/theming.html)
+- [Animations & Canvas](https://zakmandhro.github.io/bunti/animations.html)
+- [Engine & Utilities](https://zakmandhro.github.io/bunti/engine.html)
+- [Bunti vs. The TUI Ecosystem](https://zakmandhro.github.io/bunti/comparison.html)
+
+The package also ships [`AGENTS.md`](./AGENTS.md) (agent playbook) and
+[`llms.txt`](./llms.txt) (compact API reference, generated from the JSDoc
+by `bun scripts/gen-llms.ts`) — the full documented API lives in the
+shipped `dist/*.d.ts`.
 
 ## 🤝 Contributing
 

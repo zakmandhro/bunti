@@ -1,0 +1,79 @@
+# Bunti
+
+> A Bun-native terminal UI engine with zero dependencies: 60fps
+> double-buffered diff rendering, an immediate-mode contextual DSL,
+> semantic themes (6 VS Code presets), mouse + keyboard input, motion
+> helpers, and a 10.7k-name Nerd Font icon registry. Built to be the
+> easiest TUI library for coding agents.
+
+Requires the Bun runtime (>= 1.0); Node.js is not supported.
+
+## Install
+
+```bash
+bun add @zakmandhro/bunti
+```
+
+## Mental model
+
+- render — Starts a Bunti app: runs `callback` every frame (immediate mode — redraw the whole screen from state each call) and flushes only the changed cells to the terminal.
+- One frame = one callback: read input, derive state with
+  ctx.useState(key, initial), draw everything. Never mutate the
+  terminal yourself.
+- Coordinates are terminal cells, local to the current context (the
+  whole screen at the root; the padded interior inside a box).
+  padding is [vertical, horizontal]. ctx.elapsedTime is milliseconds.
+- Root-level boxes paint directly to the screen and CENTER themselves
+  unless given x/y. Anything that must overlap other content goes in
+  ctx.layer(zIndex, cb) — draw order alone does not stack.
+- Keyboard input ({ keyboard: true }) needs a real TTY on stdin; piped
+  input is ignored. Printable keys arrive as the literal character,
+  specials as lowercase names ('up', 'enter'), mouse as
+  'click'/'wheel_up'/'wheel_down'.
+
+## Core API (ctx is the object your render callback receives)
+
+- ctx.box — Draws a styled box and renders the callback inside its padded interior (a fresh sub-context).
+- ctx.text — Appends text to the current flow at the cursor.
+- ctx.icon — Resolves an icon name to its glyph (Nerd Font, or ASCII fallback on plain terminals).
+- ctx.blit — Paints a (possibly multi-line, ANSI-styled) string directly into the screen buffer at absolute cell coordinates — exact-position text, sprites, labels, and ASCII art.
+- ctx.rect — Fills a w×h cell rectangle at absolute coordinates with a style — bars, panels, charts, and backgrounds.
+- ctx.layer — Renders the callback into a transparent buffer composited above the base content by z-index — THE primitive for modals, HUDs, popovers, and anything that must overlap other content.
+- ctx.wallpaper — Fills the whole screen background with a color or gradient.
+- ctx.gradient — Builds a multi-stop Gradient value for `wallpaper`/`bgColor`.
+- ctx.split — Splits the current area into tracks from fixed sizes, percentages, and 'fr' fill units — the layout workhorse for dashboards.
+- ctx.useState — Frame-persistent state.
+- ctx.useAsync — Fetches async data without blocking the render loop: kicks off the fetcher (re-running every `interval` ms when set) and returns the latest { data, loading, error } snapshot each frame.
+- ctx.lastKey — First unmodified key name of this frame, or undefined when no key arrived.
+- ctx.keyPressed — True if `name` was pressed (or auto-repeated) this frame.
+- ctx.isKeyHeld — True from a key's first press until its repeat stream expires (~150ms hold window) — smooth held-key movement on legacy terminals.
+- ctx.hitbox — Registers a clickable region and returns its interaction snapshot for this frame.
+- ctx.isClicked — True exactly one frame per click (SGR release at the press origin) — fire actions here, not on isPressed.
+- ctx.isHovered — True while the mouse is inside the hitbox registered for `id`.
+- ctx.list — Renders a selectable list with built-in up/down keyboard navigation, mouse hover/click selection, and theme-token highlighting.
+- ctx.table — Renders rows of cells as an aligned table with shared borders.
+- ctx.theme — The active semantic theme for this subtree.
+- ctx.setTheme — Swaps the active theme live and requests a rerender.
+- ctx.animate — 0→1 progress over `duration` ms.
+- ctx.transition — Enter/exit progress keyed on a visibility flag.
+- ctx.stagger — Cascading entrance progress: item `index` starts index*delay ms into the timeline and animates for `duration` ms.
+- ctx.elapsedTime — Milliseconds elapsed since render() started.
+- ctx.requestStop — Stops the render loop and restores the terminal (the promise returned by render() then resolves).
+
+## Components ('@zakmandhro/bunti/components')
+
+Box, Card, Button, Input, Modal, Spinner, Progress, Link, Header —
+call as functions: Button(ctx, { id, label, onClick }).
+
+## Themes ('@zakmandhro/bunti/themes')
+
+dracula, tokyoNight, catppuccinMocha, nord, oneDarkPro, githubLight;
+ctx.setTheme(dracula) swaps live. createTheme({...}) derives full
+themes from sparse color specs.
+
+## More
+
+- Full typed API with examples ships in the package's dist/*.d.ts.
+- Agent playbook: AGENTS.md (in this package).
+- Starter template: https://github.com/zakmandhro/bunti/blob/main/examples/starter.ts
+- Docs: https://zakmandhro.github.io/bunti/

@@ -48,7 +48,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && bun scripts/build-demos.ts",
-    "prepublishOnly": "bun run typecheck && bun run lint && bun run test && bun run build",
+    "gen:llms": "bun scripts/gen-llms.ts",
+    "prepublishOnly": "bun run typecheck && bun run lint && bun run test && bun run gen:llms && bun run build",
     "test": "bun test",
     "smoke": "bun scripts/smoke-demos.ts",
     "bench": "bun scripts/bench.ts",
@@ -80,7 +81,9 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "AGENTS.md",
+    "llms.txt"
   ],
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
