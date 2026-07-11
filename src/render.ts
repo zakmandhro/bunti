@@ -2,6 +2,13 @@
  * Bunti Functional Rendering & Diffing
  */
 
+import {
+  createKeyEvent,
+  HeldKeyTracker,
+  type InputToken,
+  InputTokenizer,
+  type KeyEvent,
+} from './input';
 import { ANSI, resizeScreen, type ScreenState } from './state';
 
 /**
@@ -311,6 +318,7 @@ export function loop(
       if (interval) clearInterval(interval);
 
       // 1. Remove Listeners
+      state.inputTokenizer?.dispose();
       process.stdin.removeListener('data', inputHandler);
       process.removeListener('SIGWINCH', resizeHandler);
       process.removeListener('SIGINT', stop);
@@ -358,10 +366,10 @@ export function loop(
           }
           state.isResizing = false;
           if (stopped || state.isStopped) return;
+          drainFrameInput(state);
           renderCallback(state);
           if (stopped || state.isStopped) return;
           flush(state);
-          state.lastKey = undefined;
         } while (tickAgain);
       } catch (err) {
         // Never write errors into the alt screen and never keep looping over
@@ -412,62 +420,173 @@ export function loop(
   });
 }
 
+function requestTick(state: ScreenState) {
+  (state as { requestTick?: () => void }).requestTick?.();
+}
+
+function heldTracker(state: ScreenState): HeldKeyTracker {
+  state.heldKeys ??= new HeldKeyTracker({
+    holdWindowMs: state.options.holdWindowMs,
+  });
+  return state.heldKeys;
+}
+
+/**
+ * Classifies a key event (press vs repeat), enqueues it, and mirrors the
+ * legacy `state.lastKey` slot. Ctrl+C keeps its stop/SIGINT behavior and
+ * never enters the queue.
+ */
+function enqueueKeyEvent(
+  state: ScreenState,
+  event: KeyEvent,
+  stop?: () => void,
+) {
+  if (event.ctrl && event.key === 'c') {
+    stop?.(); // Ctrl+C
+    return;
+  }
+  const classified = heldTracker(state).record(event);
+  state.keyQueue.push(classified);
+  // Back-compat: lastKey only ever carries unmodified key names, so ctrl
+  // bytes no longer leak into text consumers like Input.
+  if (!classified.ctrl && !classified.alt && classified.kind !== 'release') {
+    state.lastKey = classified.key;
+  }
+}
+
+/**
+ * SGR mouse semantics:
+ * - wheel (bit 64): wheel_up / wheel_down key events, no press state
+ * - motion (bit 32): coordinates only (drags keep the pressed button)
+ * - press 'M': records the press origin; no click yet
+ * - release 'm': emits 'click' ONCE at the press-origin coordinates
+ */
+function dispatchMouse(
+  state: ScreenState,
+  token: Extract<InputToken, { type: 'mouse' }>,
+  stop?: () => void,
+) {
+  const button = token.button;
+  state.mouseX = token.x - 1;
+  state.mouseY = token.y - 1;
+
+  if (button & 64) {
+    // Wheel
+    state.mouseButton = button;
+    if (token.action === 'press') {
+      if (button === 64) {
+        enqueueKeyEvent(state, createKeyEvent('wheel_up', token.raw), stop);
+      } else if (button === 65) {
+        enqueueKeyEvent(state, createKeyEvent('wheel_down', token.raw), stop);
+      }
+    }
+  } else if (button & 32) {
+    // Motion. Base 3 = no buttons held (pure move): keep press state as-is.
+    const base = button & 3;
+    if (base !== 3) state.mouseButton = base;
+  } else if (token.action === 'press') {
+    state.mouseButton = button;
+    state.isMouseDown = true;
+    if ((button & 3) === 0) {
+      state.mouseDownX = state.mouseX;
+      state.mouseDownY = state.mouseY;
+    }
+  } else {
+    state.mouseButton = button;
+    state.isMouseDown = false;
+    if (
+      (button & 3) === 0 &&
+      state.mouseDownX !== undefined &&
+      state.mouseDownY !== undefined
+    ) {
+      state.clickX = state.mouseDownX;
+      state.clickY = state.mouseDownY;
+      enqueueKeyEvent(state, createKeyEvent('click', token.raw), stop);
+    }
+    state.mouseDownX = undefined;
+    state.mouseDownY = undefined;
+  }
+}
+
+function dispatchInputTokens(
+  state: ScreenState,
+  tokens: InputToken[],
+  stop?: () => void,
+) {
+  for (const token of tokens) {
+    switch (token.type) {
+      case 'focus': {
+        state.hasFocus = token.focused;
+        (state as { restartLoop?: () => void }).restartLoop?.();
+        continue; // restartLoop already forces a tick
+      }
+      case 'response': {
+        state.terminalResponses.push(token.response);
+        // Bounded: consumers drain; a probe-less app must not leak.
+        if (state.terminalResponses.length > 64) {
+          state.terminalResponses.shift();
+        }
+        break;
+      }
+      case 'mouse': {
+        dispatchMouse(state, token, stop);
+        break;
+      }
+      case 'key': {
+        enqueueKeyEvent(state, token.event, stop);
+        break;
+      }
+    }
+    requestTick(state);
+  }
+}
+
+/**
+ * Feeds a raw stdin chunk through the screen's stateful tokenizer and
+ * dispatches the resulting tokens. Partial escape sequences are carried
+ * across calls; a bare ESC flushes as 'escape' via the tokenizer timer.
+ */
 export function applyInputToState(
   state: ScreenState,
   data: unknown,
   stop?: () => void,
 ) {
   const input = data instanceof Buffer ? data.toString() : String(data);
+  state.inputTokenizer ??= new InputTokenizer({
+    escTimeoutMs: state.options.escTimeoutMs,
+  });
+  const tokenizer = state.inputTokenizer;
+  // Rebind each call so timer flushes see the latest stop handler.
+  tokenizer.onFlush = (tokens) => dispatchInputTokens(state, tokens, stop);
+  dispatchInputTokens(state, tokenizer.push(input), stop);
+}
 
-  // 1. Focus Tracking
-  if (input === '\x1b[I') {
-    state.hasFocus = true;
-    if ((state as any).restartLoop) (state as any).restartLoop();
-    return;
+/**
+ * Moves queued KeyEvents into this frame's `state.keys`, appends synthetic
+ * held-key releases, and recomputes the legacy `state.lastKey` slot (first
+ * unmodified press/repeat of the frame). Runs once per render tick, before
+ * the render callback.
+ */
+export function drainFrameInput(state: ScreenState) {
+  const frame = state.keyQueue.length > 0 ? state.keyQueue.splice(0) : [];
+  if (state.heldKeys) {
+    const releases = state.heldKeys.collectReleases();
+    if (releases.length > 0) frame.push(...releases);
   }
-  if (input === '\x1b[O') {
-    state.hasFocus = false;
-    if ((state as any).restartLoop) (state as any).restartLoop();
-    return;
-  }
+  state.keys = frame;
 
-  // 2. Mouse Tracking (SGR protocol)
-  const match = input.match(/\x1b\[<(\d+);(\d+);(\d+)([Mm])/);
-  if (match) {
-    state.mouseButton = parseInt(match[1], 10);
-    state.mouseX = parseInt(match[2], 10) - 1;
-    state.mouseY = parseInt(match[3], 10) - 1;
-    state.isMouseDown = match[4] === 'M';
-    if ((state as { requestTick?: () => void }).requestTick) {
-      (state as { requestTick?: () => void }).requestTick!();
+  let lastKey: string | undefined;
+  let hasClick = false;
+  for (const event of frame) {
+    if (event.kind === 'release') continue;
+    if (event.key === 'click') hasClick = true;
+    if (lastKey === undefined && !event.ctrl && !event.alt) {
+      lastKey = event.key;
     }
-    if (match[4] === 'M') {
-      if (state.mouseButton === 64) state.lastKey = 'wheel_up';
-      else if (state.mouseButton === 65) state.lastKey = 'wheel_down';
-      else if (state.mouseButton === 0) state.lastKey = 'click';
-    }
-    return;
   }
-
-  // 3. Signal Interception
-  if (input === '\u0003') {
-    stop?.(); // Ctrl+C
-    return;
-  }
-
-  // 4. Key Normalization
-  let key = input;
-  if (input === '\x7f' || input === '\x08') key = 'backspace';
-  else if (input === '\r' || input === '\n') key = 'enter';
-  else if (input === '\t') key = 'tab';
-  else if (input === '\x1b[A') key = 'up';
-  else if (input === '\x1b[B') key = 'down';
-  else if (input === '\x1b[C') key = 'right';
-  else if (input === '\x1b[D') key = 'left';
-  else if (input === '\x1b') key = 'escape';
-
-  state.lastKey = key;
-  if ((state as { requestTick?: () => void }).requestTick) {
-    (state as { requestTick?: () => void }).requestTick!();
+  state.lastKey = lastKey;
+  if (!hasClick) {
+    state.clickX = undefined;
+    state.clickY = undefined;
   }
 }

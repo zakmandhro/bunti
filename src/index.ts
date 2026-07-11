@@ -4,6 +4,7 @@ import * as dsl from './dsl';
 import * as easing from './easing';
 import * as geometry from './geometry';
 import * as icons from './icons';
+import * as input from './input';
 import * as layout from './layout';
 import * as render from './render';
 import * as state from './state';
@@ -80,6 +81,15 @@ export {
   replaceEmojis,
 } from './icons';
 export type {
+  HeldKeyOptions,
+  InputToken,
+  InputTokenizerOptions,
+  KeyEvent,
+  TerminalResponse,
+  TerminalResponseKind,
+} from './input';
+export { createKeyEvent, HeldKeyTracker, InputTokenizer } from './input';
+export type {
   BorderStyle,
   ListOptions,
   StyleOptions,
@@ -101,7 +111,13 @@ export {
   viewport,
   wallpaper,
 } from './layout';
-export { flush, loop, restoreTerminal } from './render';
+export {
+  applyInputToState,
+  drainFrameInput,
+  flush,
+  loop,
+  restoreTerminal,
+} from './render';
 export type { Cell, RGB, ScreenOptions, ScreenState } from './state';
 export {
   ANSI,
@@ -139,6 +155,7 @@ export type { BuntiColor, ColorFormatter } from './vendor/colors';
 export const bunti = {
   ...detect,
   ...icons,
+  ...input,
   ...layout,
   ...render,
   ...utils,

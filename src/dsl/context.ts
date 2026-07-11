@@ -184,10 +184,11 @@ function createDSLContext(
     mouseButton: state.mouseButton,
     isMouseDown: state.isMouseDown,
     lastKey: state.lastKey,
+    keys: state.keys ?? [],
     focusedId: state.focusedId,
     elapsedTime: Date.now() - state.startTime,
 
-    get theme(): Theme {
+get theme(): Theme {
       return activeTheme(dslState, state);
     },
 
@@ -207,6 +208,16 @@ function createDSLContext(
         dslState.themeStack.pop();
       }
       return ctx;
+    },
+
+    keyPressed(name: string) {
+      return (
+        state.keys?.some((e) => e.key === name && e.kind !== 'release') ?? false
+      );
+    },
+
+    isKeyHeld(name: string) {
+      return state.heldKeys?.isHeld(name) ?? false;
     },
 
     text(str: string | number) {
@@ -617,6 +628,10 @@ export function createScreenContext(state: ScreenState): BuntiContext {
 
   state.focusableIds = []; // Rebuild from this frame's rendered focusables.
   state.hitboxes = new Map(); // Rebuild from this frame's interactive geometry.
+  // Hover enter/leave events last one frame; hitbox() refills them as this
+  // frame's hitboxes register (mutated, not reassigned: layers share them).
+  state.hoverEntered?.clear();
+  state.hoverLeft?.clear();
 
   const dslState: DSLState = {
     activeContents: [],

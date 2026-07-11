@@ -3,6 +3,12 @@
  */
 
 import { type ColorTier, setColorTier } from './detect';
+import type {
+  HeldKeyTracker,
+  InputTokenizer,
+  KeyEvent,
+  TerminalResponse,
+} from './input';
 import type { Theme, ThemeColor } from './theme';
 
 export interface RGB {
@@ -40,7 +46,31 @@ export interface ScreenState {
   mouseButton: number;
   isMouseDown: boolean;
   hasFocus: boolean;
+  /** First non-modified key name of the current frame (back-compat). */
   lastKey?: string;
+  /** KeyEvents accumulated between frames; drained each tick into keys. */
+  keyQueue: KeyEvent[];
+  /** This frame's KeyEvents (drained from keyQueue by the render loop). */
+  keys: KeyEvent[];
+  /** Terminal probe replies (cursor position, DA1/DA2, DECRQM, DCS).
+   *  Consumers drain this array; it never feeds the key queue. */
+  terminalResponses: TerminalResponse[];
+  /** Press-origin of the click emitted this frame (undefined otherwise). */
+  clickX?: number;
+  clickY?: number;
+  /** Press-origin of an in-flight left-button press (click emits here). */
+  mouseDownX?: number;
+  mouseDownY?: number;
+  /** Hover state per hitbox id as of its last evaluation. */
+  hoverStates: Map<string, boolean>;
+  /** Hitbox ids whose hover turned on this frame. */
+  hoverEntered: Set<string>;
+  /** Hitbox ids whose hover turned off this frame. */
+  hoverLeft: Set<string>;
+  /** Lazily created by applyInputToState. */
+  inputTokenizer?: InputTokenizer;
+  /** Lazily created by the input dispatch; injectable for tests. */
+  heldKeys?: HeldKeyTracker;
   focusedId?: string;
   focusableIds: string[];
   hitboxes: Map<string, Hitbox>;
@@ -71,6 +101,10 @@ export interface ScreenOptions {
   hideCursor?: boolean;
   nerdFont?: boolean;
   resizeDebounceMs?: number;
+  /** Bare-ESC disambiguation window for the input tokenizer (default 30ms). */
+  escTimeoutMs?: number;
+  /** Held-key expiry window for ctx.isKeyHeld (default 150ms). */
+  holdWindowMs?: number;
   defaultFg?: string | number | RGB | ThemeColor;
   /** Semantic theme exposed as ctx.theme (defaults to darkTheme). */
   theme?: Theme;
@@ -120,6 +154,12 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
     mouseButton: 0,
     isMouseDown: false,
     hasFocus: true,
+    keyQueue: [],
+    keys: [],
+    terminalResponses: [],
+    hoverStates: new Map(),
+    hoverEntered: new Set(),
+    hoverLeft: new Set(),
     focusableIds: [],
     hitboxes: new Map(),
     componentState: new Map(),

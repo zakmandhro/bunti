@@ -10,6 +10,7 @@ import type {
   RectInput,
   SplitOptions,
 } from '../geometry';
+import type { KeyEvent } from '../input';
 import type {
   ListOptions,
   SideColors,
@@ -30,6 +31,12 @@ export const KEYS = {
   TAB: 'tab',
   BACKSPACE: 'backspace',
   SPACE: ' ',
+  HOME: 'home',
+  END: 'end',
+  DELETE: 'delete',
+  PAGE_UP: 'pageup',
+  PAGE_DOWN: 'pagedown',
+  INSERT: 'insert',
 };
 export interface DSLBoxOptions extends StyleOptions {
   bgColor?: string | number | RGB | Gradient | ThemeColor;
@@ -98,11 +105,14 @@ export interface BuntiContext {
   mouseY: number;
   mouseButton: number;
   isMouseDown: boolean;
+  /** First unmodified key name of this frame (back-compat slot). */
   lastKey?: string;
+  /** All KeyEvents of this frame (multiple keys per frame arrive whole). */
+  keys: KeyEvent[];
   focusedId?: string;
   elapsedTime: number;
 
-  /**
+/**
    * The active semantic theme for this subtree. Tokens are callable fg
    * stylers that also carry `.rgb`/`.hex`, so they work as both text
    * wrappers (`ctx.text(ctx.theme.primary('hi'))`) and color values
@@ -123,6 +133,10 @@ export interface BuntiContext {
     theme: Theme | ThemeInput,
     callback: (sub: BuntiContext) => void,
   ): BuntiContext;
+  /** True if `name` was pressed (or auto-repeated) this frame. */
+  keyPressed(name: string): boolean;
+  /** True from a key's first press until its repeat stream expires. */
+  isKeyHeld(name: string): boolean;
 
   text(str: string | number): BuntiContext;
   icon(name: string): string; // Pure string return for template literal safety
@@ -195,8 +209,14 @@ export interface BuntiContext {
   resolveLocalRect(bounds: PlacedRectInput, options?: PlacedRectOptions): Rect;
   split(options: SplitOptions): Rect[];
   isHovered(id: string): boolean;
+  /** Mouse currently down inside the hitbox. */
   isPressed(id: string): boolean;
+  /** True exactly one frame per click (SGR release at the press origin). */
   isClicked(id: string): boolean;
+  /** Hover turned on for this hitbox this frame. */
+  isHoverEnter(id: string): boolean;
+  /** Hover turned off for this hitbox this frame. */
+  isHoverLeave(id: string): boolean;
 
   list(id: string, items: string[], options?: ListOptions): BuntiContext;
   table(rows: string[][], options?: TableOptions): BuntiContext;

@@ -371,7 +371,10 @@ describe('Bunti Core Engine', () => {
     expect(ticks).toBe(3);
   });
 
-  test('mouse input tracks SGR coordinates and click rerenders', () => {
+  // Click semantics changed with the input tokenizer: a press only records
+  // state; 'click' is emitted ONCE on SGR release, at the press-origin
+  // coordinates (previously it fired on press, repeating while held).
+  test('mouse press tracks SGR coordinates; click emits once on release', () => {
     const state = createScreenState();
     let ticks = 0;
     (state as { requestTick?: () => void }).requestTick = () => ticks++;
@@ -382,8 +385,17 @@ describe('Bunti Core Engine', () => {
     expect(state.mouseX).toBe(9);
     expect(state.mouseY).toBe(4);
     expect(state.isMouseDown).toBe(true);
-    expect(state.lastKey).toBe('click');
+    expect(state.lastKey).toBeUndefined(); // no click on press anymore
     expect(ticks).toBe(1);
+
+    // Release elsewhere: click carries the press-origin coordinates.
+    applyInputToState(state, '\x1b[<0;12;6m');
+
+    expect(state.isMouseDown).toBe(false);
+    expect(state.lastKey).toBe('click');
+    expect(state.clickX).toBe(9);
+    expect(state.clickY).toBe(4);
+    expect(ticks).toBe(2);
   });
 
   test('mouse movement requests an immediate rerender without click state', () => {

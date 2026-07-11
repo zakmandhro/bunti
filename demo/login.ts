@@ -188,7 +188,7 @@ demo('AUTHENTICATION', (ctx, bounds) => {
       });
       const hovered = interaction.hovered;
       if (hovered !== forgotHovered) setForgotHovered(hovered);
-      if (interaction.pressed) {
+      if (interaction.clicked) {
         setForgotNotice('Password reset link sent to your email.');
       }
 

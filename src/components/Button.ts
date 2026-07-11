@@ -72,8 +72,9 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     }
   }
 
-  // 4. Handle Interaction
-  const wasClicked = interaction.pressed;
+  // 4. Handle Interaction — clicks fire once, on mouse release at the
+  // press origin (interaction.pressed would repeat every held frame).
+  const wasClicked = interaction.clicked;
   const wasActivated =
     isSelected && (state.lastKey === 'enter' || state.lastKey === ' ');
 
