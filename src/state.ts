@@ -52,6 +52,7 @@ export interface ScreenState {
   options: ScreenOptions;
   requestStop?: () => void;
   isStopped?: boolean;
+  isRestored?: boolean;
   isResizing?: boolean;
   resizeSettlesAt?: number;
 }
@@ -66,6 +67,14 @@ export interface ScreenOptions {
   nerdFont?: boolean;
   resizeDebounceMs?: number;
   defaultFg?: string | number | RGB;
+  /**
+   * Called when the render callback throws during a frame.
+   * Return `'continue'` to keep the loop alive (app-level error boundary);
+   * any other return tears the screen down, restores the terminal, and
+   * rejects the promise returned by render()/loop() with the error.
+   */
+  // biome-ignore lint/suspicious/noConfusingVoidType: void keeps side-effect-only handlers assignable
+  onError?: (err: unknown) => void | 'continue';
 }
 
 /**

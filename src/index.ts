@@ -77,7 +77,7 @@ export {
   viewport,
   wallpaper,
 } from './layout';
-export { flush, loop } from './render';
+export { flush, loop, restoreTerminal } from './render';
 export type { Cell, RGB, ScreenOptions, ScreenState } from './state';
 export {
   ANSI,

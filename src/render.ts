@@ -4,6 +4,99 @@
 
 import { ANSI, resizeScreen, type ScreenState } from './state';
 
+/**
+ * Crash safety: every screen with an active render loop is tracked here so
+ * that process-level failure handlers can restore the terminal no matter how
+ * the process goes down (throw, unhandled rejection, exit, SIGHUP).
+ */
+const activeScreens = new Set<ScreenState>();
+
+/**
+ * Emits the restorative ANSI sequence for a screen (mouse/focus tracking off,
+ * reset, clear, back to main buffer, cursor visible) and disables raw mode.
+ * Idempotent: safe to call any number of times per loop session.
+ */
+export function restoreTerminal(state: ScreenState) {
+  if (state.isRestored) return;
+  state.isRestored = true;
+
+  const options = state.options;
+  let cmd = '';
+  if (options.mouse) cmd += ANSI.mouseDisable;
+  if (options.focus) cmd += ANSI.focusDisable;
+  cmd += ANSI.reset + ANSI.clear + ANSI.home;
+  if (options.alternateBuffer) cmd += ANSI.mainBuffer;
+  cmd += ANSI.showCursor;
+  cmd += ANSI.reset;
+
+  try {
+    process.stdout.write(cmd);
+  } catch {
+    // stdout may already be gone (e.g. terminal closed on SIGHUP)
+  }
+
+  if (process.stdin.isTTY) {
+    try {
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    } catch {
+      // stdin may already be destroyed
+    }
+  }
+}
+
+function restoreAllScreens() {
+  for (const screen of activeScreens) restoreTerminal(screen);
+}
+
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.stack ?? `${err.name}: ${err.message}`;
+  return String(err);
+}
+
+/** Restore first, then report on the main screen, then die like the runtime would. */
+const onUncaughtException = (err: unknown) => {
+  restoreAllScreens();
+  process.stderr.write(`${formatError(err)}\n`);
+  process.exit(1);
+};
+
+const onUnhandledRejection = (reason: unknown) => {
+  restoreAllScreens();
+  process.stderr.write(`${formatError(reason)}\n`);
+  process.exit(1);
+};
+
+/** 'exit' must stay synchronous: restore only, never exit() or async work. */
+const onProcessExit = () => {
+  restoreAllScreens();
+};
+
+const onSighup = () => {
+  restoreAllScreens();
+  process.exit(129); // 128 + SIGHUP(1), matching default signal death
+};
+
+let crashHandlersInstalled = false;
+
+function installCrashHandlers() {
+  if (crashHandlersInstalled) return;
+  crashHandlersInstalled = true;
+  process.on('uncaughtException', onUncaughtException);
+  process.on('unhandledRejection', onUnhandledRejection);
+  process.on('exit', onProcessExit);
+  process.on('SIGHUP', onSighup);
+}
+
+function removeCrashHandlers() {
+  if (!crashHandlersInstalled) return;
+  crashHandlersInstalled = false;
+  process.removeListener('uncaughtException', onUncaughtException);
+  process.removeListener('unhandledRejection', onUnhandledRejection);
+  process.removeListener('exit', onProcessExit);
+  process.removeListener('SIGHUP', onSighup);
+}
+
 export function syncScreenSize(state: ScreenState) {
   const width = process.stdout.columns || 80;
   const height = process.stdout.rows || 24;
@@ -169,12 +262,23 @@ export function loop(
   state: ScreenState,
   renderCallback: (s: ScreenState) => void,
 ): Promise<void> {
+  if (activeScreens.size > 0) {
+    throw new Error(
+      'A Bunti render loop is already active in this process. ' +
+        'Stop it first (requestStop or Ctrl+C) before calling render() again.',
+    );
+  }
+
   const options = state.options;
+
+  state.isRestored = false;
+  activeScreens.add(state);
+  installCrashHandlers();
 
   if (options.alternateBuffer) process.stdout.write(ANSI.alternateBuffer);
   if (options.hideCursor) process.stdout.write(ANSI.hideCursor);
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let stopped = false;
     let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -194,37 +298,37 @@ export function loop(
     const inputHandler = (data: unknown) =>
       applyInputToState(state, data, stop);
 
-    const stop = () => {
+    /**
+     * Tears the loop down exactly once: clears the interval, removes every
+     * listener this loop registered, restores the terminal, then settles the
+     * promise (rejecting with `failure.error` when a frame crashed).
+     */
+    const finish = (failure: { error: unknown } | null) => {
       if (stopped) return;
       stopped = true;
       state.isStopped = true;
 
       if (interval) clearInterval(interval);
 
-      // 1. Restore Terminal Modes
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-      }
-
-      // 2. Remove Listeners
+      // 1. Remove Listeners
       process.stdin.removeListener('data', inputHandler);
       process.removeListener('SIGWINCH', resizeHandler);
       process.removeListener('SIGINT', stop);
       process.removeListener('SIGTERM', stop);
+      activeScreens.delete(state);
+      if (activeScreens.size === 0) removeCrashHandlers();
 
-      // 3. Emit Restorative ANSI Sequence
-      let cmd = '';
-      if (options.mouse) cmd += ANSI.mouseDisable;
-      if (options.focus) cmd += ANSI.focusDisable;
-      cmd += ANSI.reset + ANSI.clear + ANSI.home;
-      if (options.alternateBuffer) cmd += ANSI.mainBuffer;
-      cmd += ANSI.showCursor;
-      cmd += ANSI.reset;
+      // 2. Restore Terminal Modes + Emit Restorative ANSI Sequence
+      restoreTerminal(state);
 
-      process.stdout.write(cmd);
-      resolve();
+      if (failure) {
+        reject(failure.error);
+      } else {
+        resolve();
+      }
     };
+
+    const stop = () => finish(null);
 
     const resizeHandler = () => {
       resizeScreen(state);
@@ -260,7 +364,21 @@ export function loop(
           state.lastKey = undefined;
         } while (tickAgain);
       } catch (err) {
-        console.error(err);
+        // Never write errors into the alt screen and never keep looping over
+        // a broken frame. Either the app opts into continuing via onError,
+        // or we tear down (restoring the terminal) and reject the loop
+        // promise so the error surfaces once, on the main screen.
+        let shouldContinue = false;
+        if (options.onError) {
+          try {
+            shouldContinue = options.onError(err) === 'continue';
+          } catch {
+            shouldContinue = false; // a broken error handler never saves the loop
+          }
+        }
+        if (!shouldContinue) {
+          finish({ error: err });
+        }
       } finally {
         ticking = false;
       }

@@ -5,6 +5,7 @@
 import { init } from '../icons';
 import { flush, loop } from '../render';
 import {
+  ANSI,
   clearBackBuffer,
   createScreenState,
   type ScreenOptions,
@@ -52,12 +53,16 @@ export async function render(
 
   if (options.once) {
     tick();
+    // Let the terminal settle for a frame, then resolve. No interval or
+    // stdin listener was started in once mode, so nothing keeps the event
+    // loop alive and the host process (never killed by the library) can
+    // continue or exit naturally.
     await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolve();
-        process.exit(0);
-      }, 50);
+      setTimeout(resolve, 50);
     });
+    // flush() hides the cursor per-frame when requested; a once-shot must
+    // not leave the user's cursor invisible.
+    if (options.hideCursor) process.stdout.write(ANSI.showCursor);
     return;
   }
 
