@@ -1,0 +1,218 @@
+/**
+ * Bunti DSL shared types and constants.
+ */
+
+import type pc from 'picocolors';
+import type { bg, darken, fg, Gradient, lighten, rgb } from '../colors';
+import type {
+  PlacedRectInput,
+  PlacedRectOptions,
+  Rect,
+  RectInput,
+  SplitOptions,
+} from '../geometry';
+import type {
+  ListOptions,
+  SideColors,
+  StyleOptions,
+  TableOptions,
+} from '../layout';
+import type { Cell, Hitbox, RGB, ScreenState } from '../state';
+
+export const KEYS = {
+  UP: 'up',
+  DOWN: 'down',
+  RIGHT: 'right',
+  LEFT: 'left',
+  ENTER: 'enter',
+  ESCAPE: 'escape',
+  TAB: 'tab',
+  BACKSPACE: 'backspace',
+  SPACE: ' ',
+};
+export interface DSLBoxOptions extends StyleOptions {
+  bgColor?: string | number | RGB | Gradient;
+  color?: string | number | RGB | 'blank';
+  x?: number;
+  y?: number;
+  zIndex?: number;
+  anchor?: 'top' | 'bottom';
+  size?: 'auto' | number;
+  title?: string;
+  titleStyle?: (s: string) => string;
+  id?: string;
+  borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
+  detach?: boolean; // If true, the string is returned but NOT appended to the flow
+}
+
+export interface TypewriterOptions {
+  id?: string;
+  cps?: number;
+  delay?: number;
+  loop?: boolean;
+  cursor?: string;
+  blink?: boolean;
+  blinkRate?: number;
+}
+
+export interface TypewriterState {
+  text: string;
+  cursor: string;
+  done: boolean;
+  index: number;
+  progress: number;
+}
+
+export interface LayerOptions {
+  zIndex?: number;
+}
+
+/**
+ * The interface for the contextual builder provided to closures.
+ */
+export interface BuntiContext {
+  color: typeof pc & {
+    darken: typeof darken;
+    lighten: typeof lighten;
+    rgb: typeof rgb;
+    fg: typeof fg;
+    bg: typeof bg;
+  };
+  state: ScreenState;
+  width: number;
+  height: number;
+  area: Rect;
+  isRoot: boolean;
+  offsetX: number;
+  offsetY: number;
+  readonly cursorX: number;
+  readonly cursorY: number;
+  mouseX: number;
+  mouseY: number;
+  mouseButton: number;
+  isMouseDown: boolean;
+  lastKey?: string;
+  focusedId?: string;
+  elapsedTime: number;
+
+  text(str: string | number): BuntiContext;
+  icon(name: string): string; // Pure string return for template literal safety
+  blit(
+    x: number,
+    y: number,
+    content: string,
+    style?: Partial<Cell>,
+  ): BuntiContext;
+  rect(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    style: Partial<Cell>,
+  ): BuntiContext;
+  viewport(
+    content: string,
+    width: number,
+    height: number,
+    scrollY?: number,
+  ): string;
+  span(
+    options: { color?: string | number | RGB | ((s: string) => string) },
+    callback: (sub: BuntiContext) => void,
+  ): string;
+  box(options: DSLBoxOptions, callback: (sub: BuntiContext) => void): string;
+  layer(
+    zIndexOrOptions: number | LayerOptions,
+    callback: (sub: BuntiContext) => void,
+  ): BuntiContext;
+  layer(callback: (sub: BuntiContext) => void): BuntiContext;
+  joinHorizontal(...blocks: string[]): string;
+  joinVertical(...blocks: string[]): string;
+  wallpaper(
+    input: string | number | RGB | RGB[] | Gradient | { color: any },
+  ): void;
+  gradient(options: {
+    colors: (string | number | RGB)[];
+    direction?: 'vertical' | 'horizontal';
+    steps?: number;
+  }): Gradient;
+  rgb(r: number, g: number, b: number): RGB;
+
+  // State & Focus
+  useState<T>(initial: T): [T, (val: T) => void];
+  useState<T>(key: string, initial: T): [T, (val: T) => void];
+  usePersistentState<T>(key: string, initial: T): [T, (val: T) => void];
+  focusable(id: string): boolean;
+  isFocused(id: string): boolean;
+  focus(id: string): void;
+  focusNext(): void;
+  hitbox(
+    id: string,
+    bounds: RectInput,
+  ): {
+    box: Hitbox;
+    hovered: boolean;
+    pressed: boolean;
+    clicked: boolean;
+  };
+  resolveRect(bounds: RectInput): Rect;
+  resolveLocalRect(bounds: PlacedRectInput, options?: PlacedRectOptions): Rect;
+  split(options: SplitOptions): Rect[];
+  isHovered(id: string): boolean;
+  isPressed(id: string): boolean;
+  isClicked(id: string): boolean;
+
+  list(id: string, items: string[], options?: ListOptions): BuntiContext;
+  table(rows: string[][], options?: TableOptions): BuntiContext;
+
+  // Animation
+  animate(
+    duration: number,
+    options?: { loop?: boolean; delay?: number; id?: string },
+  ): number;
+  fade(
+    from: string | number | RGB,
+    to: string | number | RGB,
+    progress: number,
+  ): RGB;
+  typewriter(text: string, options?: TypewriterOptions): TypewriterState;
+  flicker(intensity?: number): boolean;
+
+  // Async data
+  useAsync<T>(
+    fetcher: () => Promise<T>,
+    options?: { interval?: number },
+  ): {
+    data: T | undefined;
+    loading: boolean;
+    error: Error | undefined;
+  };
+  useAsync<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    options?: { interval?: number },
+  ): {
+    data: T | undefined;
+    loading: boolean;
+    error: Error | undefined;
+  };
+
+  requestStop(): void;
+  flushFlow(): void;
+}
+
+/**
+ * The DSL state container allowing stable references with dynamic capture targets.
+ */
+export interface DSLState {
+  activeContents: string[];
+  stack: string[][];
+  layers: RenderLayer[];
+  layerOrder: number;
+}
+
+export interface RenderLayer {
+  zIndex: number;
+  order: number;
+  buffer: Cell[];
+}
