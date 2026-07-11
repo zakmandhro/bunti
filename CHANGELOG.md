@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Six preset themes** converted from popular VS Code themes, shipped under the new
+  `@zakmandhro/bunti/themes` subpath: `dracula`, `tokyoNight`, `catppuccinMocha`, `nord`,
+  `oneDarkPro`, and `githubLight` (plus a `themes` record keyed by slug). Each is a ready
+  `Theme`, hand-tuned and gated in tests on WCAG contrast (foreground/background ≥ 4.5:1,
+  muted/background ≥ 2.5:1, onPrimary/primary ≥ 4.5:1). All sources are MIT-licensed;
+  attribution lives in each generated module.
+- Internal VS Code theme converter (`scripts/convert-vscode-theme.ts`): a pure
+  `convertVSCodeTheme(json)` mapping workbench `colors` onto Bunti's semantic tokens
+  (data-driven `VSCODE_TOKEN_MAP`), a string-aware JSONC stripper, `#RGBA`/`#RRGGBBAA`
+  compositing over the resolved editor background, and a WCAG-driven tune pass that drops
+  failing values so `createTheme` derivation takes over. Theme `include` chains are not
+  supported (pre-resolve or use compiled JSON). Regenerate presets with
+  `bun scripts/convert-vscode-theme.ts --presets`; inspect with `--audit`. This converter
+  is the internal core of the post-launch public `fromVSCode()`.
+- `theme-preview` demo upgraded into the theme-switcher skeleton: keys 1-8 live-swap
+  between `darkTheme`, `lightTheme`, and all six presets via `ctx.setTheme`, rendering a
+  title bar, token samples, status colors, a primary button look, and a selection swatch
+  entirely from `ctx.theme` tokens.
+
 - **Semantic theme system** (`src/theme.ts`): `Theme` with 15 semantic tokens
   (`background`, `surface`, `surfaceRaised`, `foreground`, `muted`, `primary`, `onPrimary`,
   `accent`, `border`, `focus`, `selection`, `success`, `warning`, `danger`, `info`) plus
