@@ -188,7 +188,7 @@ function createDSLContext(
     focusedId: state.focusedId,
     elapsedTime: Date.now() - state.startTime,
 
-get theme(): Theme {
+    get theme(): Theme {
       return activeTheme(dslState, state);
     },
 

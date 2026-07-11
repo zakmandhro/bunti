@@ -112,7 +112,7 @@ export interface BuntiContext {
   focusedId?: string;
   elapsedTime: number;
 
-/**
+  /**
    * The active semantic theme for this subtree. Tokens are callable fg
    * stylers that also carry `.rgb`/`.hex`, so they work as both text
    * wrappers (`ctx.text(ctx.theme.primary('hi'))`) and color values
