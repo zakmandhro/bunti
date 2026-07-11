@@ -14,6 +14,7 @@ import {
   truncate,
   visibleWidth,
 } from '../src/index';
+import { createKeyEvent } from '../src/input';
 import {
   applyInputToState,
   isResizeSettled,
@@ -508,10 +509,12 @@ describe('Bunti Core Engine', () => {
     expect(isResizeSettled(state, state.resizeSettlesAt!)).toBe(true);
   });
 
+  // Input now consumes the KeyEvent frame queue (state.keys) instead of the
+  // legacy lastKey slot, so modifier combos are distinguishable.
   test('Input updates managed state from normalized keyboard input', () => {
     const state = createScreenState();
     state.focusedId = 'mission';
-    state.lastKey = 'a';
+    state.keys = [createKeyEvent('a')];
 
     const ctx = createScreenContext(state);
     Input(ctx, { id: 'mission', width: 20 });
