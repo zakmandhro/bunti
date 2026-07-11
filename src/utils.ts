@@ -165,10 +165,3 @@ export function indentBlock(content: string, columns: number): string {
     .map((line) => prefix + line)
     .join('\n');
 }
-
-/**
- * Identity function.
- */
-export function replaceEmojis(str: string): string {
-  return str;
-}

@@ -35,9 +35,9 @@ import { bunti } from '@zakmandhro/bunti';
 import { Box, Button, Input } from '@zakmandhro/bunti/components';
 
 bunti.render((ctx) => {
-  const { color, icon, wallpaper } = ctx;
+  const { color, icon, wallpaper, gradient } = ctx;
 
-  wallpaper(bunti.gradient({ colors: ['midnight', 'plasma'] }));
+  wallpaper(gradient({ colors: ['midnight', 'plasma'] }));
 
   Box(ctx, {
     width: 48,
