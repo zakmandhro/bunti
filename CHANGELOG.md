@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(nothing yet)_
+
+## [0.2.0] - 2026-07-11
+
+The one batched breaking release before launch. Everything after 0.2.0 is additive.
+
+### Breaking
+
+- **Click semantics**: `'click'` now fires once on mouse RELEASE at the press origin
+  (was: on press, repeat-firing every frame while held). `Button.onClick` fires once per
+  click; code using `hitbox().pressed` as a click signal should migrate to `.clicked`.
+- **Components are themed**: Button/Input/Card/Modal/Header and `list()` draw from
+  `ctx.theme` tokens instead of hardcoded colors. Default visuals shift slightly
+  (bunti-dark tokens); custom look = pass a theme or explicit props.
+- **`Card` `theme` prop renamed to `variant`** (`theme` kept as a deprecated alias);
+  `Header`'s `theme` prop is deprecated and ignored (use `ctx.themed`).
+- **`ctx.color` is now Bunti's own `BuntiColor`** (vendored) — the `picocolors` peer
+  dependency is gone; code relying on picocolors-specific members must update.
+- **Render-loop errors reject the `render()` promise** after restoring the terminal
+  (was: `console.error` into the alt screen and keep looping). Wrap `await render()` in
+  try/catch or pass `onError` to keep the loop alive.
+- **`once` mode no longer calls `process.exit(0)`** — your script continues after
+  `await render(cb, { once: true })`.
+- **Nerd Font auto-detection is real**: unknown/unsupported terminals now degrade to
+  ASCII fallbacks instead of assuming Nerd Fonts everywhere. Force with `BUNTI_NF=1`
+  or `render(cb, { nerdFont: true })`.
+- **`Input` edits at a real cursor** (inverse-video cell, arrow/home/end movement,
+  horizontal scroll) instead of append-only with a literal `█` suffix.
+
+
 ### Added
 
 - **Six preset themes** converted from popular VS Code themes, shipped under the new
