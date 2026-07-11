@@ -100,13 +100,13 @@ export function Modal(
       const modalW = props.width;
       const modalH = props.height;
 
-      // Slide: enter from 1 row above the resting position.
+      // Slide: enter from 1 row above the resting position. The slide is
+      // PAINT-ONLY (box paintOffsetY): layout and hitboxes sit at the
+      // settled coordinates from the very first frame, so clicks during
+      // the entrance land where the modal will rest.
       const slide = Math.round(1 - eased);
       const localX = Math.max(0, Math.floor((overlay.width - modalW) / 2));
-      const localY = Math.max(
-        0,
-        Math.floor((overlay.height - modalH) / 2) - slide,
-      );
+      const localY = Math.max(0, Math.floor((overlay.height - modalH) / 2));
       const x = overlay.offsetX + localX;
       const y = overlay.offsetY + localY;
 
@@ -124,8 +124,9 @@ export function Modal(
           : targetBorder;
 
       // 1. Solid background rect: the raised-surface plate the dialog
-      // floats on (guarantees full coverage under sparse content).
-      overlay.rect(x, y, modalW, modalH, { char: ' ', bg: surfaceBg });
+      // floats on (guarantees full coverage under sparse content). Painted
+      // at the slid position — pure visual, like the box paint below.
+      overlay.rect(x, y - slide, modalW, modalH, { char: ' ', bg: surfaceBg });
 
       // 2. The box enclosing the modal content.
       rendered = overlay.box(
@@ -134,6 +135,7 @@ export function Modal(
           y: localY,
           width: modalW,
           height: modalH,
+          paintOffsetY: -slide,
           border: props.border ?? 'double',
           borderColor,
           // Content fallback fg: explicit ANSI styling in content still wins.

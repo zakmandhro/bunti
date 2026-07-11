@@ -134,18 +134,23 @@ A copy-paste PTY smoke test (spawn, send a key, assert clean exit):
 
 ```typescript
 // pty-test.ts — bun pty-test.ts
+// macOS caveat: Bun.spawn's stdin: 'pipe' is a socketpair, and macOS
+// `script` rejects it ("script: tcgetattr: Operation not supported on
+// socket"). Feed the keys through a shell pipeline instead — the shell
+// gives `script` a real pipe it can sit in front of.
 const proc = Bun.spawn(
-  ['script', '-q', '/dev/null', 'bun', 'app.ts'], // macOS arg order
-  { stdin: 'pipe', stdout: 'pipe', stderr: 'inherit' },
+  ['sh', '-c', '(sleep 2; printf q) | script -q /dev/null bun app.ts'],
+  { stdout: 'pipe', stderr: 'inherit' },
 );
-await Bun.sleep(2000);        // let it render a few frames
-proc.stdin.write('q');        // your app's quit key
-proc.stdin.end();
 const code = await proc.exited;
 const frames = await new Response(proc.stdout).text();
 if (code !== 0 || !frames.includes('MISSION CONTROL')) process.exit(1);
 console.log('PTY smoke test passed');
 ```
+
+Stage multiple keys the same way: `(sleep 2; printf ' '; sleep 0.5;
+printf q)` — one `printf` per key, `sleep` between them. On Linux, swap
+the inner command for the `script -qec "bun app.ts" /dev/null` form.
 
 For pure rendering checks, skip the PTY entirely: `render(cb, { once:
 true })` draws one frame and returns.

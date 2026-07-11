@@ -6,11 +6,23 @@
  * carrying the press-origin coordinates (state.clickX/clickY). isClicked is
  * therefore true exactly one frame per click — components fire actions once
  * per click instead of every frame the button is held.
+ *
+ * Hit-testing semantics:
+ * - Topmost wins: when several hitboxes contain the point, only the
+ *   last-registered one (declaration order; layers render later, so later
+ *   registration = visually on top) reports hovered/pressed/clicked.
+ * - hitbox() evaluates against the PREVIOUS frame's settled rect for its id
+ *   when one exists: registration rects can still be re-placed by the direct
+ *   box renderer at paint time (auto-height measure, content alignment), and
+ *   a click physically happened on the frame the user was looking at. New
+ *   ids fall back to their freshly resolved rect.
+ * - The isHovered/isPressed/isClicked query forms evaluate against the
+ *   current frame's registrations (they are called after registration).
  */
 
 import type { Rect, RectInput } from '../geometry';
 import type { Hitbox, ScreenState } from '../state';
-import type { BuntiContext } from './types';
+import type { BuntiContext, HitboxBounds } from './types';
 
 type Interaction = Pick<
   BuntiContext,
@@ -30,6 +42,39 @@ function contains(box: Hitbox, x: number, y: number): boolean {
   return (
     x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height
   );
+}
+
+/**
+ * Last-registered (= topmost) hitbox id containing the point, if any.
+ * Map iteration follows insertion order, so the last containing entry is
+ * the one declared latest — layers render later, hence visually on top.
+ */
+function topmostAt(
+  map: Map<string, Hitbox> | undefined,
+  x: number,
+  y: number,
+): string | undefined {
+  if (!map) return undefined;
+  let top: string | undefined;
+  for (const box of map.values()) {
+    if (contains(box, x, y)) top = box.id;
+  }
+  return top;
+}
+
+/**
+ * True when `id` is the topmost hitbox at the point, or when the map has
+ * no containing entry at all (first-frame fallback: nothing is known to
+ * cover the point, so the caller's own containment test decides).
+ */
+function isTopmost(
+  map: Map<string, Hitbox> | undefined,
+  id: string,
+  x: number,
+  y: number,
+): boolean {
+  const top = topmostAt(map, x, y);
+  return top === undefined || top === id;
 }
 
 /**
@@ -56,6 +101,7 @@ function clickY(state: ScreenState): number {
 export function createInteraction(
   state: ScreenState,
   resolveRect: (bounds: RectInput) => Rect,
+  capture?: (box: Hitbox, flow?: { line: number; col: number }) => void,
 ): Interaction {
   const interaction: Interaction = {
     focusable(id: string) {
@@ -81,11 +127,24 @@ export function createInteraction(
       state.focusedId = state.focusableIds[nextIdx];
     },
 
-    hitbox(id: string, bounds: RectInput) {
+    hitbox(id: string, bounds: HitboxBounds) {
       const rect = resolveRect(bounds);
       const box: Hitbox = { id, ...rect };
       state.hitboxes.set(id, box);
-      const hovered = contains(box, state.mouseX, state.mouseY);
+      // Direct boxes re-place captured hitboxes once their painted rect is
+      // known; flow-anchored entries carry their content-local (line, col).
+      capture?.(
+        box,
+        bounds.flow ? { line: bounds.y ?? 0, col: bounds.x ?? 0 } : undefined,
+      );
+
+      // Evaluate against last frame's settled rect when this id existed
+      // (the rect the user actually saw); fall back to the fresh rect.
+      const prev = state.prevHitboxes;
+      const eff = prev?.get(id) ?? box;
+      const hovered =
+        contains(eff, state.mouseX, state.mouseY) &&
+        isTopmost(prev, id, state.mouseX, state.mouseY);
 
       // Hover-change tracking against the last evaluation of this id.
       const prevHovered = state.hoverStates.get(id) ?? false;
@@ -102,7 +161,9 @@ export function createInteraction(
 
       const pressed = hovered && state.isMouseDown && state.mouseButton === 0;
       const clicked =
-        frameHasClick(state) && contains(box, clickX(state), clickY(state));
+        frameHasClick(state) &&
+        contains(eff, clickX(state), clickY(state)) &&
+        isTopmost(prev, id, clickX(state), clickY(state));
 
       return { box, hovered, pressed, clicked };
     },
@@ -110,7 +171,10 @@ export function createInteraction(
     isHovered(id: string) {
       const box = state.hitboxes.get(id);
       if (!box) return false;
-      return contains(box, state.mouseX, state.mouseY);
+      return (
+        contains(box, state.mouseX, state.mouseY) &&
+        isTopmost(state.hitboxes, id, state.mouseX, state.mouseY)
+      );
     },
 
     isPressed(id: string) {
@@ -125,7 +189,9 @@ export function createInteraction(
       const box = state.hitboxes.get(id);
       if (!box) return false;
       return (
-        frameHasClick(state) && contains(box, clickX(state), clickY(state))
+        frameHasClick(state) &&
+        contains(box, clickX(state), clickY(state)) &&
+        isTopmost(state.hitboxes, id, clickX(state), clickY(state))
       );
     },
 

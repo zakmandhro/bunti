@@ -8,6 +8,7 @@ import {
   setColorTier,
   type TerminalProfile,
 } from './detect';
+import type { Rect } from './geometry';
 import type {
   HeldKeyTracker,
   InputTokenizer,
@@ -119,6 +120,22 @@ export interface ScreenState {
   focusableIds: string[];
   /** Clickable regions registered this frame via ctx.hitbox(). */
   hitboxes: Map<string, Hitbox>;
+  /**
+   * The previous frame's settled hitboxes. Hover/press/click evaluate
+   * against these when the id existed last frame: registration rects can
+   * still be re-placed by the direct box renderer at paint time, and a
+   * click physically happened on the frame the user was looking at.
+   */
+  prevHitboxes?: Map<string, Hitbox>;
+  /**
+   * Painted outer rects of auto-sized direct boxes from the previous
+   * frame, keyed by per-frame declaration sequence. Seeds the sub-context
+   * area so offsets/hitboxes are exact during the callback from frame 2
+   * on (frame 1 is corrected post-measure within the same frame).
+   */
+  autoBoxAreas?: Map<number, Rect>;
+  /** Shared per-frame sequence counter keying autoBoxAreas (reset each frame). */
+  autoBoxSeq?: { n: number };
   /** Backing store for useState/useAsync and motion/animation clocks. */
   componentState: Map<string, any>;
   /** Positional counter for keyless hooks (reset each frame). */

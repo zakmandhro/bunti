@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_(nothing yet)_
+### Fixed
+
+- **Auto-height direct boxes: hitboxes/sub-context now match the painted rect**
+  (silent blocker). A root `box()` without `height` paints vertically centered by
+  its measured content, but the callback's sub-context (and every hitbox
+  registered inside) was resolved BEFORE measuring, top-anchored at a
+  screen-height guess — clicks landed rows above the pixels. The direct renderer
+  now shares the painter's measure pass: the sub-context rect is re-placed at the
+  painted rect (seeded from the previous frame so it is exact even during the
+  callback from frame 2 on), and captured hitboxes are re-placed within the same
+  frame. Restores the README invariant "hitboxes and rendered output share the
+  same resolved rect".
+- **Inline components respect the flow cursor** (silent blocker). Two `Button`s
+  on one line registered IDENTICAL alone-centered hitboxes; `Button`/`Input`/
+  `Link` hitboxes are now flow-anchored — placed at the cursor position and
+  re-aligned with the painted content line (`align`/`valign` included) by the
+  enclosing box.
+- **Overlapping hitboxes: topmost wins.** One physical click used to fire EVERY
+  hitbox containing the point; now only the topmost (last-registered —
+  layers render later, so later registration is visually on top) reports
+  hovered/pressed/clicked/hoverEnter/hoverLeave. `hitbox()` snapshots evaluate
+  against the previous frame's settled rects (the frame the user was actually
+  looking at); the `isHovered`/`isPressed`/`isClicked` query forms use the
+  current frame's registrations.
+- **Modal entrance slide no longer moves hitboxes.** The 150ms slide-in is
+  paint-only (new `paintOffsetY` box option): geometry and hitboxes sit at the
+  settled coordinates from the very first frame.
+- README PTY harness: the `Bun.spawn` snippet failed on macOS
+  (`script: tcgetattr: Operation not supported on socket` — `stdin: 'pipe'` is a
+  socketpair). Replaced with the working shell-pipeline variant and documented
+  the caveat.
+- `ButtonProps.variant` JSDoc documents row heights (default/secondary = 3-row
+  outlined; primary/danger/ghost = 1-row).
 
 ## [0.2.0] - 2026-07-11
 

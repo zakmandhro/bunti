@@ -196,6 +196,10 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     y: area.y,
     width: area.width,
     height: area.height,
+    // In a box the field joins the text flow (indented to area.x), so the
+    // hitbox is flow-anchored and re-placed with the painted line — content
+    // alignment can't separate it from the rendered field.
+    flow: !ctx.isRoot,
   });
   const isHovered = interaction.hovered;
 

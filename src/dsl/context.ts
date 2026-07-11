@@ -32,6 +32,7 @@ import {
 } from '../geometry';
 import { icon, replaceEmojis } from '../icons';
 import {
+  type BoxMeasure,
   dimRect,
   getWindow,
   joinHorizontal,
@@ -44,6 +45,7 @@ import {
   table as layoutTable,
   viewport as layoutViewport,
   wallpaper as layoutWallpaper,
+  measureBox,
   rect,
   resolveSize,
   type TableOptions,
@@ -70,12 +72,72 @@ import {
   type BuntiContext,
   type DSLBoxOptions,
   type DSLState,
+  type HitboxFrame,
   KEYS,
   type LayerOptions,
 } from './types';
 
 /** Luminance scale applied by layer drop shadows at composite time. */
 const LAYER_SHADOW_DIM = 0.45;
+
+function pushHitboxFrame(dslState: DSLState): HitboxFrame {
+  const frame: HitboxFrame = { entries: [] };
+  (dslState.hitboxFrames ??= []).push(frame);
+  return frame;
+}
+
+function popHitboxFrame(dslState: DSLState): void {
+  dslState.hitboxFrames?.pop();
+}
+
+/**
+ * Re-places hitboxes registered inside a direct box once its painted rect
+ * is known. Flow-anchored entries land exactly where their content line
+ * painted (per-line alignment included, via the SAME measure the painter
+ * used); area-anchored entries shift by the delta between the assumed and
+ * painted inner origins. Pass `measure` as undefined when the box wraps —
+ * wrapping reflows line indices, so flow entries fall back to the delta.
+ */
+function fixupHitboxFrame(
+  frame: HitboxFrame,
+  measure: BoxMeasure | undefined,
+  boxX: number,
+  boxY: number,
+  dx: number,
+  dy: number,
+): void {
+  for (const entry of frame.entries) {
+    const flow = entry.flow;
+    if (flow && measure && flow.line >= 0 && flow.line < measure.lines.length) {
+      entry.box.x = boxX + measure.contentLeft(flow.line) + flow.col;
+      entry.box.y = boxY + measure.contentTop(flow.line);
+    } else {
+      entry.box.x += dx;
+      entry.box.y += dy;
+    }
+  }
+}
+
+/**
+ * Converts flow-anchored entries captured during a nested closure back to
+ * area anchoring. Nested flow boxes and spans re-position their content
+ * within the parent flow in ways the direct-box fixup does not model, so
+ * entries registered inside them keep their eagerly resolved rects.
+ */
+function dropFlowAnchors(dslState: DSLState, mark: number): void {
+  const frames = dslState.hitboxFrames;
+  const frame = frames?.[frames.length - 1];
+  if (!frame) return;
+  for (let i = mark; i < frame.entries.length; i++) {
+    frame.entries[i]!.flow = undefined;
+  }
+}
+
+/** Entry count of the innermost hitbox frame (for dropFlowAnchors marks). */
+function hitboxFrameMark(dslState: DSLState): number {
+  const frames = dslState.hitboxFrames;
+  return frames?.[frames.length - 1]?.entries.length ?? 0;
+}
 
 function boxBorderInset(options: DSLBoxOptions): number {
   return options.border === 'none' || !options.border ? 0 : 1;
@@ -199,8 +261,15 @@ function createDSLContext(
 ): BuntiContext {
   const hooks = createHooks(state);
   const motion = createMotion(state, hooks.useState);
-  const interaction = createInteraction(state, (bounds) =>
-    ctx.resolveRect(bounds),
+  const interaction = createInteraction(
+    state,
+    (bounds) => ctx.resolveRect(bounds),
+    // Hitboxes registered while a direct box renders are captured so the
+    // renderer can re-place them once the painted rect is known.
+    (box, flow) => {
+      const frames = dslState.hitboxFrames;
+      frames?.[frames.length - 1]?.entries.push({ box, flow });
+    },
   );
 
   const ctx: BuntiContext = {
@@ -404,9 +473,11 @@ function createDSLContext(
       const subContents: string[] = [];
       dslState.stack.push(dslState.activeContents);
       dslState.activeContents = subContents;
+      const mark = hitboxFrameMark(dslState);
 
       callback(ctx);
 
+      dropFlowAnchors(dslState, mark);
       dslState.activeContents = dslState.stack.pop()!;
       const combined = subContents.join('');
 
@@ -443,6 +514,7 @@ function createDSLContext(
       const subContents: string[] = [];
       dslState.stack.push(dslState.activeContents);
       dslState.activeContents = subContents;
+      const mark = hitboxFrameMark(dslState);
 
       const subCtx = createDSLContext(
         state,
@@ -454,6 +526,7 @@ function createDSLContext(
       );
       callback(subCtx);
 
+      dropFlowAnchors(dslState, mark);
       dslState.activeContents = dslState.stack.pop()!;
 
       const innerContent = subContents.join('');
@@ -613,6 +686,9 @@ function createDirectBoxRenderer(
     // 'blank' resolves to WCAG auto-contrast black/white vs the box bg.
     const boxFg = resolveBoxFg(boxOptions);
     const fgStyle: Partial<Cell> = boxFg !== undefined ? { fg: boxFg } : {};
+    // Visual-only slide (entrance animations): paints shift, geometry
+    // (sub-context, hitboxes) stays at the settled rect.
+    const paintDy = boxOptions.paintOffsetY ?? 0;
 
     if (hasFixedSize) {
       const preArea = resolveBoxArea(base.area, boxOptions, 0, 0);
@@ -620,16 +696,24 @@ function createDirectBoxRenderer(
       trackBoxRect(preArea, boxOptions);
 
       if (boxOptions.bgColor || boxOptions.color) {
-        rect(state, preArea.x, preArea.y, preArea.width, preArea.height, {
-          char: ' ',
-          bg: boxOptions.bgColor,
-          fg: boxFg,
-        });
+        rect(
+          state,
+          preArea.x,
+          preArea.y + paintDy,
+          preArea.width,
+          preArea.height,
+          {
+            char: ' ',
+            bg: boxOptions.bgColor,
+            fg: boxFg,
+          },
+        );
       }
 
       const styledBox = layoutBox('', boxOptions, base.width, base.height);
-      layoutBlit(state, preArea.x, preArea.y, styledBox, fgStyle);
+      layoutBlit(state, preArea.x, preArea.y + paintDy, styledBox, fgStyle);
 
+      const frame = pushHitboxFrame(dslState);
       const subContents: string[] = [];
       dslState.stack.push(dslState.activeContents);
       dslState.activeContents = subContents;
@@ -645,39 +729,71 @@ function createDirectBoxRenderer(
       callback(subCtx);
 
       dslState.activeContents = dslState.stack.pop()!;
+      popHitboxFrame(dslState);
 
       const contentStr = subContents.join('');
       if (contentStr) {
-        const styledContent = layoutBox(
+        const innerOptions: DSLBoxOptions = {
+          width: innerArea.width,
+          height: innerArea.height,
+          align: boxOptions.align,
+          valign: boxOptions.valign,
+          wrap: boxOptions.wrap,
+          border: 'none',
+          padding: [0, 0],
+        };
+        const measure = measureBox(
           contentStr,
-          {
-            width: innerArea.width,
-            height: innerArea.height,
-            align: boxOptions.align,
-            valign: boxOptions.valign,
-            wrap: boxOptions.wrap,
-            border: 'none',
-            padding: [0, 0],
-          },
+          innerOptions,
           innerArea.width,
           innerArea.height,
         );
-        layoutBlit(state, innerArea.x, innerArea.y, styledContent, fgStyle);
+        const styledContent = layoutBox(
+          contentStr,
+          innerOptions,
+          innerArea.width,
+          innerArea.height,
+          measure,
+        );
+        layoutBlit(
+          state,
+          innerArea.x,
+          innerArea.y + paintDy,
+          styledContent,
+          fgStyle,
+        );
+        // Flow-anchored hitboxes land where their content line painted
+        // (alignment included); area-anchored rects were exact already.
+        fixupHitboxFrame(
+          frame,
+          boxOptions.wrap ? undefined : measure,
+          innerArea.x,
+          innerArea.y,
+          0,
+          0,
+        );
       }
 
       return styledBox;
     }
 
+    // Auto-sized path: content must render before the painted rect is
+    // known. Seed the sub-context with last frame's measured rect for this
+    // declaration slot (exact from frame 2 on), fall back to the
+    // parent-sized guess on the first frame, then re-place the sub-context
+    // and every captured hitbox at the measured rect below — so hitboxes
+    // and rendered output share the same resolved rect within one frame.
+    const seqRef = state.autoBoxSeq;
+    const seq = seqRef ? seqRef.n++ : -1;
+    const seeded = seq >= 0 ? state.autoBoxAreas?.get(seq) : undefined;
+
+    const frame = pushHitboxFrame(dslState);
     const subContents: string[] = [];
     dslState.stack.push(dslState.activeContents);
     dslState.activeContents = subContents;
 
-    const preAreaTemp = resolveBoxArea(
-      base.area,
-      boxOptions,
-      base.width,
-      base.height,
-    );
+    const preAreaTemp =
+      seeded ?? resolveBoxArea(base.area, boxOptions, base.width, base.height);
     const innerAreaTemp = resolveBoxInnerArea(preAreaTemp, boxOptions);
 
     const subCtx = createDSLContext(
@@ -691,34 +807,60 @@ function createDirectBoxRenderer(
     callback(subCtx);
 
     dslState.activeContents = dslState.stack.pop()!;
+    popHitboxFrame(dslState);
 
     const contentStr = subContents.join('');
+    const measure = measureBox(contentStr, boxOptions, base.width, base.height);
     const styledBox = layoutBox(
       contentStr,
       boxOptions,
       base.width,
       base.height,
+      measure,
     );
 
-    const lines = styledBox.split('\n');
-    const lineWidths = lines.map(visibleWidth);
     const boxArea = resolveBoxArea(
       base.area,
       boxOptions,
-      lineWidths.length > 0 ? Math.max(...lineWidths) : 0,
-      lines.length,
+      measure.width,
+      measure.height,
     );
     trackBoxRect(boxArea, boxOptions);
+    if (seq >= 0) state.autoBoxAreas?.set(seq, boxArea);
+
+    // Retarget the sub-context to the painted rect so post-render reads
+    // (offsetX/offsetY/width/height/area) match the pixels on screen.
+    const innerArea = resolveBoxInnerArea(boxArea, boxOptions);
+    subCtx.offsetX = innerArea.x;
+    subCtx.offsetY = innerArea.y;
+    subCtx.width = innerArea.width;
+    subCtx.height = innerArea.height;
+    subCtx.area = innerArea;
+    fixupHitboxFrame(
+      frame,
+      boxOptions.wrap ? undefined : measure,
+      boxArea.x,
+      boxArea.y,
+      innerArea.x - innerAreaTemp.x,
+      innerArea.y - innerAreaTemp.y,
+    );
 
     if (boxOptions.bgColor || boxOptions.color) {
-      rect(state, boxArea.x, boxArea.y, boxArea.width, boxArea.height, {
-        char: ' ',
-        bg: boxOptions.bgColor,
-        fg: boxFg,
-      });
+      rect(
+        state,
+        boxArea.x,
+        boxArea.y + paintDy,
+        boxArea.width,
+        boxArea.height,
+        {
+          char: ' ',
+          bg: boxOptions.bgColor,
+          fg: boxFg,
+        },
+      );
     }
 
-    layoutBlit(state, boxArea.x, boxArea.y, styledBox, fgStyle);
+    layoutBlit(state, boxArea.x, boxArea.y + paintDy, styledBox, fgStyle);
     return styledBox;
   };
 }
@@ -739,7 +881,12 @@ export function createScreenContext(state: ScreenState): BuntiContext {
   }
 
   state.focusableIds = []; // Rebuild from this frame's rendered focusables.
+  // Last frame's settled hitboxes drive hover/click evaluation while this
+  // frame's registrations are still being placed (see interaction.ts).
+  state.prevHitboxes = state.hitboxes;
   state.hitboxes = new Map(); // Rebuild from this frame's interactive geometry.
+  state.autoBoxSeq = { n: 0 }; // Re-key auto-box area seeding per frame.
+  state.autoBoxAreas ??= new Map();
   // Hover enter/leave events last one frame; hitbox() refills them as this
   // frame's hitboxes register (mutated, not reassigned: layers share them).
   state.hoverEntered?.clear();

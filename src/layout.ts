@@ -432,17 +432,51 @@ export function resolveSize(
 }
 
 /**
- * Generates a styled box string with perfect alignment and optional
- * wrapping. This is the pure string-building form; ctx.box() adds
- * placement and painting on top of it.
- * @example box('hello', { width: 20, border: 'rounded', padding: [0, 1] });
+ * The measurement half of box(): everything about a box's geometry that is
+ * knowable before painting. box() renders from one of these, and the direct
+ * box renderer uses the SAME measure to place hitboxes — this shared pass is
+ * what guarantees "hitboxes and rendered output share the same resolved
+ * rect" for content-sized and aligned boxes.
  */
-export function box(
+export interface BoxMeasure {
+  /** Post-wrap/truncate content lines (ANSI intact, emojis swapped). */
+  lines: string[];
+  /** Border thickness per side (0 or 1). */
+  borderInset: number;
+  /** Horizontal padding inside the border. */
+  px: number;
+  /** Vertical padding inside the border. */
+  py: number;
+  /** Inner columns between the borders (padding included). */
+  innerW: number;
+  /** Inner rows between the borders (padding included). */
+  innerH: number;
+  /** Blank rows above the content from valign. */
+  topSpace: number;
+  /** Blank rows below the content from valign. */
+  bottomSpace: number;
+  /** Outer width of the rendered box string. */
+  width: number;
+  /** Outer height of the rendered box string. */
+  height: number;
+  /** Column offset (from the box's left edge) where content line k starts. */
+  contentLeft(k: number): number;
+  /** Row offset (from the box's top edge) of content line k. */
+  contentTop(k: number): number;
+}
+
+/**
+ * Measures a box without rendering it: resolves outer/inner dimensions,
+ * wraps/truncates the content lines, and exposes the per-line placement
+ * (alignment + valign) the renderer will use. Pass the result back to
+ * box() to render without re-measuring.
+ */
+export function measureBox(
   content: string,
   options: StyleOptions = {},
   parentW?: number,
   parentH?: number,
-): string {
+): BoxMeasure {
   // Ensure we operate on the swapped glyphs for all layout math
   content = replaceEmojis(content);
 
@@ -450,6 +484,7 @@ export function box(
   const py = options.padding?.[0] ?? 0;
   const borderStyle = options.border || 'none';
   const borderOffset = borderStyle === 'none' ? 0 : 2;
+  const borderInset = borderOffset / 2;
 
   const rawLines = content.split('\n');
   const maxRawW = Math.max(...rawLines.map((l) => visibleWidth(l)), 0);
@@ -481,6 +516,72 @@ export function box(
     finalInnerH = Math.max(finalInnerH, options.minHeight - borderOffset);
   if (options.maxHeight)
     finalInnerH = Math.min(finalInnerH, options.maxHeight - borderOffset);
+
+  const vSpace = Math.max(0, finalInnerH - lines.length - py * 2);
+  let topSpace = 0;
+  let bottomSpace = vSpace;
+  if (options.valign === 'middle') {
+    topSpace = Math.floor(vSpace / 2);
+    bottomSpace = Math.ceil(vSpace / 2);
+  } else if (options.valign === 'bottom') {
+    topSpace = vSpace;
+    bottomSpace = 0;
+  }
+
+  const align = options.align || 'left';
+
+  return {
+    lines,
+    borderInset,
+    px,
+    py,
+    innerW: targetInnerW,
+    innerH: finalInnerH,
+    topSpace,
+    bottomSpace,
+    width: targetInnerW + borderOffset,
+    // Content lines are never clipped to a too-small fixed height, so the
+    // rendered string can exceed finalInnerH — mirror that here.
+    height: borderOffset + py * 2 + topSpace + bottomSpace + lines.length,
+    contentLeft(k: number): number {
+      const line = (lines[k] ?? '').trimEnd();
+      const extra = Math.max(0, targetInnerW - visibleWidth(line) - px * 2);
+      const left =
+        align === 'center'
+          ? px + Math.floor(extra / 2)
+          : align === 'right'
+            ? px + extra
+            : px;
+      return borderInset + left;
+    },
+    contentTop(k: number): number {
+      return borderInset + py + topSpace + k;
+    },
+  };
+}
+
+/**
+ * Generates a styled box string with perfect alignment and optional
+ * wrapping. This is the pure string-building form; ctx.box() adds
+ * placement and painting on top of it. Pass a precomputed `measure`
+ * (from measureBox with the SAME content/options) to skip re-measuring.
+ * @example box('hello', { width: 20, border: 'rounded', padding: [0, 1] });
+ */
+export function box(
+  content: string,
+  options: StyleOptions = {},
+  parentW?: number,
+  parentH?: number,
+  measure?: BoxMeasure,
+): string {
+  const m = measure ?? measureBox(content, options, parentW, parentH);
+  const px = m.px;
+  const py = m.py;
+  const borderStyle = options.border || 'none';
+  const lines = m.lines;
+  const targetInnerW = m.innerW;
+  const topS = m.topSpace;
+  const bottomS = m.bottomSpace;
 
   const b =
     borderStyle === 'none'
@@ -543,17 +644,6 @@ export function box(
   const hBottom = b?.bottom || b?.h || ' ';
   const vLeft = b?.left || b?.v || ' ';
   const vRight = b?.right || b?.v || ' ';
-
-  const vSpace = Math.max(0, finalInnerH - lines.length - py * 2);
-  let topS = 0,
-    bottomS = vSpace;
-  if (options.valign === 'middle') {
-    topS = Math.floor(vSpace / 2);
-    bottomS = Math.ceil(vSpace / 2);
-  } else if (options.valign === 'bottom') {
-    topS = vSpace;
-    bottomS = 0;
-  }
 
   const out = [];
 

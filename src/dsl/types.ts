@@ -96,6 +96,14 @@ export interface DSLBoxOptions extends StyleOptions {
     | SideColors;
   /** If true, the string is returned but NOT appended to the flow. */
   detach?: boolean;
+  /**
+   * Visual-only vertical paint offset in rows (direct-rendered boxes).
+   * The box PAINTS shifted by this amount while its resolved rect —
+   * sub-context offsets, hitboxes, focus geometry — stays at the settled
+   * position. Entrance animations (Modal's slide-in) use this so hitboxes
+   * sit at their final coordinates from the first frame.
+   */
+  paintOffsetY?: number;
 }
 
 /** Options for `ctx.typewriter()`. */
@@ -397,12 +405,14 @@ export interface BuntiContext {
   focusNext(): void;
   /**
    * Registers a clickable region and returns its interaction snapshot for
-   * this frame. Requires `mouse: true`.
+   * this frame. Requires `mouse: true`. When several hitboxes contain the
+   * pointer, only the topmost (last-registered — layers render later, so
+   * later registration is visually on top) reports hovered/pressed/clicked.
    * @example const { hovered, clicked } = ctx.hitbox('save', { x: 2, y: 5, width: 10, height: 1 });
    */
   hitbox(
     id: string,
-    bounds: RectInput,
+    bounds: HitboxBounds,
   ): {
     box: Hitbox;
     hovered: boolean;
@@ -561,6 +571,39 @@ export interface BuntiContext {
 }
 
 /**
+ * Bounds for ctx.hitbox(): a RectInput plus flow anchoring.
+ */
+export interface HitboxBounds extends RectInput {
+  /**
+   * Anchors the hitbox to the text flow: x/y are the flow (column, line)
+   * where the owning content begins, and the enclosing direct-rendered box
+   * re-places the rect at paint time so content alignment (align/valign,
+   * auto-height centering) can never separate the hitbox from the painted
+   * cells. Components (Button/Input/Link) pass this for their flow
+   * placement; app code with explicit coordinates rarely needs it.
+   */
+  flow?: boolean;
+}
+
+/** One hitbox registered inside a pending direct-box paint (see HitboxFrame). */
+export interface HitboxEntry {
+  /** The live Hitbox object in state.hitboxes (mutated by the fixup). */
+  box: Hitbox;
+  /** Flow anchor (content-local line/column) for flow-placed hitboxes. */
+  flow?: { line: number; col: number };
+}
+
+/**
+ * Hitboxes registered while a direct box renders its callback. Once the
+ * box's painted rect is known (content measured, alignment applied), the
+ * renderer re-places every captured entry so registered hitboxes exactly
+ * match the painted cells.
+ */
+export interface HitboxFrame {
+  entries: HitboxEntry[];
+}
+
+/**
  * The DSL state container allowing stable references with dynamic capture targets.
  */
 export interface DSLState {
@@ -576,6 +619,8 @@ export interface DSLState {
   themeStack: Theme[];
   /** Direct-rendered box areas this frame (root only; dev diagnostics). */
   boxRects?: Rect[];
+  /** Pending direct-box hitbox fixups (innermost frame last). */
+  hitboxFrames?: HitboxFrame[];
 }
 
 /** One queued overlay buffer awaiting composite (see ctx.layer()). */

@@ -15,8 +15,11 @@ export interface ButtonProps extends DSLBoxOptions {
   /** Glyph rendered before the label (use ctx.icon(name)). */
   icon?: string;
   /**
-   * Visual style, mapped to theme tokens: 'primary' = filled pill,
-   * 'danger' = filled red, 'ghost' = borderless text, default = outlined.
+   * Visual style, mapped to theme tokens. Row heights differ:
+   * - default/'secondary' = 3-row outlined box (border + 1 content row)
+   * - 'primary' = 1-row filled pill
+   * - 'danger'  = 1-row filled red pill
+   * - 'ghost'   = 1-row borderless text
    */
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   /** Fires once per activation (mouse click release, Enter, or Space). */
@@ -41,8 +44,17 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const filled = isPill || props.variant === 'danger';
   const contentWidth = Math.max(12, finalLabel.length + (isPill ? 6 : 4));
   const contentHeight = filled || isGhost ? 1 : 3;
+  // Flow placement: without explicit coordinates, a non-detached button in
+  // a box joins the text flow at the CURRENT cursor — several buttons can
+  // share one line — so the hitbox anchors at the cursor and is re-placed
+  // with the painted line (alignment included) by the enclosing box.
+  const flowPlaced =
+    !ctx.isRoot &&
+    !props.detach &&
+    props.x === undefined &&
+    props.y === undefined;
   const area = resolveLocalRect({
-    x: props.x,
+    x: props.x ?? (flowPlaced ? ctx.cursorX : undefined),
     y: props.y ?? ctx.cursorY,
     width: props.width ?? contentWidth,
     height: props.height ?? contentHeight,
@@ -54,6 +66,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
     y: area.y,
     width: area.width,
     height: area.height,
+    flow: flowPlaced,
   });
   const isHovered = interaction.hovered;
   const isActive = isSelected || isHovered;

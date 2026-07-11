@@ -636,6 +636,19 @@ describe('Bunti Core Engine', () => {
     });
     expect(clicks).toBe(1);
 
+    // Register 'abort' for a frame before clicking: hit-testing evaluates
+    // against the previous frame's settled hitboxes (the frame the user was
+    // physically looking at when the click happened) — a brand-new id under
+    // a stale hitbox does not steal the click. See dsl/interaction.ts.
+    state.lastKey = undefined;
+    ctx = createScreenContext(state);
+    Button(ctx, {
+      id: 'abort',
+      label: 'ABORT',
+      onClick: () => clicks++,
+    });
+    expect(clicks).toBe(1);
+
     state.lastKey = 'click';
     state.mouseButton = 0;
     state.isMouseDown = true;

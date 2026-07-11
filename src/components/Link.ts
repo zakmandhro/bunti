@@ -25,7 +25,16 @@ export function Link(ctx: BuntiContext, props: LinkProps): string {
   const x = props.x ?? ctx.cursorX;
   const y = props.y ?? ctx.cursorY;
 
-  const interaction = ctx.hitbox(props.id, { x, y, width, height: 1 });
+  // The label joins the text flow at (x, y), so the hitbox is flow-anchored
+  // (re-placed with the painted line by the enclosing box) unless the
+  // caller pinned an explicit row.
+  const interaction = ctx.hitbox(props.id, {
+    x,
+    y,
+    width,
+    height: 1,
+    flow: props.y === undefined,
+  });
   if (interaction.clicked) props.onClick?.();
 
   const theme = ctx.theme;
