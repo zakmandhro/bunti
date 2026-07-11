@@ -34,11 +34,24 @@ const BEL = '\x07';
 
 /** Frozen key event shape. See module docs for the evolution contract. */
 export interface KeyEvent {
-  /** Normalized key name: 'up', 'enter', 'a', ' ', 'click', 'wheel_up', ... */
+  /**
+   * Normalized key name. Printable keys are the literal grapheme
+   * ('a', 'A', ' ', 'é', emoji); specials are lowercase names ('up',
+   * 'enter', 'escape', 'tab', 'backspace', 'f1'..'f12'); mouse events
+   * arrive as 'click' / 'wheel_up' / 'wheel_down'.
+   */
   key: string;
+  /**
+   * 'press' on first arrival, 'repeat' while auto-repeating within the
+   * hold window, 'release' when a held key's repeat stream expires
+   * (synthesized — legacy terminals report no real releases).
+   */
   kind: 'press' | 'repeat' | 'release';
+  /** Ctrl was held (e.g. ctrl+a arrives as { key: 'a', ctrl: true }). */
   ctrl: boolean;
+  /** Alt/meta was held (ESC-prefixed input). */
   alt: boolean;
+  /** Shift was held (CSI-modifier encoded; plain 'A' stays shift: false). */
   shift: boolean;
   /** The raw byte sequence that produced this event ('' for synthesized). */
   raw: string;

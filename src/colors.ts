@@ -6,9 +6,16 @@ import { colorTier } from './detect';
 import type { RGB } from './state';
 import type { ThemeColor } from './theme';
 
+/**
+ * A resolved multi-stop gradient, accepted anywhere bgColor is (rect fills,
+ * box backgrounds, wallpaper). Build one with ctx.gradient().
+ */
 export interface Gradient {
+  /** Interpolated RGB stops, one per step. */
   colors: RGB[];
+  /** Axis the stops sweep along. */
   direction: 'vertical' | 'horizontal';
+  /** Number of interpolated stops. */
   steps: number;
 }
 
@@ -34,6 +41,10 @@ export function isThemeColor(value: unknown): value is ThemeColor {
   );
 }
 
+/**
+ * Bunti's named color palette (ANSI-256 codes). Any name here works as a
+ * color value: `fg('bunti-blue', text)`, `{ bgColor: 'midnight' }`.
+ */
 export const PALETTE = {
   // Greyscale
   slate: '235',
@@ -432,8 +443,10 @@ export function rgb(r: number, g: number, b: number) {
 }
 
 /**
- * Returns an ANSI escape sequence for a color. On the 'mono' tier the text is
- * returned unstyled.
+ * Wraps text in a foreground-color ANSI sequence (any color value:
+ * palette name, hex, ANSI-256 code, RGB, ThemeColor). On the 'mono' tier
+ * the text is returned unstyled.
+ * @example fg('#3bbce1', 'hello') // truecolor cyan text
  */
 export function fg(color: any, text: string): string {
   const code = resolveColor(color);
@@ -443,6 +456,10 @@ export function fg(color: any, text: string): string {
   return `\x1b[${prefix};${codeStr}m${text}\x1b[0m`;
 }
 
+/**
+ * Wraps text in a background-color ANSI sequence (any color value). On the
+ * 'mono' tier the text is returned unstyled.
+ */
 export function bg(color: any, text: string): string {
   const code = resolveColor(color);
   if (code === undefined) return text;

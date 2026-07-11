@@ -18,6 +18,10 @@ import { charWidth, truncate, visibleWidth, wrapText } from './utils';
 
 // --- Functional Primitives (Buffer Manipulation) ---
 
+/**
+ * Writes one cell into the back buffer (bounds-checked). Wide glyphs mark
+ * their tail cells as skip so the differ keeps columns aligned.
+ */
 export function setCell(
   state: ScreenState,
   x: number,
@@ -126,12 +130,22 @@ export function dimRect(state: ScreenState, area: Rect, amount: number) {
 
 import type { Gradient } from './colors';
 
+/** Fill style for rect(). */
 export interface RectOptions {
+  /** Fill glyph; omitted = pure background fill that keeps existing chars. */
   char?: string;
+  /** Foreground color for the fill glyphs. */
   fg?: string | number | RGB | ThemeColor;
+  /** Background color (Gradients resolve per-cell across the rect). */
   bg?: string | number | RGB | Gradient | ThemeColor;
 }
 
+/**
+ * Fills a w×h cell rectangle at absolute coordinates — bars, panels,
+ * charts, backgrounds. Pure-background fills (no `char`) preserve the
+ * characters already painted underneath.
+ * @example rect(state, 0, 0, state.width, 3, { bg: 'midnight' });
+ */
 export function rect(
   state: ScreenState,
   x: number,
@@ -183,6 +197,12 @@ export function rect(
   }
 }
 
+/**
+ * Paints a multi-line, ANSI-styled string into the back buffer at absolute
+ * cell coordinates, parsing SGR codes into per-cell attributes. Grapheme-
+ * aware: emoji and wide glyphs occupy their real column width.
+ * @example blit(state, 2, 1, fg('gold', 'FPS 60'));
+ */
 export function blit(
   state: ScreenState,
   startX: number,
@@ -292,6 +312,11 @@ export function blit(
 
 // --- High-Level Layout ---
 
+/**
+ * Border glyph sets. Wireframe: 'default' | 'rounded' | 'double' |
+ * 'dashed' | 'dotted'. Block: 'frame' | 'thick-frame'. ASCII: 'classic'.
+ * 'none' keeps the box purely structural.
+ */
 export type BorderStyle =
   | 'default'
   | 'rounded'
@@ -303,6 +328,7 @@ export type BorderStyle =
   | 'classic'
   | 'none';
 
+/** Per-side border colors; missing sides inherit top (or left/right). */
 export interface SideColors {
   top?: any;
   bottom?: any;
@@ -310,17 +336,38 @@ export interface SideColors {
   right?: any;
 }
 
-export type SizeUnit = number | string; // e.g. 20, "50%", "1fr"
+/**
+ * A dimension: absolute cells (20), percent of parent ('50%'), or fill
+ * fraction ('1fr'). undefined/'auto' sizes to content.
+ */
+export type SizeUnit = number | string;
 
+/**
+ * Box styling shared by box()/table()/components.
+ */
 export interface StyleOptions {
+  /** Outer width: cells, '50%', '1fr', or 'auto' (content-sized). */
   width?: SizeUnit;
+  /** Lower bound on the outer width in cells. */
   minWidth?: number;
+  /** Upper bound on the outer width in cells. */
   maxWidth?: number;
+  /** Outer height: rows, '50%', '1fr', or 'auto' (content-sized). */
   height?: SizeUnit;
+  /** Lower bound on the outer height in rows. */
   minHeight?: number;
+  /** Upper bound on the outer height in rows. */
   maxHeight?: number;
+  /**
+   * [vertical, horizontal] padding INSIDE the border, in cells —
+   * [1, 2] = 1 blank row above/below, 2 blank columns left/right.
+   * Note the order: rows first (a 2:1 h:v ratio usually looks balanced
+   * because terminal cells are taller than wide).
+   */
   padding?: [number, number];
+  /** Border glyph set (default 'none'). */
   border?: BorderStyle;
+  /** Border color: color value, styler function, or per-side SideColors. */
   borderColor?:
     | string
     | number
@@ -328,11 +375,17 @@ export interface StyleOptions {
     | ThemeColor
     | ((s: string) => string)
     | SideColors;
+  /** Background fill (Gradient backgrounds apply in direct/rect mode). */
   bgColor?: string | number | RGB | Gradient | ThemeColor;
+  /** Horizontal content alignment (default 'left'). */
   align?: 'left' | 'center' | 'right';
+  /** Vertical content alignment (default 'top'). */
   valign?: 'top' | 'middle' | 'bottom';
+  /** Word-wraps content to the inner width instead of truncating. */
   wrap?: boolean;
+  /** Title rendered into the top border. */
   title?: string;
+  /** Styler applied to the rendered title. */
   titleStyle?: (s: string) => string;
 }
 
@@ -379,7 +432,10 @@ export function resolveSize(
 }
 
 /**
- * Generates a styled box string with perfect alignment and optional wrapping.
+ * Generates a styled box string with perfect alignment and optional
+ * wrapping. This is the pure string-building form; ctx.box() adds
+ * placement and painting on top of it.
+ * @example box('hello', { width: 20, border: 'rounded', padding: [0, 1] });
  */
 export function box(
   content: string,
@@ -581,6 +637,7 @@ export function box(
   return out.join('\n');
 }
 
+/** Joins rendered blocks side-by-side, padding each to its own width. */
 export function joinHorizontal(...blocks: string[]): string {
   const parsed = blocks.map((b) => b.split('\n'));
   const maxH = Math.max(...parsed.map((p) => p.length));
@@ -605,16 +662,19 @@ export function joinHorizontal(...blocks: string[]): string {
   return out.join('\n');
 }
 
+/** Stacks rendered blocks vertically (skips empty strings). */
 export function joinVertical(...blocks: string[]): string {
   return blocks.filter(Boolean).join('\n');
 }
 
+/** Returns a box() partially applied with default StyleOptions. */
 export function createStyle(defaults: StyleOptions) {
   return (content: string, overrides: StyleOptions = {}) => {
     return box(content, { ...defaults, ...overrides });
   };
 }
 
+/** Uppercased ` TEXT ` chip, wrapped by the given styler. */
 export function badge(
   text: string,
   colorFn: (s: string) => string = (s) => s,
@@ -622,10 +682,15 @@ export function badge(
   return colorFn(` ${text.toUpperCase()} `);
 }
 
+/** Options for table() / ctx.table(). */
 export interface TableOptions {
+  /** Overall table width: cells, '50%', or '100%' (default 80 cells). */
   width?: SizeUnit;
+  /** Per-column width/alignment overrides, by column index. */
   columns?: { width?: SizeUnit; align?: 'left' | 'center' | 'right' }[];
+  /** Outer border glyph set (default 'default'). */
   border?: BorderStyle;
+  /** [vertical, horizontal] cell padding (default [0, 1]). */
   padding?: [number, number];
 }
 
@@ -689,6 +754,10 @@ export function table(
   });
 }
 
+/**
+ * Computes the scroll window that keeps `selectedIndex` visible in
+ * `maxVisible` rows (used by list windowing).
+ */
 export function getWindow<T>(
   items: T[],
   selectedIndex: number,
@@ -710,21 +779,35 @@ export function getWindow<T>(
   };
 }
 
+/** Options for list() / ctx.list(). */
 export interface ListOptions {
+  /** Prefix rendered before every item (e.g. '• '). */
   bullet?: string;
+  /** Leading spaces before each row. */
   indent?: number;
+  /** Row rendered as selected (ctx.list manages this from state). */
   focusedIndex?: number;
+  /** Styler for the selected row's text (default theme.focus). */
   focusStyle?: (s: string) => string;
+  /** Background wash behind the selected row (default theme.selection). */
   selectedBg?: string | number | RGB | ThemeColor;
   /** Mouse-hovered row (styled with hoverBg; selection wins over hover). */
   hoveredIndex?: number;
   /** Background wash for the hovered row. */
   hoverBg?: string | number | RGB | ThemeColor;
+  /** Row width for background washes: cells, '50%', or '100%'. */
   width?: SizeUnit;
+  /** Windows the list to N rows, scrolled to keep the selection visible. */
   maxVisible?: number;
+  /** Set false to disable ctx.list's built-in keyboard/mouse handling. */
   interactive?: boolean;
 }
 
+/**
+ * Renders items as list rows with selection/hover washes and optional
+ * maxVisible windowing. Pure string form; ctx.list() adds the keyboard
+ * and mouse behavior on top.
+ */
 export function list(
   items: string[],
   options: ListOptions = {},
@@ -778,6 +861,10 @@ export function list(
   return out;
 }
 
+/**
+ * Crops a multi-line string to a width×height window starting at
+ * `scrollY` — the primitive for scrollable content.
+ */
 export function viewport(
   content: string,
   width: number,
@@ -794,11 +881,13 @@ export function viewport(
     .join('\n');
 }
 
+/** Fills the whole screen background with a solid color. */
 export function wallpaper(state: any, options: { bg: any }) {
   const { bg } = options;
   rect(state, 0, 0, state.width, state.height, { char: ' ', bg });
 }
 
+/** Fills the whole screen background with a multi-stop gradient. */
 export function gradient(
   state: any,
   colors: any[],

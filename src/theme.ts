@@ -64,26 +64,45 @@ export const THEME_TOKENS = [
 export type ThemeToken = (typeof THEME_TOKENS)[number];
 
 /**
- * A complete semantic theme. Build one with `createTheme()`.
+ * A complete semantic theme. Build one with `createTheme()`, or import a
+ * preset from '@zakmandhro/bunti/themes' (dracula, tokyoNight, nord, ...).
  */
 export interface Theme {
+  /** Display name (e.g. 'dracula'). */
   name: string;
+  /** 'dark' or 'light' — components use it for mode-aware hover shifts. */
   mode: ThemeMode;
+  /** App/screen background (wallpaper). */
   background: ThemeColor;
+  /** Panel/card background, one step above `background`. */
   surface: ThemeColor;
+  /** Elevated surface (modals, popovers), one step above `surface`. */
   surfaceRaised: ThemeColor;
+  /** Default body text color. */
   foreground: ThemeColor;
+  /** De-emphasized text (labels, hints, disabled). */
   muted: ThemeColor;
+  /** Brand/action color (primary buttons, highlights). */
   primary: ThemeColor;
+  /** Text rendered on top of `primary` fills. */
   onPrimary: ThemeColor;
+  /** Secondary flourish color (links, icons, titles). */
   accent: ThemeColor;
+  /** Default box/card border color. */
   border: ThemeColor;
+  /** Focus ring / active-element color. */
   focus: ThemeColor;
+  /** Selected-row/selection background wash. */
   selection: ThemeColor;
+  /** Positive status. */
   success: ThemeColor;
+  /** Cautionary status. */
   warning: ThemeColor;
+  /** Destructive/error status. */
   danger: ThemeColor;
+  /** Neutral-informational status. */
   info: ThemeColor;
+  /** Optional named gradient stop lists (e.g. for wallpapers). */
   gradients?: Record<string, (string | RGB)[]>;
 }
 

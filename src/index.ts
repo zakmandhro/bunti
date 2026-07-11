@@ -179,7 +179,11 @@ export {
 } from './utils';
 export type { BuntiColor, ColorFormatter } from './vendor/colors';
 
-// Namespaced export for bunti.render style usage
+/**
+ * Namespaced API surface for `bunti.render(...)` style usage — every
+ * named export gathered onto one object.
+ * @example import { bunti } from '@zakmandhro/bunti'; await bunti.render(draw, { keyboard: true });
+ */
 export const bunti = {
   ...detect,
   ...icons,

@@ -2,12 +2,19 @@ import type { BuntiContext } from '../dsl';
 import type { StyleOptions } from '../layout';
 import { charWidth, indentBlock } from '../utils';
 
+/** Props for Input. */
 export interface InputProps extends StyleOptions {
+  /** Stable id: keys the value state, focus slot, and hitbox. */
   id: string;
+  /** Label rendered above the field. */
   label?: string;
+  /** Ghost text shown while the field is empty. */
   placeholder?: string;
+  /** Initial value (state lives in useState(id) afterwards). */
   value?: string;
+  /** 'password' masks every glyph as '*'. */
   type?: 'text' | 'password';
+  /** Fires with the new value after every edit. */
   onChange?: (value: string) => void;
 }
 

@@ -16,28 +16,46 @@ import type {
 } from './input';
 import type { Theme, ThemeColor } from './theme';
 
+/** 24-bit color triplet; each channel is 0-255. */
 export interface RGB {
   r: number;
   g: number;
   b: number;
 }
 
+/**
+ * One terminal cell in the screen buffers. Drawing calls (blit/rect/setCell)
+ * take Partial<Cell> as their style argument.
+ */
 export interface Cell {
+  /** The glyph in this cell ('' marks a wide-glyph tail). */
   char: string;
+  /** Foreground color: palette name, hex, ANSI-256 code, RGB, or theme token. */
   fg?: string | number | RGB | ThemeColor;
+  /** Background color: palette name, hex, ANSI-256 code, RGB, or theme token. */
   bg?: string | number | RGB | ThemeColor;
+  /** SGR bold. */
   bold?: boolean;
+  /** Resolved fg ANSI code (set by setCell; do not set directly). */
   fgCode?: string | number;
+  /** Resolved bg ANSI code (set by setCell; do not set directly). */
   bgCode?: string | number;
+  /** Cell is a wide-glyph tail or transparent; the differ skips it. */
   skip?: boolean;
-  raw?: boolean; // Bypasses automatic emoji-to-NF replacement
+  /** Bypasses automatic emoji-to-Nerd-Font replacement. */
+  raw?: boolean;
   // --- SGR text attributes ---
+  /** SGR italic. */
   italic?: boolean;
+  /** SGR underline. */
   underline?: boolean;
+  /** SGR dim (faint). */
   dim?: boolean;
+  /** SGR strikethrough. */
   strike?: boolean;
 }
 
+/** A named clickable region registered via ctx.hitbox() (absolute cells). */
 export interface Hitbox {
   id: string;
   x: number;
@@ -46,15 +64,29 @@ export interface Hitbox {
   height: number;
 }
 
+/**
+ * The mutable per-screen state behind a render() session: double buffers,
+ * input queues, focus/hover bookkeeping, and component state. Exposed as
+ * `ctx.state` for advanced use; most apps only need the BuntiContext API.
+ */
 export interface ScreenState {
+  /** Terminal width in cells. */
   width: number;
+  /** Terminal height in rows. */
   height: number;
+  /** What is currently on the terminal (updated by flush). */
   frontBuffer: Cell[];
+  /** The frame being drawn; diffed against frontBuffer on flush. */
   backBuffer: Cell[];
+  /** Mouse column (0-based). */
   mouseX: number;
+  /** Mouse row (0-based). */
   mouseY: number;
+  /** Raw SGR button code of the most recent mouse event. */
   mouseButton: number;
+  /** True while the left mouse button is held down. */
   isMouseDown: boolean;
+  /** Terminal focus (drives the 5fps unfocused throttle). */
   hasFocus: boolean;
   /** First non-modified key name of the current frame (back-compat). */
   lastKey?: string;
@@ -81,11 +113,17 @@ export interface ScreenState {
   inputTokenizer?: InputTokenizer;
   /** Lazily created by the input dispatch; injectable for tests. */
   heldKeys?: HeldKeyTracker;
+  /** Id of the currently focused focusable, if any. */
   focusedId?: string;
+  /** Tab-cycle registration order (rebuilt each frame). */
   focusableIds: string[];
+  /** Clickable regions registered this frame via ctx.hitbox(). */
   hitboxes: Map<string, Hitbox>;
+  /** Backing store for useState/useAsync and motion/animation clocks. */
   componentState: Map<string, any>;
+  /** Positional counter for keyless hooks (reset each frame). */
   hookCounter?: number;
+  /** Epoch ms when render() started (ctx.elapsedTime = now - startTime). */
   startTime: number;
   /** Timestamp of the previous render tick (loop() owns this). */
   lastFrameAt?: number;
@@ -93,6 +131,7 @@ export interface ScreenState {
   frameCount?: number;
   /** Ms since the previous tick, clamped to 100 (exposed as ctx.dt). */
   dt?: number;
+  /** SGR run-tracking across flushes (differ internals). */
   lastFg?: any;
   lastBg?: any;
   lastBold?: boolean;
@@ -102,13 +141,21 @@ export interface ScreenState {
   lastStrike?: boolean;
   /** Last OSC 22 mouse-cursor shape emitted ('pointer' over hitboxes). */
   pointerShape?: 'default' | 'pointer';
+  /** Forces the next flush to clear and repaint everything. */
   needsFullRedraw?: boolean;
+  /** Optional screen identifier. */
   id?: string;
+  /** The options render() was called with. */
   options: ScreenOptions;
+  /** Stops the active render loop (what ctx.requestStop() calls). */
   requestStop?: () => void;
+  /** True once the loop has been stopped. */
   isStopped?: boolean;
+  /** True once the terminal has been restored (teardown ran). */
   isRestored?: boolean;
+  /** True while a resize is settling (frames are skipped). */
   isResizing?: boolean;
+  /** Epoch ms when the current resize debounce window ends. */
   resizeSettlesAt?: number;
   /** Active semantic theme (swapped live via ctx.setTheme). */
   theme?: Theme;
@@ -123,19 +170,35 @@ export interface ScreenState {
   syncOutput?: boolean;
 }
 
+/**
+ * Options for render(). Interactive apps typically want
+ * `{ keyboard: true, mouse: true, alternateBuffer: true, hideCursor: true }`.
+ */
 export interface ScreenOptions {
+  /** Target frames per second (default 60; throttles to 5 when unfocused). */
   fps?: number;
+  /** Enables SGR mouse tracking (hover/click/wheel, ctx.hitbox). */
   mouse?: boolean;
+  /** Enables terminal focus-in/out tracking (drives the fps throttle). */
   focus?: boolean;
+  /**
+   * Enables keyboard input (raw-mode stdin -> ctx.lastKey / ctx.keys).
+   * Requires a real TTY: piped stdin is ignored.
+   */
   keyboard?: boolean;
+  /** Renders on the alternate screen buffer and restores the shell on exit. */
   alternateBuffer?: boolean;
+  /** Hides the terminal cursor while rendering (restored on exit). */
   hideCursor?: boolean;
+  /** Forces the icon tier: true = Nerd Font glyphs, false = ASCII fallbacks. */
   nerdFont?: boolean;
+  /** How long a resize must settle before repainting (default 1ms). */
   resizeDebounceMs?: number;
   /** Bare-ESC disambiguation window for the input tokenizer (default 30ms). */
   escTimeoutMs?: number;
   /** Held-key expiry window for ctx.isKeyHeld (default 150ms). */
   holdWindowMs?: number;
+  /** Default text color for cells without an explicit fg. */
   defaultFg?: string | number | RGB | ThemeColor;
   /** Semantic theme exposed as ctx.theme (defaults to darkTheme). */
   theme?: Theme;
@@ -266,6 +329,7 @@ export function clearBackBuffer(state: ScreenState) {
   }
 }
 
+/** Raw ANSI escape sequences used by the renderer (advanced use). */
 export const ANSI = {
   reset: '\x1b[0m',
   clear: '\x1b[2J',

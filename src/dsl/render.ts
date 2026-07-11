@@ -14,7 +14,17 @@ import { createScreenContext } from './context';
 import type { BuntiContext } from './types';
 
 /**
- * Primary Entry Point
+ * Starts a Bunti app: runs `callback` every frame (immediate mode —
+ * redraw the whole screen from state each call) and flushes only the
+ * changed cells to the terminal. The returned promise resolves when the
+ * loop stops (ctx.requestStop() or Ctrl+C). Pass `once: true` to render
+ * a single frame and return. Keyboard input needs a real TTY on stdin:
+ * piped input is ignored.
+ * @example
+ * await render((ctx) => {
+ *   ctx.box({ width: 30, border: 'rounded' }, (s) => s.text('hi'));
+ *   if (ctx.lastKey === 'q') ctx.requestStop();
+ * }, { keyboard: true, mouse: true, alternateBuffer: true, hideCursor: true });
  */
 export async function render(
   callback: ((b: BuntiContext) => void) | string,

@@ -3,9 +3,12 @@ import type { BuntiContext, DSLBoxOptions } from '../dsl';
 import { visibleWidth } from '../utils';
 import { Box } from './Box';
 
+/** Card visual variants, mapped to theme tokens. */
 export type CardVariant = 'default' | 'accent' | 'danger';
 
+/** Props for Card. */
 export interface CardProps extends DSLBoxOptions {
+  /** Uppercased header line rendered above the content. */
   title?: string;
   /** Visual variant, mapped to theme tokens (border + title color). */
   variant?: CardVariant;

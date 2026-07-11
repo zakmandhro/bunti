@@ -2,9 +2,13 @@ import type { BuntiContext } from '../dsl';
 import { box as engineBox } from '../layout';
 import { Box } from './Box';
 
+/** Props for Header. */
 export interface HeaderProps {
+  /** Centered bar title. */
   title: string;
+  /** Brand glyph on the left edge (use ctx.icon(name)). */
   leftIcon?: string;
+  /** Muted telemetry/exit label on the right edge. */
   rightLabel?: string;
   /**
    * @deprecated Colors now derive from `ctx.theme` tokens; wrap the Header

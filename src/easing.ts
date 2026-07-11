@@ -7,26 +7,31 @@
 
 import type { Rect } from './geometry';
 
+/** Clamps a number to the [0, 1] range. */
 export function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+/** Identity easing (clamped to [0, 1]). */
 export function linear(value: number): number {
   return clamp01(value);
 }
 
 // --- Quad ---
 
+/** Quadratic ease-in: slow start. */
 export function easeInQuad(value: number): number {
   const t = clamp01(value);
   return t * t;
 }
 
+/** Quadratic ease-out: slow stop. */
 export function easeOutQuad(value: number): number {
   const t = clamp01(value);
   return 1 - (1 - t) * (1 - t);
 }
 
+/** Quadratic ease-in-out: slow start and stop. */
 export function easeInOutQuad(value: number): number {
   const t = clamp01(value);
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -34,16 +39,19 @@ export function easeInOutQuad(value: number): number {
 
 // --- Cubic ---
 
+/** Cubic ease-in: slower start. */
 export function easeInCubic(value: number): number {
   const t = clamp01(value);
   return t * t * t;
 }
 
+/** Cubic ease-out: the default-feeling UI deceleration. */
 export function easeOutCubic(value: number): number {
   const t = clamp01(value);
   return 1 - (1 - t) ** 3;
 }
 
+/** Cubic ease-in-out: smooth start and stop. */
 export function easeInOutCubic(value: number): number {
   const t = clamp01(value);
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
@@ -51,16 +59,19 @@ export function easeInOutCubic(value: number): number {
 
 // --- Quart ---
 
+/** Quartic ease-in: very slow start. */
 export function easeInQuart(value: number): number {
   const t = clamp01(value);
   return t * t * t * t;
 }
 
+/** Quartic ease-out: very soft landing. */
 export function easeOutQuart(value: number): number {
   const t = clamp01(value);
   return 1 - (1 - t) ** 4;
 }
 
+/** Quartic ease-in-out: pronounced start/stop smoothing. */
 export function easeInOutQuart(value: number): number {
   const t = clamp01(value);
   return t < 0.5 ? 8 * t * t * t * t : 1 - (-2 * t + 2) ** 4 / 2;
@@ -68,11 +79,13 @@ export function easeInOutQuart(value: number): number {
 
 // --- Expressive ---
 
+/** Exponential ease-out: fast launch, long tail. */
 export function easeOutExpo(value: number): number {
   const t = clamp01(value);
   return t === 1 ? 1 : 1 - 2 ** (-10 * t);
 }
 
+/** Elastic ease-out: overshoots and springs back. */
 export function easeOutElastic(value: number): number {
   const t = clamp01(value);
   if (t === 0) return 0;
@@ -81,6 +94,7 @@ export function easeOutElastic(value: number): number {
   return 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
 }
 
+/** Bounce ease-out: settles like a dropped ball. */
 export function easeOutBounce(value: number): number {
   const t = clamp01(value);
   const n1 = 7.5625;
@@ -98,6 +112,7 @@ export function easeOutBounce(value: number): number {
   return n1 * u * u + 0.984375;
 }
 
+/** Back ease-out: slight overshoot past 1, then return. */
 export function easeOutBack(value: number): number {
   const t = clamp01(value);
   const c1 = 1.70158;

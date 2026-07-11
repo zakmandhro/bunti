@@ -157,6 +157,7 @@ export function wrapText(str: string, width: number): string[] {
   return result;
 }
 
+/** Prefixes every line of a block with `columns` spaces. */
 export function indentBlock(content: string, columns: number): string {
   if (columns <= 0) return content;
   const prefix = ' '.repeat(columns);

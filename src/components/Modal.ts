@@ -3,9 +3,13 @@ import type { BuntiContext } from '../dsl';
 import { clamp01, easeOutCubic } from '../easing';
 import type { RGB } from '../state';
 
+/** Props for Modal. */
 export interface ModalProps {
+  /** Dialog width in cells. */
   width: number;
+  /** Dialog height in rows. */
   height: number;
+  /** Border glyph set (default 'double'). */
   border?:
     | 'default'
     | 'rounded'
@@ -16,10 +20,15 @@ export interface ModalProps {
     | 'thick-frame'
     | 'classic'
     | 'none';
+  /** Border color (default theme.border). */
   borderColor?: any;
+  /** Surface color (default theme.surfaceRaised). */
   bgColor?: any;
+  /** Horizontal content alignment (default 'center'). */
   align?: 'left' | 'center' | 'right';
+  /** Vertical content alignment. */
   valign?: 'top' | 'middle' | 'bottom';
+  /** [vertical, horizontal] padding inside the border, in cells. */
   padding?: [number, number];
   /** Keys the entrance animation when multiple modals coexist. */
   id?: string;

@@ -6,17 +6,27 @@ import { indentBlock } from '../utils';
 
 type ButtonColor = string | number | RGB | ThemeColor | undefined;
 
+/** Props for Button. */
 export interface ButtonProps extends DSLBoxOptions {
+  /** Stable id: keys the hitbox, Tab-focus slot, and hover state. */
   id: string;
+  /** Button text. */
   label: string;
+  /** Glyph rendered before the label (use ctx.icon(name)). */
   icon?: string;
+  /**
+   * Visual style, mapped to theme tokens: 'primary' = filled pill,
+   * 'danger' = filled red, 'ghost' = borderless text, default = outlined.
+   */
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** Fires once per activation (mouse click release, Enter, or Space). */
   onClick?: () => void;
 }
 
 /**
- * Tactical Button Component
- * Fully reactive to keyboard focus and action events.
+ * Themed push button: Tab-focusable, hover/press styled from ctx.theme
+ * tokens, activated by click, Enter, or Space (onClick fires once).
+ * @example Button(ctx, { id: 'go', label: 'Deploy', variant: 'primary', onClick: deploy });
  */
 export function Button(ctx: BuntiContext, props: ButtonProps) {
   const { box, color, focusable, state, hitbox, resolveLocalRect } = ctx;

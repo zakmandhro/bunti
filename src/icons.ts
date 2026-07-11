@@ -15,8 +15,11 @@ import {
   type TerminalProfile,
 } from './detect';
 
+/** An icon's Nerd Font glyph plus its plain-terminal ASCII stand-in. */
 export interface IconDefinition {
+  /** Nerd Font glyph (private-use-area codepoint). */
   nf: string;
+  /** Single-char ASCII fallback for non-NF terminals. */
   ascii: string;
 }
 
@@ -124,8 +127,14 @@ export type BuntiIconName =
   | IconName
   | (string & Record<never, never>);
 
+/** The curated icon table: 89 width-audited names with ASCII fallbacks. */
 export const ICON_MAP: Record<string, IconDefinition> = CURATED_ICONS;
 
+/**
+ * Emoji-to-icon-name swaps applied automatically to drawn text (emoji
+ * render at unreliable widths across terminals; their NF twins are
+ * width-audited). Set `raw: true` on a cell to bypass.
+ */
 export const EMOJI_MAP: Record<string, string> = {
   '🌿': 'branch',
   '📥': 'pr',
@@ -183,6 +192,11 @@ function getEmojiPattern(): RegExp {
   return emojiPattern;
 }
 
+/**
+ * Swaps known emoji in a string for their width-audited Nerd Font icons
+ * (see EMOJI_MAP). Applied automatically by draw calls; no-op on the
+ * ASCII tier.
+ */
 export function replaceEmojis(text: string): string {
   if (!text) return '';
   if (!cachedCaps.nerdFont) return text;
@@ -386,6 +400,12 @@ export function getIcon(
   return '';
 }
 
+/**
+ * Resolves an icon name to a glyph on the active tier (Nerd Font glyph,
+ * or ASCII fallback on plain terminals). Unknown names render as '' and
+ * are reported once on process exit with a nearest-name hint.
+ * @example text(`${icon('rocket')} Launch`);
+ */
 export function icon(name: BuntiIconName): string {
   return getIcon(name, cachedCaps);
 }
@@ -400,6 +420,7 @@ export function nerd(name: BuntiIconName): string {
   );
 }
 
+/** Picks the given Nerd Font char on the NF tier, else the fallback. */
 export function nerdIcon(nfChar: string, fallback: string): string {
   return cachedCaps.nerdFont ? nfChar : fallback;
 }

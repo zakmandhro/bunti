@@ -1,5 +1,13 @@
+/**
+ * Bunti Rect Geometry
+ *
+ * Rect is the layout primitive: components resolve a rect first, then
+ * render and hit-test against the same resolved cells.
+ */
+
 import { resolveSize, type SizeUnit } from './layout';
 
+/** An absolute cell rectangle: x/y origin plus width/height in cells. */
 export interface Rect {
   x: number;
   y: number;
@@ -7,32 +15,54 @@ export interface Rect {
   height: number;
 }
 
+/** A partial rect resolved against a parent area. */
 export interface RectInput {
+  /** Column offset within the parent (default 0). */
   x?: number;
+  /** Row offset within the parent (default 0). */
   y?: number;
+  /** Width: cells, '50%', '1fr', or 'auto' (falls back to contentWidth). */
   width?: SizeUnit;
+  /** Height: rows, '50%', '1fr', or 'auto' (falls back to contentHeight). */
   height?: SizeUnit;
+  /** Intrinsic content width used when width is 'auto'/undefined. */
   contentWidth?: number;
+  /** Intrinsic content height used when height is 'auto'/undefined. */
   contentHeight?: number;
 }
 
+/** RectInput plus edge anchoring for resolvePlacedRect(). */
 export interface PlacedRectInput extends RectInput {
+  /** Pins the rect to the top or bottom edge at x = 0. */
   anchor?: 'top' | 'bottom';
 }
 
+/** Placement defaults applied when x/y are omitted (default centered). */
 export interface PlacedRectOptions {
   defaultX?: 'left' | 'center' | 'right';
   defaultY?: 'top' | 'center' | 'bottom';
 }
 
+/** Axis for splitRect(). */
 export type Direction = 'horizontal' | 'vertical';
 
+/** Options for splitRect() / ctx.split(). */
 export interface SplitOptions {
+  /** Axis the tracks are laid along. */
   direction: Direction;
+  /**
+   * One entry per track: absolute cells (24), percent ('30%'), or fill
+   * fractions ('1fr', '2fr') sharing the remaining space.
+   */
   constraints: SizeUnit[];
+  /** Blank cells between adjacent tracks (default 0). */
   gap?: number;
 }
 
+/**
+ * Resolves a RectInput against a parent rect into absolute cells
+ * (top-left placement; use resolvePlacedRect for alignment defaults).
+ */
 export function resolveRect(parent: Rect, input: RectInput): Rect {
   const width = Math.max(
     0,
@@ -51,6 +81,10 @@ export function resolveRect(parent: Rect, input: RectInput): Rect {
   };
 }
 
+/**
+ * Places a rect within a parent with alignment defaults (centered unless
+ * overridden) and optional top/bottom anchoring — the placement box() uses.
+ */
 export function resolvePlacedRect(
   parent: Rect,
   input: PlacedRectInput,
@@ -94,6 +128,7 @@ export function resolvePlacedRect(
   };
 }
 
+/** Shrinks a rect by a uniform or per-side inset (clamped at zero size). */
 export function innerRect(
   rect: Rect,
   inset:
@@ -132,6 +167,11 @@ function fixedTrackSize(unit: SizeUnit, available: number): number | undefined {
   return undefined;
 }
 
+/**
+ * Splits a rect into adjacent tracks from fixed sizes, percentages, and
+ * 'fr' fill units (the last fluid track absorbs rounding leftovers).
+ * @example const [side, main] = splitRect(area, { direction: 'horizontal', constraints: [24, '1fr'] });
+ */
 export function splitRect(rect: Rect, options: SplitOptions): Rect[] {
   const gap = Math.max(0, options.gap ?? 0);
   const mainSize =
