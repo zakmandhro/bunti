@@ -10,6 +10,9 @@ import * as state from './state';
 import * as utils from './utils';
 
 export { bg, createGradient, fade, fg, hexToRGB, PALETTE, rgb } from './colors';
+// Full Nerd Fonts name union (type-only; the glyph map itself is only
+// loaded via the '@zakmandhro/bunti/icons-full' subpath).
+export type { IconName } from './data/nf-names';
 // Type Exports
 export type { TerminalCapabilities } from './detect';
 // Functional API Individual Exports
@@ -36,7 +39,11 @@ export {
   resolveRect,
   splitRect,
 } from './geometry';
-export type { IconDefinition } from './icons';
+export type {
+  BuntiIconName,
+  CuratedIconName,
+  IconDefinition,
+} from './icons';
 export {
   EMOJI_MAP,
   ICON_MAP,
@@ -45,6 +52,7 @@ export {
   nerd,
   nerdIcon,
   register,
+  registerAll,
   replaceEmojis,
 } from './icons';
 export type {

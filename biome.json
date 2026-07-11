@@ -13,7 +13,9 @@
       "scripts/**/*.ts",
       "demo/**/*.ts",
       "examples/**/*.ts",
-      "experiments/**/*.ts"
+      "experiments/**/*.ts",
+      "!src/data/nf-glyphs.ts",
+      "!src/data/nf-names.ts"
     ]
   },
   "formatter": {

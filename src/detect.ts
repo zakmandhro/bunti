@@ -42,6 +42,8 @@ export async function detectCapabilities(): Promise<TerminalCapabilities> {
 
   if (nerdEnv === '1' || nerdEnv === 'true' || nerdEnv === 'yes') {
     caps.nerdFont = true;
+  } else if (nerdEnv === '0' || nerdEnv === 'false' || nerdEnv === 'no') {
+    caps.nerdFont = false; // explicit override: force the ASCII tier
   } else if (modernTerms.includes(term) || modernTerms.includes(termEmulator)) {
     caps.nerdFont = true;
   } else if (process.env.LC_TERMINAL === 'iTerm2') {

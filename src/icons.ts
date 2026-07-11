@@ -1,7 +1,14 @@
 /**
  * Bunti Icon Engine
  * Purely tactical: Nerd Fonts or ASCII fallbacks.
+ *
+ * Two tiers of names resolve through icon()/getIcon():
+ *   1. The curated ICON_MAP below (89 short names with ASCII fallbacks).
+ *   2. A runtime registry filled via register()/registerAll() — most notably
+ *      by `import '@zakmandhro/bunti/icons-full'`, which installs the full
+ *      Nerd Fonts v3.4.0 glyph set (~10.7k names like 'fa-rocket').
  */
+import type { IconName } from './data/nf-names';
 import type { TerminalCapabilities } from './detect';
 
 export interface IconDefinition {
@@ -9,19 +16,19 @@ export interface IconDefinition {
   ascii: string;
 }
 
-export const ICON_MAP: Record<string, IconDefinition> = {
+const CURATED_ICONS = {
   add: { nf: '\uf067', ascii: '+' },
   'arrow-left': { nf: '\uf060', ascii: '<' },
   'arrow-right': { nf: '\uf061', ascii: '>' },
-  bars: { nf: '\uf0c9', ascii: '≡' },
+  bars: { nf: '\uf0c9', ascii: '=' },
   bell: { nf: '\uf0f3', ascii: '!' },
   branch: { nf: '\uf418', ascii: '*' },
-  bullet: { nf: '\uf111', ascii: '•' },
+  bullet: { nf: '\uf111', ascii: '*' },
   bun: { nf: '\ue76f', ascii: 'B' },
   bunti: { nf: '\u{f0065}', ascii: '@' },
   check: { nf: '\uf00c', ascii: 'v' },
-  checkbox: { nf: '\uf0c8', ascii: '[ ]' },
-  'checkbox-check': { nf: '\uf14a', ascii: '[x]' },
+  checkbox: { nf: '\uf0c8', ascii: '#' },
+  'checkbox-check': { nf: '\uf14a', ascii: 'X' },
   'chevron-down': { nf: '\uf078', ascii: 'v' },
   'chevron-left': { nf: '\uf053', ascii: '<' },
   'chevron-right': { nf: '\uf054', ascii: '>' },
@@ -64,16 +71,16 @@ export const ICON_MAP: Record<string, IconDefinition> = {
   markdown: { nf: '\uf48a', ascii: 'M' },
   maximize: { nf: '\uf0c8', ascii: '^' },
   memory: { nf: '\uf0c7', ascii: 'M' },
-  menu: { nf: '\uf0c9', ascii: '≡' },
+  menu: { nf: '\uf0c9', ascii: '=' },
   merge: { nf: '\uf419', ascii: '>' },
   minimize: { nf: '\u{f10fe}', ascii: 'v' },
   network: { nf: '\uf0ac', ascii: 'N' },
   node: { nf: '\ue718', ascii: 'N' },
   pause: { nf: '\uf04c', ascii: '|' },
   pencil: { nf: '\uf044', ascii: 'e' },
-  planet: { nf: '\ue22e', ascii: '㊀' },
+  planet: { nf: '\ue22e', ascii: 'O' },
   play: { nf: '\uf04b', ascii: '>' },
-  'plus-circle': { nf: '\uea60', ascii: '(+)' },
+  'plus-circle': { nf: '\uea60', ascii: '+' },
   pr: { nf: '\uf41d', ascii: '!' },
   refresh: { nf: '\uf021', ascii: 'R' },
   remove: { nf: '\uf068', ascii: '-' },
@@ -86,7 +93,7 @@ export const ICON_MAP: Record<string, IconDefinition> = {
   send: { nf: '\uec0f', ascii: '>' },
   server: { nf: '\uf233', ascii: 'S' },
   settings: { nf: '\uf013', ascii: '*' },
-  'staggered-bars': { nf: '\u{ee19}', ascii: '≡' },
+  'staggered-bars': { nf: '\u{ee19}', ascii: '=' },
   star: { nf: '\uf005', ascii: '*' },
   stop: { nf: '\uf04d', ascii: 'X' },
   success: { nf: '\uf00c', ascii: 'v' },
@@ -98,7 +105,22 @@ export const ICON_MAP: Record<string, IconDefinition> = {
   wizard: { nf: '\u{f1477}', ascii: 'W' },
   yaml: { nf: '\ue6a8', ascii: 'Y' },
   zap: { nf: '\uf0e7', ascii: 'z' },
-};
+} satisfies Record<string, IconDefinition>;
+
+/** Short names of the curated, width-audited icon set. */
+export type CuratedIconName = keyof typeof CURATED_ICONS;
+
+/**
+ * Any icon name Bunti can resolve: curated short names, full Nerd Fonts
+ * names (available after `import '@zakmandhro/bunti/icons-full'`), or
+ * custom names added via register(). Arbitrary strings stay assignable.
+ */
+export type BuntiIconName =
+  | CuratedIconName
+  | IconName
+  | (string & Record<never, never>);
+
+export const ICON_MAP: Record<string, IconDefinition> = CURATED_ICONS;
 
 export const EMOJI_MAP: Record<string, string> = {
   '🌿': 'branch',
@@ -186,21 +208,173 @@ export async function init(options?: {
   return cachedCaps;
 }
 
-export function getIcon(name: string, caps: TerminalCapabilities): string {
-  const def = ICON_MAP[name];
-  if (!def) return '';
-  return caps.nerdFont ? def.nf : def.ascii;
+// --- Runtime icon registry (tier 2) ---
+// Consulted after the curated ICON_MAP. The icons-full subpath bulk-loads
+// every Nerd Fonts glyph here; apps can also register their own icons.
+
+const registryNf = new Map<string, string>();
+const registryAscii = new Map<string, string>();
+
+/** ASCII-tier stand-in for registered icons without an explicit fallback. */
+const REGISTRY_ASCII_FALLBACK = '*';
+
+function stripNfPrefix(name: string): string {
+  return name.startsWith('nf-') ? name.slice(3) : name;
 }
 
-export function icon(name: string): string {
+/**
+ * Registers a runtime icon. Accepts a bare Nerd Font glyph, or a full
+ * definition with an ASCII fallback for `init({ nerdFont: false })` tiers
+ * (bare glyphs fall back to '*' in the ASCII tier).
+ */
+export function register(
+  name: string,
+  glyphOrDef: string | IconDefinition,
+): void {
+  if (typeof glyphOrDef === 'string') {
+    registryNf.set(name, glyphOrDef);
+  } else {
+    registryNf.set(name, glyphOrDef.nf);
+    registryAscii.set(name, glyphOrDef.ascii);
+  }
+}
+
+/** Bulk-registers name -> glyph pairs (used by the icons-full subpath). */
+export function registerAll(glyphs: Record<string, string>): void {
+  for (const name in glyphs) {
+    registryNf.set(name, glyphs[name]);
+  }
+}
+
+// --- Unknown-name diagnostics ---
+// Misses are buffered in a Set and flushed ONCE to stderr on process exit,
+// so warnings never tear an active frame mid-render.
+
+const missedNames = new Set<string>();
+let exitHookInstalled = false;
+
+function recordMiss(name: string): void {
+  if (process.env.NODE_ENV === 'production') return;
+  missedNames.add(name);
+  if (!exitHookInstalled) {
+    exitHookInstalled = true;
+    process.on('exit', flushIconWarnings);
+  }
+}
+
+/** Capped two-row Levenshtein; returns cap+1 as soon as it can bail out. */
+function editDistance(a: string, b: string, cap: number): number {
+  if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  let prev: number[] = new Array(b.length + 1);
+  let curr: number[] = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+      if (curr[j] < rowMin) rowMin = curr[j];
+    }
+    if (rowMin > cap) return cap + 1;
+    [prev, curr] = [curr, prev];
+  }
+  return prev[b.length];
+}
+
+function nearestIconName(name: string): string | undefined {
+  const target = stripNfPrefix(name);
+  const cap = Math.max(2, Math.floor(target.length / 3));
+  let best: string | undefined;
+  let bestScore = cap + 1;
+
+  const consider = (candidate: string): void => {
+    let score: number;
+    if (candidate === target) {
+      score = 0;
+    } else if (candidate.startsWith(target) || target.startsWith(candidate)) {
+      score = 1;
+    } else {
+      score = editDistance(target, candidate, cap);
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  };
+
+  for (const key of Object.keys(ICON_MAP)) {
+    consider(key);
+    if (bestScore === 0) return best;
+  }
+  for (const key of registryNf.keys()) {
+    consider(key);
+    if (bestScore === 0) return best;
+  }
+  return best;
+}
+
+function flushIconWarnings(): void {
+  if (missedNames.size === 0) return;
+  const lines: string[] = [];
+  for (const name of missedNames) {
+    const hint = nearestIconName(name);
+    lines.push(`  - '${name}'${hint ? ` (did you mean '${hint}'?)` : ''}`);
+  }
+  if (registryNf.size === 0) {
+    lines.push(
+      "  Tip: import '@zakmandhro/bunti/icons-full' to enable all ~10.7k Nerd Font icons by name.",
+    );
+  }
+  missedNames.clear();
+  process.stderr.write(
+    `\n[bunti] unknown icon name(s) rendered as '':\n${lines.join('\n')}\n`,
+  );
+}
+
+/** @internal Test hook: unresolved names buffered so far. */
+export function __iconMisses(): string[] {
+  return [...missedNames];
+}
+
+/**
+ * Resolves an icon name. Resolution order:
+ *   1. Curated ICON_MAP (short names, keeps ASCII fallbacks + aliases).
+ *   2. Runtime registry (register()/registerAll(), e.g. the icons-full
+ *      pack). A leading 'nf-' is stripped: 'nf-fa-rocket' === 'fa-rocket'.
+ *   3. '' — the miss is buffered and reported once on process exit.
+ */
+export function getIcon(
+  name: BuntiIconName,
+  caps: TerminalCapabilities,
+): string {
+  const def = ICON_MAP[name];
+  if (def) return caps.nerdFont ? def.nf : def.ascii;
+
+  const key = registryNf.has(name) ? name : stripNfPrefix(name);
+  const nf = registryNf.get(key);
+  if (nf !== undefined) {
+    if (caps.nerdFont) return nf;
+    return registryAscii.get(key) ?? REGISTRY_ASCII_FALLBACK;
+  }
+
+  recordMiss(name);
+  return '';
+}
+
+export function icon(name: BuntiIconName): string {
   return getIcon(name, cachedCaps);
 }
 
-export function nerd(name: string): string {
-  return ICON_MAP[name]?.nf || '';
+/** Returns the Nerd Font glyph for a name regardless of the active tier. */
+export function nerd(name: BuntiIconName): string {
+  return (
+    ICON_MAP[name]?.nf ??
+    registryNf.get(name) ??
+    registryNf.get(stripNfPrefix(name)) ??
+    ''
+  );
 }
-
-export function register(_name: string, _glyph: string): void {}
 
 export function nerdIcon(nfChar: string, fallback: string): string {
   return cachedCaps.nerdFont ? nfChar : fallback;

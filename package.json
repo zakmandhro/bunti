@@ -22,6 +22,10 @@
       "types": "./dist/icons.d.ts",
       "import": "./dist/icons.js"
     },
+    "./icons-full": {
+      "types": "./dist/icons-full.d.ts",
+      "import": "./dist/icons-full.js"
+    },
     "./layout": {
       "types": "./dist/layout.d.ts",
       "import": "./dist/layout.js"
