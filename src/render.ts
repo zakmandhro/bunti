@@ -119,7 +119,13 @@ export function isResizeSettled(state: ScreenState, now = Date.now()) {
 }
 
 export function clearTerminalForResize(state: ScreenState) {
-  process.stdout.write(ANSI.syncStart + ANSI.clear + ANSI.home + ANSI.syncEnd);
+  const sync = state.syncOutput !== false;
+  process.stdout.write(
+    (sync ? ANSI.syncStart : '') +
+      ANSI.clear +
+      ANSI.home +
+      (sync ? ANSI.syncEnd : ''),
+  );
   state.needsFullRedraw = true;
 }
 
@@ -247,11 +253,15 @@ export function flush(state: ScreenState) {
   }
 
   if (renderString) {
+    // Synchronized-output wrap (mode 2026) is gated on the detected profile:
+    // emitted unless the terminal was positively identified as lacking it
+    // (state.syncOutput === false). Absent/unknown profiles keep the wrap.
+    const sync = state.syncOutput !== false;
     writer.write(
-      ANSI.syncStart +
+      (sync ? ANSI.syncStart : '') +
         (state.options.hideCursor ? ANSI.hideCursor : '') +
         renderString +
-        ANSI.syncEnd,
+        (sync ? ANSI.syncEnd : ''),
     );
     writer.flush();
   }

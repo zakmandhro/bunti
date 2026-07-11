@@ -2,7 +2,12 @@
  * Bunti Functional Screen State & Initialization
  */
 
-import { type ColorTier, setColorTier } from './detect';
+import {
+  type ColorTier,
+  identifyTerminal,
+  setColorTier,
+  type TerminalProfile,
+} from './detect';
 import type {
   HeldKeyTracker,
   InputTokenizer,
@@ -90,6 +95,15 @@ export interface ScreenState {
   resizeSettlesAt?: number;
   /** Active semantic theme (swapped live via ctx.setTheme). */
   theme?: Theme;
+  /** Env-detected terminal profile (detected once per createScreenState). */
+  terminal?: TerminalProfile;
+  /**
+   * Effective synchronized-output flag for this screen. False only when the
+   * terminal was positively identified as lacking mode 2026 support;
+   * unknown terminals keep the sync wrap (harmlessly ignored when
+   * unsupported) to preserve pre-detection behavior.
+   */
+  syncOutput?: boolean;
 }
 
 export interface ScreenOptions {
@@ -126,6 +140,7 @@ export interface ScreenOptions {
 export function createScreenState(options: ScreenOptions = {}): ScreenState {
   if (options.colorTier !== undefined) setColorTier(options.colorTier);
 
+  const terminal = identifyTerminal();
   const width = process.stdout.columns || 80;
   const height = process.stdout.rows || 24;
   const size = width * height;
@@ -166,6 +181,11 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
     startTime: Date.now(),
     options,
     theme: options.theme,
+    terminal,
+    // Judgment call: unknown terminals keep today's always-sync behavior
+    // (mode 2026 is ignored when unsupported); only positively identified
+    // non-supporting terminals skip the wrap.
+    syncOutput: terminal.app === 'unknown' ? true : terminal.syncOutput,
   };
 
   return state;

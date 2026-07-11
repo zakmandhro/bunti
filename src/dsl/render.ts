@@ -27,15 +27,16 @@ export async function render(
     );
   }
 
-  // Sync apply forced options first
+  // createScreenState runs env detection once per render() (state.terminal).
+  const state = createScreenState(options);
+
+  // Icon tier: an explicit ScreenOptions.nerdFont always wins; otherwise the
+  // detected profile decides ('yes'/'assumed-yes' -> Nerd Font glyphs).
   if (options.nerdFont !== undefined) {
     await init({ nerdFont: options.nerdFont });
   } else {
-    // Start detection in background, don't await!
-    init();
+    await init({ profile: state.terminal });
   }
-
-  const state = createScreenState(options);
 
   const tick = () => {
     clearBackBuffer(state);

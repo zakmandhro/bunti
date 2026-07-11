@@ -3,6 +3,7 @@
  */
 
 import type { bg, darken, fg, Gradient, lighten, rgb } from '../colors';
+import type { TerminalProfile } from '../detect';
 import type {
   PlacedRectInput,
   PlacedRectOptions,
@@ -111,6 +112,12 @@ export interface BuntiContext {
   keys: KeyEvent[];
   focusedId?: string;
   elapsedTime: number;
+
+  /**
+   * The env-detected terminal profile (app, version, multiplexer, truecolor,
+   * sync output, Nerd Font policy). Detected once per render().
+   */
+  readonly terminal: TerminalProfile;
 
   /**
    * The active semantic theme for this subtree. Tokens are callable fg

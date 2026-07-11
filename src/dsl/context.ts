@@ -13,6 +13,7 @@ import {
   lighten,
   rgb,
 } from '../colors';
+import { identifyTerminal } from '../detect';
 import {
   type PlacedRectInput,
   type PlacedRectOptions,
@@ -187,6 +188,7 @@ function createDSLContext(
     keys: state.keys ?? [],
     focusedId: state.focusedId,
     elapsedTime: Date.now() - state.startTime,
+    terminal: (state.terminal ??= identifyTerminal()),
 
     get theme(): Theme {
       return activeTheme(dslState, state);

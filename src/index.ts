@@ -34,12 +34,19 @@ export {
 // loaded via the '@zakmandhro/bunti/icons-full' subpath).
 export type { IconName } from './data/nf-names';
 // Type Exports
-export type { ColorTier, TerminalCapabilities } from './detect';
+export type {
+  ColorTier,
+  NerdFontPolicy,
+  TerminalApp,
+  TerminalCapabilities,
+  TerminalProfile,
+} from './detect';
 // Functional API Individual Exports
 export {
   colorTier,
   detectCapabilities,
   detectColorTier,
+  identifyTerminal,
   setColorTier,
 } from './detect';
 export type {

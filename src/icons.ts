@@ -9,7 +9,11 @@
  *      Nerd Fonts v3.4.0 glyph set (~10.7k names like 'fa-rocket').
  */
 import type { IconName } from './data/nf-names';
-import type { TerminalCapabilities } from './detect';
+import {
+  identifyTerminal,
+  type TerminalCapabilities,
+  type TerminalProfile,
+} from './detect';
 
 export interface IconDefinition {
   nf: string;
@@ -201,10 +205,30 @@ export function replaceEmojis(text: string): string {
   });
 }
 
+/**
+ * Initializes the icon tier from terminal detection.
+ *
+ * - `init({ nerdFont })` forces the tier explicitly (always wins).
+ * - `init({ profile })` derives it from a pre-detected TerminalProfile
+ *   (render() passes the per-screen profile here).
+ * - `init()` runs env detection itself via `identifyTerminal()`.
+ *
+ * 'yes' / 'assumed-yes' policies map to Nerd Font glyphs; everything else
+ * falls back to the ASCII tier. Until init() is called the module defaults
+ * to Nerd Font glyphs (back-compat for direct icon() usage).
+ */
 export async function init(options?: {
   nerdFont?: boolean;
+  profile?: TerminalProfile;
 }): Promise<TerminalCapabilities> {
-  if (options?.nerdFont !== undefined) cachedCaps.nerdFont = options.nerdFont;
+  if (options?.nerdFont !== undefined) {
+    cachedCaps.nerdFont = options.nerdFont;
+    return cachedCaps;
+  }
+  const profile = options?.profile ?? identifyTerminal();
+  cachedCaps.nerdFont =
+    profile.nerdFont === 'yes' || profile.nerdFont === 'assumed-yes';
+  cachedCaps.glyphProtocol = profile.app === 'ghostty';
   return cachedCaps;
 }
 
