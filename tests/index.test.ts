@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test';
-import pc from 'picocolors';
 import { Box, Button, Input } from '../src/components';
 import { createScreenContext } from '../src/dsl';
 import {
@@ -20,6 +19,7 @@ import {
   syncScreenSize,
 } from '../src/render';
 import { createScreenState, resizeScreen } from '../src/state';
+import { colors as pc } from '../src/vendor/colors';
 
 describe('Bunti Core Engine', () => {
   test('stripAnsi removes color codes', () => {

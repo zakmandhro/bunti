@@ -1,4 +1,3 @@
-import pc from 'picocolors';
 import {
   ANSI,
   box,
@@ -8,6 +7,7 @@ import {
   joinVertical,
   render,
 } from '../src/index';
+import { colors as pc } from '../src/vendor/colors';
 
 /**
  * Bunti Icon & Capability Demo

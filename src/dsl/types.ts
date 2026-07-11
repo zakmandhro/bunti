@@ -2,7 +2,6 @@
  * Bunti DSL shared types and constants.
  */
 
-import type pc from 'picocolors';
 import type { bg, darken, fg, Gradient, lighten, rgb } from '../colors';
 import type {
   PlacedRectInput,
@@ -18,6 +17,7 @@ import type {
   TableOptions,
 } from '../layout';
 import type { Cell, Hitbox, RGB, ScreenState } from '../state';
+import type { BuntiColor } from '../vendor/colors';
 
 export const KEYS = {
   UP: 'up',
@@ -71,7 +71,7 @@ export interface LayerOptions {
  * The interface for the contextual builder provided to closures.
  */
 export interface BuntiContext {
-  color: typeof pc & {
+  color: BuntiColor & {
     darken: typeof darken;
     lighten: typeof lighten;
     rgb: typeof rgb;

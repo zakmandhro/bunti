@@ -16,17 +16,13 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 
 ## 📦 Installation
 
-Bunti is Bun-first and ships compiled ESM plus TypeScript declarations for package consumers.
+Bunti is Bun-native and ships compiled ESM plus TypeScript declarations — with zero runtime dependencies.
 
 ```bash
 bun add @zakmandhro/bunti
 ```
 
-Or using npm/pnpm/yarn:
-
-```bash
-npm install @zakmandhro/bunti
-```
+> Bunti requires the [Bun](https://bun.sh) runtime (>= 1.0). It uses Bun-native APIs for rendering, so Node.js is not supported.
 
 ## 🚀 Quick Start
 

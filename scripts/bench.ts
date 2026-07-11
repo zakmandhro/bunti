@@ -1,4 +1,3 @@
-import pc from 'picocolors';
 import {
   createStyle,
   joinHorizontal,
@@ -6,6 +5,7 @@ import {
   render,
   truncate,
 } from '../src/index';
+import { colors as pc } from '../src/vendor/colors';
 
 /**
  * Bunti Performance Benchmark

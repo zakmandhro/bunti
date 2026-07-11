@@ -11,9 +11,6 @@
         "typescript": "^5.4.0",
         "vitepress": "^1.6.4",
       },
-      "peerDependencies": {
-        "picocolors": "^1.0.0",
-      },
     },
   },
   "packages": {

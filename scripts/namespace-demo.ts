@@ -1,5 +1,5 @@
-import pc from 'picocolors';
 import { bunti } from '../src/index';
+import { colors as pc } from '../src/vendor/colors';
 
 /**
  * Bunti Namespaced Demo

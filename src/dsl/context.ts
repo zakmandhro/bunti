@@ -3,7 +3,6 @@
  * (screen-buffer) box renderer, and the top-level screen context.
  */
 
-import pc from 'picocolors';
 import { bg, createGradient, darken, fg, lighten, rgb } from '../colors';
 import {
   type PlacedRectInput,
@@ -32,6 +31,7 @@ import {
 } from '../layout';
 import type { Cell, RGB, ScreenState } from '../state';
 import { visibleWidth } from '../utils';
+import { type BuntiColor, colors } from '../vendor/colors';
 import { createHooks } from './hooks';
 import { createInteraction } from './interaction';
 import { compositeLayer, createLayerScreenState } from './layers';
@@ -82,14 +82,14 @@ function resolveBoxInnerArea(area: Rect, options: DSLBoxOptions): Rect {
 }
 
 const buntiColor = {
-  ...pc,
+  ...colors,
   darken,
   lighten,
   rgb,
   fg,
   bg,
   dim: (text: string) => fg({ r: 96, g: 102, b: 118 }, text),
-} as typeof pc & {
+} as BuntiColor & {
   darken: typeof darken;
   lighten: typeof lighten;
   rgb: typeof rgb;
@@ -191,7 +191,7 @@ function createDSLContext(
         {
           ...options,
           focusedIndex: selectedIndex,
-          focusStyle: isFocused ? options.focusStyle : (s) => pc.dim(s),
+          focusStyle: isFocused ? options.focusStyle : (s) => colors.dim(s),
           selectedBg: isFocused ? options.selectedBg : undefined,
         },
         availableW,

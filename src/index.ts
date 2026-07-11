@@ -84,6 +84,7 @@ export {
   truncate,
   visibleWidth,
 } from './utils';
+export type { BuntiColor, ColorFormatter } from './vendor/colors';
 
 // Namespaced export for bunti.render style usage
 export const bunti = {

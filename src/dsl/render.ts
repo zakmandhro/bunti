@@ -19,6 +19,13 @@ export async function render(
   callback: ((b: BuntiContext) => void) | string,
   options: ScreenOptions & { once?: boolean } = {},
 ) {
+  if (typeof Bun === 'undefined') {
+    throw new Error(
+      'Bunti is Bun-native and uses Bun runtime APIs. ' +
+        'Run with Bun >=1.0: https://bun.sh — Node.js is not supported.',
+    );
+  }
+
   // Sync apply forced options first
   if (options.nerdFont !== undefined) {
     await init({ nerdFont: options.nerdFont });
