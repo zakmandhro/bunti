@@ -10,19 +10,9 @@
  */
 
 import { resolve } from 'node:path';
+import { PUBLIC_DEMOS } from '../src/demo-registry';
 
 const TIMEOUT_MS = 8000;
-
-// Keep in sync with publicDemos in demo/runner.ts.
-const PUBLIC_DEMOS = [
-  '2048',
-  'animation',
-  'interaction',
-  'dashboard',
-  'engine',
-  'login',
-  'showcase',
-] as const;
 
 interface SmokeResult {
   name: string;
@@ -30,8 +20,8 @@ interface SmokeResult {
   detail: string;
 }
 
-async function smokeDemo(name: string): Promise<SmokeResult> {
-  const demoPath = resolve(import.meta.dir, '..', 'demo', `${name}.ts`);
+async function smokeDemo(name: string, file: string): Promise<SmokeResult> {
+  const demoPath = resolve(import.meta.dir, '..', 'demo', file);
   let timedOut = false;
 
   const proc = Bun.spawn(['bun', demoPath], {
@@ -65,11 +55,11 @@ async function smokeDemo(name: string): Promise<SmokeResult> {
 console.log(`Smoke testing ${PUBLIC_DEMOS.length} public demos ...\n`);
 
 let failures = 0;
-for (const name of PUBLIC_DEMOS) {
-  const result = await smokeDemo(name);
+for (const demo of PUBLIC_DEMOS) {
+  const result = await smokeDemo(demo.name, demo.file);
   const status = result.ok ? 'PASS' : 'FAIL';
   if (!result.ok) failures++;
-  console.log(`  ${status}  ${name.padEnd(12)} ${result.detail}`);
+  console.log(`  ${status}  ${result.name.padEnd(16)} ${result.detail}`);
 }
 
 if (failures > 0) {

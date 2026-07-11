@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { spawn } from 'bun';
+import { PUBLIC_DEMOS } from '../src/demo-registry';
 
 /**
  * Bunti Demo Watchdog
@@ -17,15 +18,9 @@ const target = process.argv.find(
 
 const isNoHot = process.argv.includes('--no-hot');
 
-const publicDemos: Record<string, string> = {
-  2048: './2048.ts',
-  animation: './animation.ts',
-  interaction: './interaction.ts',
-  dashboard: './dashboard.ts',
-  engine: './engine.ts',
-  login: './login.ts',
-  showcase: './showcase.ts',
-};
+const publicDemos: Record<string, string> = Object.fromEntries(
+  PUBLIC_DEMOS.map((d) => [d.name, `./${d.file}`]),
+);
 
 const internalDemos: Record<string, string> = {
   gallery: './gallery.ts',
