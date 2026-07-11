@@ -20,8 +20,12 @@ export function setCell(
     const target = state.backBuffer[y * state.width + x];
     let displayWidth = 1;
     if (cell.char !== undefined) {
-      target!.char = replaceEmojis(cell.char);
-      displayWidth = charWidth(target!.char);
+      target!.char = cell.raw ? cell.char : replaceEmojis(cell.char);
+      // Single-ASCII-char cells (fills, borders' spaces, plain text) skip width math.
+      displayWidth =
+        target!.char.length === 1 && target!.char.charCodeAt(0) < 0x80
+          ? 1
+          : charWidth(target!.char);
       target!.fg = undefined;
       target!.fgCode = undefined;
       target!.bold = false;

@@ -145,17 +145,38 @@ const cachedCaps: TerminalCapabilities = {
   color: true,
 };
 
+// Single precompiled alternation instead of 33 RegExp constructions per call.
+// Longest keys first so variants with a variation selector win over bare emoji.
+let emojiPattern: RegExp | null = null;
+
+function getEmojiPattern(): RegExp {
+  if (!emojiPattern) {
+    const keys = Object.keys(EMOJI_MAP).sort((a, b) => b.length - a.length);
+    emojiPattern = new RegExp(`(?:${keys.join('|')})[\uFE00-\uFE0F]?`, 'g');
+  }
+  return emojiPattern;
+}
+
 export function replaceEmojis(text: string): string {
   if (!text) return '';
   if (!cachedCaps.nerdFont) return text;
 
-  let out = text;
-  for (const [emoji, name] of Object.entries(EMOJI_MAP)) {
-    const glyph = getIcon(name, cachedCaps);
-    const regex = new RegExp(`${emoji}[\uFE00-\uFE0F]?`, 'g');
-    out = out.replace(regex, glyph);
+  // Fast path: pure-ASCII strings (the overwhelming majority of cells) contain no emoji.
+  let ascii = true;
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) > 0x7f) {
+      ascii = false;
+      break;
+    }
   }
-  return out;
+  if (ascii) return text;
+
+  return text.replace(getEmojiPattern(), (match) => {
+    // Map keys may or may not carry a trailing variation selector; try both.
+    const name =
+      EMOJI_MAP[match] ?? EMOJI_MAP[match.replace(/[\uFE00-\uFE0F]$/, '')];
+    return name ? getIcon(name, cachedCaps) : match;
+  });
 }
 
 export async function init(options?: {
