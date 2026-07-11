@@ -3,6 +3,7 @@
  */
 
 import { colorTier } from './detect';
+import { hintsSuppressed, nearestMatch, recordHint } from './diagnostics';
 import type { RGB } from './state';
 import type { ThemeColor } from './theme';
 
@@ -251,6 +252,24 @@ function quantizeRGB(
   return tier === '256' ? rgbTo256(rgb) : rgbTo16(rgb);
 }
 
+// Dev diagnostics: unknown color names hint once each (buffered to exit).
+// The Set keeps the per-cell hot path O(1) after the first sighting.
+const reportedUnknownColors = new Set<string>();
+
+function reportUnknownColorName(name: string): void {
+  if (reportedUnknownColors.has(name)) return;
+  reportedUnknownColors.add(name);
+  if (hintsSuppressed()) return;
+  const suggestion = nearestMatch(name, [
+    ...Object.keys(PALETTE),
+    ...Object.keys(NAME_TO_ANSI),
+  ]);
+  recordHint(
+    `unknown color name '${name}' passed through as a raw ANSI code` +
+      `${suggestion ? ` (did you mean '${suggestion}'?)` : ''}`,
+  );
+}
+
 /**
  * Resolves a palette name, color code, RGB object, or ThemeColor to an ANSI
  * color code, quantized to the active color tier. Returns undefined on the
@@ -274,6 +293,11 @@ export function resolveColor(
       return quantizeRGB(hexToRGB(value), tier);
     }
     const resolved = (PALETTE as any)[value] || NAME_TO_ANSI[value] || value;
+    // Unrecognized non-numeric names fall through as raw ANSI codes and
+    // render garbage — hint once with a nearest-name suggestion.
+    if (resolved === value && !/^\d+$/.test(value) && !value.startsWith('2;')) {
+      reportUnknownColorName(value);
+    }
     if (tier === '16') {
       const code = Number.parseInt(String(resolved), 10);
       if (Number.isFinite(code) && code > 15) {

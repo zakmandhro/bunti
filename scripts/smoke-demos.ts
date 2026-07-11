@@ -28,6 +28,10 @@ async function smokeDemo(name: string, file: string): Promise<SmokeResult> {
     stdin: 'ignore',
     stdout: 'ignore',
     stderr: 'pipe',
+    // Headless harness: stdin is detached ON PURPOSE, so the keyboard
+    // not-a-TTY dev hint (src/diagnostics.ts) would flush to stderr on
+    // exit and fail every demo. Real demo errors are not suppressed.
+    env: { ...process.env, BUNTI_NO_HINTS: '1' },
   });
 
   const timer = setTimeout(() => {

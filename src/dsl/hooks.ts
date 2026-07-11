@@ -7,6 +7,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { recordKeylessHook } from '../diagnostics';
 import type { ScreenState } from '../state';
 import type { BuntiContext } from './types';
 
@@ -32,6 +33,7 @@ export function createHooks(state: ScreenState): Hooks {
           state.hookCounter = 0;
         }
         const index = state.hookCounter++;
+        recordKeylessHook(state, index, 'useAsync');
         key = `_async_hook_${index}`;
         fetcher = keyOrFetcher;
         options = fetcherOrOptions as { interval?: number } | undefined;
@@ -97,6 +99,7 @@ export function createHooks(state: ScreenState): Hooks {
           state.hookCounter = 0;
         }
         const index = state.hookCounter++;
+        recordKeylessHook(state, index, 'useState');
         key = `_state_hook_${index}`;
         initial = keyOrInitial as T;
       } else {

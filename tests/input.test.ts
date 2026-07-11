@@ -613,6 +613,9 @@ describe('held-key spike (subprocess exit criterion)', () => {
       stdin: 'pipe',
       stdout: 'ignore',
       stderr: 'pipe',
+      // The fixture pipes stdin ON PURPOSE (it wires input itself); silence
+      // the not-a-TTY dev hint so stderr stays pure JSON for the report.
+      env: { ...process.env, BUNTI_NO_HINTS: '1' },
     });
 
     // Simulate a held right arrow: repeats every 40ms for ~400ms

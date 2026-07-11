@@ -65,9 +65,17 @@ describe('Bunti Icon Engine', () => {
   });
 
   test('unknown name returns empty string and buffers a warning', () => {
-    const bogus = 'definitely-not-an-icon-xyz';
-    expect(icon(bogus)).toBe('');
-    expect(__iconMisses()).toContain(bogus);
+    // Hints are suppressed suite-wide by tests/preload.ts; re-enable for
+    // this test only (the flag is read at record time).
+    const saved = process.env.BUNTI_NO_HINTS;
+    process.env.BUNTI_NO_HINTS = '0';
+    try {
+      const bogus = 'definitely-not-an-icon-xyz';
+      expect(icon(bogus)).toBe('');
+      expect(__iconMisses()).toContain(bogus);
+    } finally {
+      process.env.BUNTI_NO_HINTS = saved;
+    }
   });
 
   test('curated ascii fallbacks are width-stable single ASCII chars', () => {

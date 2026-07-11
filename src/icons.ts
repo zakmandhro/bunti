@@ -14,6 +14,11 @@ import {
   type TerminalCapabilities,
   type TerminalProfile,
 } from './detect';
+import {
+  hintsSuppressed,
+  nearestMatch,
+  registerHintFlusher,
+} from './diagnostics';
 
 /** An icon's Nerd Font glyph plus its plain-terminal ASCII stand-in. */
 export interface IconDefinition {
@@ -285,89 +290,49 @@ export function registerAll(glyphs: Record<string, string>): void {
 }
 
 // --- Unknown-name diagnostics ---
-// Misses are buffered in a Set and flushed ONCE to stderr on process exit,
-// so warnings never tear an active frame mid-render.
+// Misses are buffered in a Set and drained through the shared diagnostics
+// exit flush (src/diagnostics.ts), so warnings never tear an active frame
+// mid-render and every dev hint arrives in one block on process exit.
 
 const missedNames = new Set<string>();
-let exitHookInstalled = false;
+let flusherRegistered = false;
 
 function recordMiss(name: string): void {
-  if (process.env.NODE_ENV === 'production') return;
+  if (hintsSuppressed()) return;
   missedNames.add(name);
-  if (!exitHookInstalled) {
-    exitHookInstalled = true;
-    process.on('exit', flushIconWarnings);
+  if (!flusherRegistered) {
+    flusherRegistered = true;
+    registerHintFlusher(drainIconHintLines);
   }
 }
 
-/** Capped two-row Levenshtein; returns cap+1 as soon as it can bail out. */
-function editDistance(a: string, b: string, cap: number): number {
-  if (Math.abs(a.length - b.length) > cap) return cap + 1;
-  let prev: number[] = new Array(b.length + 1);
-  let curr: number[] = new Array(b.length + 1);
-  for (let j = 0; j <= b.length; j++) prev[j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    curr[0] = i;
-    let rowMin = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-      if (curr[j] < rowMin) rowMin = curr[j];
-    }
-    if (rowMin > cap) return cap + 1;
-    [prev, curr] = [curr, prev];
-  }
-  return prev[b.length];
+function* iconNameCandidates(): Generator<string> {
+  yield* Object.keys(ICON_MAP);
+  yield* registryNf.keys();
 }
 
 function nearestIconName(name: string): string | undefined {
-  const target = stripNfPrefix(name);
-  const cap = Math.max(2, Math.floor(target.length / 3));
-  let best: string | undefined;
-  let bestScore = cap + 1;
-
-  const consider = (candidate: string): void => {
-    let score: number;
-    if (candidate === target) {
-      score = 0;
-    } else if (candidate.startsWith(target) || target.startsWith(candidate)) {
-      score = 1;
-    } else {
-      score = editDistance(target, candidate, cap);
-    }
-    if (score < bestScore) {
-      bestScore = score;
-      best = candidate;
-    }
-  };
-
-  for (const key of Object.keys(ICON_MAP)) {
-    consider(key);
-    if (bestScore === 0) return best;
-  }
-  for (const key of registryNf.keys()) {
-    consider(key);
-    if (bestScore === 0) return best;
-  }
-  return best;
+  return nearestMatch(stripNfPrefix(name), iconNameCandidates());
 }
 
-function flushIconWarnings(): void {
-  if (missedNames.size === 0) return;
+/** Drains buffered misses into hint lines (called by the exit flush). */
+function drainIconHintLines(): string[] {
+  if (missedNames.size === 0) return [];
   const lines: string[] = [];
   for (const name of missedNames) {
     const hint = nearestIconName(name);
-    lines.push(`  - '${name}'${hint ? ` (did you mean '${hint}'?)` : ''}`);
+    lines.push(
+      `unknown icon '${name}' rendered as ''` +
+        `${hint ? ` (did you mean '${hint}'?)` : ''}`,
+    );
   }
   if (registryNf.size === 0) {
     lines.push(
-      "  Tip: import '@zakmandhro/bunti/icons-full' to enable all ~10.7k Nerd Font icons by name.",
+      "tip: import '@zakmandhro/bunti/icons-full' to enable all ~10.7k Nerd Font icons by name",
     );
   }
   missedNames.clear();
-  process.stderr.write(
-    `\n[bunti] unknown icon name(s) rendered as '':\n${lines.join('\n')}\n`,
-  );
+  return lines;
 }
 
 /** @internal Test hook: unresolved names buffered so far. */

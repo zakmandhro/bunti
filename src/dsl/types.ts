@@ -568,6 +568,8 @@ export interface DSLState {
   layerOrder: number;
   /** Stack of subtree theme overrides pushed by ctx.themed(). */
   themeStack: Theme[];
+  /** Direct-rendered box areas this frame (root only; dev diagnostics). */
+  boxRects?: Rect[];
 }
 
 /** One queued overlay buffer awaiting composite (see ctx.layer()). */

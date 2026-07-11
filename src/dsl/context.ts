@@ -16,6 +16,11 @@ import {
 } from '../colors';
 import { identifyTerminal } from '../detect';
 import {
+  beginHookFrame,
+  hintInputReadWithoutKeyboard,
+  hintOverlappingBoxes,
+} from '../diagnostics';
+import {
   type PlacedRectInput,
   type PlacedRectOptions,
   type Rect,
@@ -139,6 +144,31 @@ function resolveBoxInnerArea(area: Rect, options: DSLBoxOptions): Rect {
   };
 }
 
+/**
+ * Redefines ctx.lastKey / ctx.keys as live getters that also feed the
+ * "input read without { keyboard: true }" dev hint. Non-enumerable so the
+ * screen-context spread of the base context can never trigger a spurious
+ * read — only real user reads do.
+ */
+function defineInputAccessors(ctx: BuntiContext, state: ScreenState): void {
+  Object.defineProperty(ctx, 'lastKey', {
+    configurable: true,
+    enumerable: false,
+    get: () => {
+      hintInputReadWithoutKeyboard(state.options);
+      return state.lastKey;
+    },
+  });
+  Object.defineProperty(ctx, 'keys', {
+    configurable: true,
+    enumerable: false,
+    get: () => {
+      hintInputReadWithoutKeyboard(state.options);
+      return state.keys ?? [];
+    },
+  });
+}
+
 const buntiColor = {
   ...colors,
   darken,
@@ -224,12 +254,14 @@ function createDSLContext(
     },
 
     keyPressed(name: string) {
+      hintInputReadWithoutKeyboard(state.options);
       return (
         state.keys?.some((e) => e.key === name && e.kind !== 'release') ?? false
       );
     },
 
     isKeyHeld(name: string) {
+      hintInputReadWithoutKeyboard(state.options);
       return state.heldKeys?.isHeld(name) ?? false;
     },
 
@@ -534,6 +566,8 @@ function createDSLContext(
 
     flushFlow() {},
   };
+  // Live input accessors (also feed the keyboard-not-enabled dev hint).
+  defineInputAccessors(ctx, state);
   return ctx;
 }
 
@@ -542,6 +576,17 @@ function createDirectBoxRenderer(
   dslState: DSLState,
   base: BuntiContext,
 ) {
+  // Dev diagnostics: remember where direct boxes painted this frame
+  // (root screen context only — layer states never set boxRects).
+  // Anchored boxes are exempt: top/bottom bars are deliberate full-width
+  // chrome, and their "overlaps" are almost always small-screen clipping
+  // rather than missing-layer bugs.
+  const trackBoxRect = (area: Rect, options: DSLBoxOptions) => {
+    if (options.anchor !== undefined) return;
+    const rects = dslState.boxRects;
+    if (rects && rects.length < 50) rects.push(area);
+  };
+
   return (
     options: DSLBoxOptions,
     callback: (ctx: BuntiContext) => void,
@@ -572,6 +617,7 @@ function createDirectBoxRenderer(
     if (hasFixedSize) {
       const preArea = resolveBoxArea(base.area, boxOptions, 0, 0);
       const innerArea = resolveBoxInnerArea(preArea, boxOptions);
+      trackBoxRect(preArea, boxOptions);
 
       if (boxOptions.bgColor || boxOptions.color) {
         rect(state, preArea.x, preArea.y, preArea.width, preArea.height, {
@@ -662,6 +708,7 @@ function createDirectBoxRenderer(
       lineWidths.length > 0 ? Math.max(...lineWidths) : 0,
       lines.length,
     );
+    trackBoxRect(boxArea, boxOptions);
 
     if (boxOptions.bgColor || boxOptions.color) {
       rect(state, boxArea.x, boxArea.y, boxArea.width, boxArea.height, {
@@ -681,6 +728,8 @@ function createDirectBoxRenderer(
  */
 export function createScreenContext(state: ScreenState): BuntiContext {
   state.hookCounter = 0;
+  // Dev diagnostics: frame boundary for keyless hook-drift tracking.
+  beginHookFrame(state);
   const previousFocusableIds = state.focusableIds;
 
   if (state.lastKey === KEYS.TAB && previousFocusableIds.length > 0) {
@@ -702,6 +751,7 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     layers: [],
     layerOrder: 0,
     themeStack: [],
+    boxRects: [],
   };
 
   const base = createDSLContext(
@@ -717,6 +767,10 @@ export function createScreenContext(state: ScreenState): BuntiContext {
   const flushFlow = () => {
     const flow = dslState.activeContents.join('');
     if (flow) layoutBlit(state, 0, 0, flow);
+
+    // Dev diagnostics: direct boxes that painted over each other this
+    // frame with nothing controlling the stacking (hints once).
+    hintOverlappingBoxes(dslState.boxRects);
 
     // Layers composite in ascending z-order. Right before each layer lands,
     // its backdrop dims the whole screen and its shadow dims an offset rect
@@ -773,6 +827,10 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     enumerable: true,
     get: () => activeTheme(dslState, state),
   });
+
+  // lastKey/keys are non-enumerable on `base` (so the spread above cannot
+  // fake an input read); re-declare them on the screen context.
+  defineInputAccessors(screenCtx, state);
 
   return screenCtx;
 }

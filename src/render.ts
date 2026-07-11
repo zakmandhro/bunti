@@ -2,6 +2,7 @@
  * Bunti Functional Rendering & Diffing
  */
 
+import { hintKeyboardStdinNotTTY } from './diagnostics';
 import {
   createKeyEvent,
   HeldKeyTracker,
@@ -379,6 +380,12 @@ export function loop(
   }
 
   const options = state.options;
+
+  // Dev hint: keyboard input silently does nothing on piped stdin.
+  hintKeyboardStdinNotTTY(
+    options.keyboard === true,
+    process.stdin.isTTY === true,
+  );
 
   state.isRestored = false;
   activeScreens.add(state);
