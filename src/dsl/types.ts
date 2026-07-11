@@ -17,6 +17,7 @@ import type {
   TableOptions,
 } from '../layout';
 import type { Cell, Hitbox, RGB, ScreenState } from '../state';
+import type { Theme, ThemeColor, ThemeInput } from '../theme';
 import type { BuntiColor } from '../vendor/colors';
 
 export const KEYS = {
@@ -31,8 +32,8 @@ export const KEYS = {
   SPACE: ' ',
 };
 export interface DSLBoxOptions extends StyleOptions {
-  bgColor?: string | number | RGB | Gradient;
-  color?: string | number | RGB | 'blank';
+  bgColor?: string | number | RGB | Gradient | ThemeColor;
+  color?: string | number | RGB | ThemeColor | 'blank';
   x?: number;
   y?: number;
   zIndex?: number;
@@ -41,7 +42,13 @@ export interface DSLBoxOptions extends StyleOptions {
   title?: string;
   titleStyle?: (s: string) => string;
   id?: string;
-  borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
+  borderColor?:
+    | string
+    | number
+    | RGB
+    | ThemeColor
+    | ((s: string) => string)
+    | SideColors;
   detach?: boolean; // If true, the string is returned but NOT appended to the flow
 }
 
@@ -95,6 +102,28 @@ export interface BuntiContext {
   focusedId?: string;
   elapsedTime: number;
 
+  /**
+   * The active semantic theme for this subtree. Tokens are callable fg
+   * stylers that also carry `.rgb`/`.hex`, so they work as both text
+   * wrappers (`ctx.text(ctx.theme.primary('hi'))`) and color values
+   * (`bgColor: ctx.theme.surface`). Defaults to the built-in darkTheme.
+   */
+  readonly theme: Theme;
+  /**
+   * Swaps the active theme live and requests a rerender. Sparse inputs are
+   * completed via createTheme() derivation.
+   */
+  setTheme(theme: Theme | ThemeInput): void;
+  /**
+   * Runs the callback with an overridden theme for that subtree only.
+   * Partial inputs overlay the current theme; the previous theme is
+   * restored afterwards.
+   */
+  themed(
+    theme: Theme | ThemeInput,
+    callback: (sub: BuntiContext) => void,
+  ): BuntiContext;
+
   text(str: string | number): BuntiContext;
   icon(name: string): string; // Pure string return for template literal safety
   blit(
@@ -129,10 +158,17 @@ export interface BuntiContext {
   joinHorizontal(...blocks: string[]): string;
   joinVertical(...blocks: string[]): string;
   wallpaper(
-    input: string | number | RGB | RGB[] | Gradient | { color: any },
+    input:
+      | string
+      | number
+      | RGB
+      | ThemeColor
+      | RGB[]
+      | Gradient
+      | { color: any },
   ): void;
   gradient(options: {
-    colors: (string | number | RGB)[];
+    colors: (string | number | RGB | ThemeColor)[];
     direction?: 'vertical' | 'horizontal';
     steps?: number;
   }): Gradient;
@@ -209,6 +245,8 @@ export interface DSLState {
   stack: string[][];
   layers: RenderLayer[];
   layerOrder: number;
+  /** Stack of subtree theme overrides pushed by ctx.themed(). */
+  themeStack: Theme[];
 }
 
 export interface RenderLayer {

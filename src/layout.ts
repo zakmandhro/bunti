@@ -3,9 +3,10 @@
  * Strictly functional primitives for buffer manipulation and layout generation.
  */
 
-import { resolveColor } from './colors';
+import { fg as fgColor, isThemeColor, resolveColor } from './colors';
 import { replaceEmojis } from './icons';
 import type { Cell, RGB, ScreenState } from './state';
+import type { ThemeColor } from './theme';
 import { charWidth, truncate, visibleWidth, wrapText } from './utils';
 
 // --- Functional Primitives (Buffer Manipulation) ---
@@ -60,8 +61,8 @@ import type { Gradient } from './colors';
 
 export interface RectOptions {
   char?: string;
-  fg?: string | number | RGB;
-  bg?: string | number | RGB | Gradient;
+  fg?: string | number | RGB | ThemeColor;
+  bg?: string | number | RGB | Gradient | ThemeColor;
 }
 
 export function rect(
@@ -95,7 +96,7 @@ export function rect(
       } else {
         resolvedBg =
           style.bg !== undefined
-            ? resolveColor(style.bg as string | number | RGB)
+            ? resolveColor(style.bg as string | number | RGB | ThemeColor)
             : undefined;
       }
 
@@ -231,8 +232,14 @@ export interface StyleOptions {
   maxHeight?: number;
   padding?: [number, number];
   border?: BorderStyle;
-  borderColor?: string | number | RGB | ((s: string) => string) | SideColors;
-  bgColor?: string | number | RGB | Gradient;
+  borderColor?:
+    | string
+    | number
+    | RGB
+    | ThemeColor
+    | ((s: string) => string)
+    | SideColors;
+  bgColor?: string | number | RGB | Gradient | ThemeColor;
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'middle' | 'bottom';
   wrap?: boolean;
@@ -336,9 +343,14 @@ export function box(
       : BORDERS[borderStyle as keyof typeof BORDERS] || BORDERS.default;
 
   // Color Resolution
-  const { fg } = require('./colors');
+  // ThemeColors are callable, so they must be detected BEFORE the
+  // function-style border-wrapper path (brand check via isThemeColor).
   const resolveSide = (color: any) =>
-    typeof color === 'function' ? color : (s: string) => fg(color, s);
+    isThemeColor(color)
+      ? (s: string) => fgColor(color.rgb, s)
+      : typeof color === 'function'
+        ? color
+        : (s: string) => fgColor(color, s);
   const wrapBg = (s: string) => {
     if (!options.bgColor) return s;
     if (typeof options.bgColor === 'object' && 'colors' in options.bgColor) {
@@ -346,13 +358,11 @@ export function box(
       // In string-building mode, we must ignore gradients. They are handled in absolute rect mode.
       return s;
     }
-    const { resolveColor } = require('./colors');
     const code = resolveColor(options.bgColor);
-    const prefix =
-      typeof options.bgColor === 'object' || String(code).startsWith('2;')
-        ? '48'
-        : '48;5';
-    const bgOn = `\x1b[${prefix};${code}m`;
+    if (code === undefined) return s; // mono tier: no color output
+    const codeStr = String(code);
+    const prefix = codeStr.startsWith('2;') ? '48' : '48;5';
+    const bgOn = `\x1b[${prefix};${codeStr}m`;
     // Apply bg, and if the string contains resets, re-apply the bg right after the reset.
     // We add a final reset at the very end to clean up.
     return `${bgOn + s.replace(/\x1b\[0m/g, `\x1b[0m${bgOn}`)}\x1b[0m`;
@@ -616,7 +626,7 @@ export interface ListOptions {
   indent?: number;
   focusedIndex?: number;
   focusStyle?: (s: string) => string;
-  selectedBg?: string | number | RGB;
+  selectedBg?: string | number | RGB | ThemeColor;
   width?: SizeUnit;
   maxVisible?: number;
   interactive?: boolean;
@@ -630,15 +640,12 @@ export function list(
   const bullet = options.bullet || '';
   const indent = ' '.repeat(options.indent || 0);
   const resolvedW = resolveSize(options.width, parentW || 0, 0);
-  const { resolveColor } = require('./colors');
   const wrapSelectedBg = (line: string) => {
     if (!options.selectedBg) return line;
     const code = resolveColor(options.selectedBg);
+    if (code === undefined) return line; // mono tier: no color output
     const codeStr = String(code);
-    const prefix =
-      typeof options.selectedBg === 'object' || codeStr.startsWith('2;')
-        ? '48'
-        : '48;5';
+    const prefix = codeStr.startsWith('2;') ? '48' : '48;5';
     const bgOn = `\x1b[${prefix};${codeStr}m`;
     return `${bgOn + line.replace(/\x1b\[0m/g, `\x1b[0m${bgOn}`)}\x1b[0m`;
   };

@@ -1,99 +1,234 @@
 # 🎨 Colors & Theming
 
-Bunti provides a high-fidelity, 24-bit TrueColor rendering engine built around mathematical relative contrast and RGB interpolation. It bypasses legacy 16-color limits to provide web-like design capabilities in the terminal.
+Bunti ships a semantic theme system on a 24-bit TrueColor engine. UIs are built
+against **theme tokens** (`primary`, `surface`, `danger`, …) instead of
+hardcoded colors, so an entire app can switch palettes live with one call —
+and it degrades gracefully to 256-color, 16-color, or no-color terminals.
+
+## 🧩 The Theme
+
+Every render exposes `ctx.theme`, a complete set of semantic tokens:
+
+| Token | Role |
+| :--- | :--- |
+| `background` | App base / wallpaper |
+| `surface`, `surfaceRaised` | Panels and cards (one and two elevation steps) |
+| `foreground`, `muted` | Primary and secondary text |
+| `primary`, `onPrimary` | Brand color and the text that sits on it |
+| `accent` | Secondary highlight |
+| `border`, `focus`, `selection` | Chrome, focus rings, selected rows |
+| `success`, `warning`, `danger`, `info` | Status colors |
+| `gradients?` | Optional named gradient stop lists |
+
+```typescript
+interface Theme {
+  name: string;
+  mode: 'dark' | 'light';
+  background: ThemeColor; surface: ThemeColor; surfaceRaised: ThemeColor;
+  foreground: ThemeColor; muted: ThemeColor;
+  primary: ThemeColor; onPrimary: ThemeColor; accent: ThemeColor;
+  border: ThemeColor; focus: ThemeColor; selection: ThemeColor;
+  success: ThemeColor; warning: ThemeColor; danger: ThemeColor; info: ThemeColor;
+  gradients?: Record<string, (string | RGB)[]>;
+}
+```
+
+### ThemeColor: callable *and* data
+
+Each token is a `ThemeColor` — call it to fg-style text, or pass it anywhere a
+color value is expected (`bgColor`, `borderColor`, `wallpaper`, gradient
+stops, `selectedBg`). It carries `.rgb` and `.hex`:
+
+```typescript
+bunti.render((ctx) => {
+  const t = ctx.theme;
+
+  ctx.wallpaper(t.background);                     // as a color value
+  ctx.box({
+    border: 'rounded',
+    borderColor: t.border,                         // as a border color
+    bgColor: t.surface,                            // as a background
+  }, (b) => {
+    b.text(t.primary('Mission Control'));          // as a text styler
+    b.text(t.muted(` luminance ${t.primary.hex}`)); // as data
+  });
+});
+```
+
+## 🏗️ createTheme: sparse in, coherent out
+
+`createTheme(partial)` fills every missing token by derivation, so a theme
+defined by two colors is still complete (this is what the VS Code theme
+converter leans on):
+
+```typescript
+import { createTheme } from '@zakmandhro/bunti';
+
+const catppuccin = createTheme({
+  name: 'catppuccin-ish',
+  background: '#1e1e2e',
+  primary: '#89b4fa',
+});
+// mode, surface, foreground, onPrimary, border, ... all derived.
+```
+
+Derivation rules:
+
+- **mode** — from background luminance when given, else `'dark'`.
+- **surface / surfaceRaised** — background shifted 8% / 16% toward white
+  (dark mode) or black (light mode).
+- **foreground** — WCAG auto-contrast vs background, softened 8% toward it.
+- **muted** — foreground mixed 45% toward background.
+- **onPrimary** — pure black or white, whichever has more WCAG contrast vs
+  `primary`.
+- **accent** — primary shifted 25% toward white (dark) / black (light).
+- **border** — foreground mixed 70% toward background.
+- **focus** — primary. **selection** — primary mixed 70% toward background.
+- **success/warning/danger/info** — PALETTE-derived defaults per mode.
+
+Explicit tokens always win over derivation.
+
+Two themes ship built in: `darkTheme` (midnight / silver / bunti-blue /
+plasma) and `lightTheme`.
+
+## 🔀 Live switching & subtree overrides
+
+```typescript
+import { bunti, darkTheme, lightTheme } from '@zakmandhro/bunti';
+
+bunti.render((ctx) => {
+  // ...render from ctx.theme...
+
+  if (ctx.lastKey === '1') ctx.setTheme(darkTheme);   // swaps live + rerenders
+  if (ctx.lastKey === '2') ctx.setTheme(lightTheme);
+
+  // Override tokens for one subtree only:
+  ctx.themed({ primary: '#ff0055' }, (sub) => {
+    sub.box({ borderColor: sub.theme.primary }, (b) => b.text('spicy panel'));
+  });
+}, { theme: darkTheme }); // initial theme (defaults to darkTheme)
+```
+
+- `ctx.setTheme(themeOrPartial)` — replaces the active theme (partials are
+  completed via `createTheme`) and requests a rerender.
+- `ctx.themed(themeOrPartial, cb)` — runs `cb` with an overridden theme;
+  partials overlay the *current* theme and the previous theme is restored
+  afterwards. Overrides nest.
+
+## 🌈 Supported Color Formats
+
+Anywhere a color is expected, Bunti resolves:
+
+| Format | Example | Description |
+| :--- | :--- | :--- |
+| **Named** | `"bunti-blue"` | Resolves from the internal palette. |
+| **Hex** | `"#FF0055"` | Exact RGB. |
+| **Hex + alpha** | `"#FF005580"`, `"#f058"` | Alpha is composited over black (or a base color via `hexToRGB(hex, base)`). VS Code themes use these heavily. |
+| **ANSI 256** | `196` | Integer code, mapped through the exact xterm table. |
+| **RGB tuple** | `{ r: 255, g: 0, b: 0 }` | Absolute definition. |
+| **ThemeColor** | `ctx.theme.primary` | Semantic token. |
+
+ANSI-256 codes convert to RGB via the exact xterm model (16 base colors +
+6×6×6 cube + 24-step gray ramp) — `ansi256ToRGB(196)` is exactly `#ff0000` —
+so `darken`/`lighten`/`fade`/gradients behave correctly on 256-color inputs.
 
 ## 🗂️ The Standard Palette
 
-Bunti ships with an opinionated `PALETTE` out of the box, optimized for dark terminal themes and high-contrast UI design.
-
-You can use these semantic names anywhere a color is expected (e.g., `borderColor: "bunti-blue"`, `color.fg("mint", "Hello")`).
+The opinionated `PALETTE` remains available for one-off colors:
 
 ```typescript
 const PALETTE = {
   // Greyscale
   slate: '235', ash: '240', gray: '244', silver: '247', white: '255', black: '0',
   // Deep Blues & Space
-  midnight: '17', ocean: '24', sky: '33', 'bunti-blue': '38', plasma: '165',
+  midnight: '17', ocean: '24', sky: '33', 'bunti-blue': '38', nebula: '61', plasma: '165',
   // Semantic
   success: '40', warning: '214', error: '196', info: '39',
   // Accents
-  gold: '220', rose: '211', mint: '121', cyan: '51'
+  gold: '220', rose: '211', mint: '121',
 };
 ```
 
-## 🌈 Supported Color Formats
+## 📶 Color Capability Tiers
 
-When styling boxes, text, or spans, Bunti seamlessly resolves various color formats into raw ANSI sequences:
+Bunti detects the terminal's color depth once (lazily) and quantizes every
+color at the single resolution choke point — components and the renderer never
+need to care:
 
-| Format | Example | Description |
+| Tier | Trigger | Behavior |
 | :--- | :--- | :--- |
-| **Named** | `"bunti-blue"` | Resolves from the internal palette. |
-| **Hex** | `"#FF0055"` | Parsed dynamically to an exact RGB tuple. |
-| **ANSI 256** | `196` | Integer-based lookup (0-255). |
-| **RGB Tuple**| `{ r: 255, g: 0, b: 0 }` | Absolute definition. |
+| `truecolor` | `COLORTERM=truecolor/24bit`, known terminals, default | Full 24-bit output |
+| `256` | `TERM=*-256color` | RGB quantized to nearest cube/gray-ramp code |
+| `16` | legacy `TERM` (xterm, screen, vt100, …) | Quantized to the 16 base colors |
+| `mono` | `NO_COLOR` set (per [no-color.org](https://no-color.org)), `TERM=dumb` | No color codes emitted at all |
 
 ```typescript
-box({ borderColor: "#00FFCC", bgColor: "midnight" }, ({ text }) => { ... })
+import { colorTier, setColorTier } from '@zakmandhro/bunti';
+
+colorTier();                       // 'truecolor' | '256' | '16' | 'mono'
+bunti.render(cb, { colorTier: '256' }); // force a tier (tests, screenshots)
 ```
+
+## 🎯 Contextual High-Contrast Text (`"blank"`)
+
+Pass `color: "blank"` on a box and Bunti picks pure black or pure white text
+by the WCAG relative luminance of the box background (gradients sample their
+middle stop):
+
+```typescript
+box({
+  bgColor: ctx.theme.primary,
+  color: 'blank', // auto-resolves to black or white for max contrast
+}, ({ text }) => text('Always readable'));
+```
+
+The primitives are exported too: `relativeLuminance(color)` and
+`contrastText(bgColor)`.
 
 ## 🌗 Relative Contrast Mathematics
 
-Instead of hardcoding hover states or border depths, Bunti exposes `lighten()` and `darken()` mathematical functions attached to the `color` context. This allows you to build deeply contextual, self-shading components.
+`lighten()` / `darken()` on `ctx.color` still enable self-shading components:
 
 ```typescript
-import { bunti } from '@zakmandhro/bunti';
-
-bunti.render(({ box, color }) => {
-  const baseColor = "#3B82F6";
-  
+bunti.render(({ box, color, theme }) => {
   box({
-    borderColor: baseColor,
-    bgColor: color.darken(baseColor, 30) // Automatically shades the background 30% darker
+    borderColor: theme.primary,
+    bgColor: color.darken(theme.primary, 30),
   }, ({ text }) => {
-    text(color.fg(color.lighten(baseColor, 50), "Highlighted Text"));
+    text(color.fg(color.lighten(theme.primary, 50), 'Highlighted Text'));
   });
 });
 ```
 
 ## 🌊 Dynamic Gradients
 
-Bunti calculates smooth, multi-stop RGB interpolation across terminal blocks. Gradients can be applied to `wallpaper`, `bgColor`, or dynamically text via `ctx.gradient()`.
+Gradients accept any color format, including theme tokens:
 
 ```typescript
-bunti.render(({ box, gradient }) => {
+bunti.render(({ box, gradient, theme }) => {
   box({
-    width: "100%",
+    width: '100%',
     height: 10,
     bgColor: gradient({
-      colors: ["midnight", "bunti-blue", "cyan"],
-      direction: "vertical",
-      steps: 10
-    })
-  }, () => { ... });
+      colors: [theme.background, theme.primary, theme.accent],
+      direction: 'vertical',
+      steps: 10,
+    }),
+  }, () => { /* ... */ });
 });
-```
-
-## 🎯 Contextual High-Contrast Text (`"blank"`)
-
-A unique feature of Bunti's semantic engine is the `"blank"` color shortcut. When rendering text over a dynamic background (like a gradient), you can pass `"blank"`, and Bunti will automatically calculate whether to use Pure White or Solid Black to ensure maximum contrast accessibility.
-
-```typescript
-box({
-  bgColor: "white",
-  color: "blank" // Will automatically resolve to black text
-}, ({ text }) => text("Visible!"));
 ```
 
 ## 🖋️ Default Foreground
 
-Terminals can use light or dark system themes, so unstyled text may become unreadable over an application-controlled wallpaper. Pass `defaultFg` to `bunti.render` to give plain text a stable foreground while still allowing explicit ANSI colors to win.
+Unstyled text can still be given a stable foreground independent of the theme
+tokens:
 
 ```typescript
 bunti.render((ctx) => {
-  ctx.wallpaper("#0a0a0b");
-  ctx.text("Plain text uses silver.");
-  ctx.text(ctx.color.fg("gold", " Explicit colors still win."));
+  ctx.wallpaper(ctx.theme.background);
+  ctx.text('Plain text uses silver.');
+  ctx.text(ctx.color.fg('gold', ' Explicit colors still win.'));
 }, {
-  defaultFg: "silver",
+  defaultFg: 'silver',
 });
 ```

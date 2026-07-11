@@ -2,6 +2,9 @@
  * Bunti Functional Screen State & Initialization
  */
 
+import { type ColorTier, setColorTier } from './detect';
+import type { Theme, ThemeColor } from './theme';
+
 export interface RGB {
   r: number;
   g: number;
@@ -10,8 +13,8 @@ export interface RGB {
 
 export interface Cell {
   char: string;
-  fg?: string | number | RGB;
-  bg?: string | number | RGB;
+  fg?: string | number | RGB | ThemeColor;
+  bg?: string | number | RGB | ThemeColor;
   bold?: boolean;
   fgCode?: string | number;
   bgCode?: string | number;
@@ -55,6 +58,8 @@ export interface ScreenState {
   isRestored?: boolean;
   isResizing?: boolean;
   resizeSettlesAt?: number;
+  /** Active semantic theme (swapped live via ctx.setTheme). */
+  theme?: Theme;
 }
 
 export interface ScreenOptions {
@@ -66,7 +71,11 @@ export interface ScreenOptions {
   hideCursor?: boolean;
   nerdFont?: boolean;
   resizeDebounceMs?: number;
-  defaultFg?: string | number | RGB;
+  defaultFg?: string | number | RGB | ThemeColor;
+  /** Semantic theme exposed as ctx.theme (defaults to darkTheme). */
+  theme?: Theme;
+  /** Forces the color capability tier (otherwise detected from env). */
+  colorTier?: ColorTier;
   /**
    * Called when the render callback throws during a frame.
    * Return `'continue'` to keep the loop alive (app-level error boundary);
@@ -81,6 +90,8 @@ export interface ScreenOptions {
  * Creates a fresh ScreenState based on the terminal dimensions and options.
  */
 export function createScreenState(options: ScreenOptions = {}): ScreenState {
+  if (options.colorTier !== undefined) setColorTier(options.colorTier);
+
   const width = process.stdout.columns || 80;
   const height = process.stdout.rows || 24;
   const size = width * height;
@@ -114,6 +125,7 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
     componentState: new Map(),
     startTime: Date.now(),
     options,
+    theme: options.theme,
   };
 
   return state;

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { Box, Button, Input } from '../src/components';
+import { setColorTier } from '../src/detect';
 import { createScreenContext } from '../src/dsl';
 import {
   blit,
@@ -20,6 +21,9 @@ import {
 } from '../src/render';
 import { createScreenState, resizeScreen } from '../src/state';
 import { colors as pc } from '../src/vendor/colors';
+
+// Pin the color tier so expectations don't depend on the host terminal env.
+setColorTier('truecolor');
 
 describe('Bunti Core Engine', () => {
   test('stripAnsi removes color codes', () => {

@@ -3,7 +3,16 @@
  * (screen-buffer) box renderer, and the top-level screen context.
  */
 
-import { bg, createGradient, darken, fg, lighten, rgb } from '../colors';
+import {
+  bg,
+  contrastText,
+  createGradient,
+  darken,
+  fg,
+  type Gradient,
+  lighten,
+  rgb,
+} from '../colors';
 import {
   type PlacedRectInput,
   type PlacedRectOptions,
@@ -30,6 +39,13 @@ import {
   type TableOptions,
 } from '../layout';
 import type { Cell, RGB, ScreenState } from '../state';
+import {
+  darkTheme,
+  resolveTheme,
+  type Theme,
+  type ThemeColor,
+  type ThemeInput,
+} from '../theme';
 import { visibleWidth } from '../utils';
 import { type BuntiColor, colors } from '../vendor/colors';
 import { createHooks } from './hooks';
@@ -46,6 +62,36 @@ import {
 
 function boxBorderInset(options: DSLBoxOptions): number {
   return options.border === 'none' || !options.border ? 0 : 1;
+}
+
+/**
+ * Resolves the effective foreground for a box's `color` option. 'blank'
+ * auto-picks pure black or pure white text by WCAG luminance of the box
+ * background (gradients sample their middle stop).
+ */
+function resolveBoxFg(
+  options: DSLBoxOptions,
+): string | number | RGB | ThemeColor | undefined {
+  if (options.color !== 'blank') return options.color;
+  const bgColor = options.bgColor;
+  if (bgColor === undefined) return undefined;
+  if (typeof bgColor === 'object' && 'colors' in bgColor) {
+    const stops = (bgColor as Gradient).colors;
+    if (stops.length === 0) return undefined;
+    return contrastText(stops[Math.floor(stops.length / 2)]!);
+  }
+  return contrastText(bgColor);
+}
+
+function activeTheme(dslState: DSLState, state: ScreenState): Theme {
+  // options is shared by reference with layer screen-state copies, so
+  // options.theme always reflects the latest setTheme() call.
+  return (
+    dslState.themeStack[dslState.themeStack.length - 1] ??
+    state.options.theme ??
+    state.theme ??
+    darkTheme
+  );
 }
 
 function resolveBoxArea(
@@ -140,6 +186,28 @@ function createDSLContext(
     lastKey: state.lastKey,
     focusedId: state.focusedId,
     elapsedTime: Date.now() - state.startTime,
+
+    get theme(): Theme {
+      return activeTheme(dslState, state);
+    },
+
+    setTheme(theme: Theme | ThemeInput) {
+      const resolved = resolveTheme(theme);
+      state.theme = resolved;
+      state.options.theme = resolved;
+      (state as { requestTick?: () => void }).requestTick?.();
+    },
+
+    themed(theme: Theme | ThemeInput, callback: (sub: BuntiContext) => void) {
+      const next = resolveTheme(theme, activeTheme(dslState, state));
+      dslState.themeStack.push(next);
+      try {
+        callback(ctx);
+      } finally {
+        dslState.themeStack.pop();
+      }
+      return ctx;
+    },
 
     text(str: string | number) {
       dslState.activeContents.push(replaceEmojis(String(str)));
@@ -321,6 +389,7 @@ function createDSLContext(
         stack: [],
         layers: dslState.layers,
         layerOrder: dslState.layerOrder,
+        themeStack: dslState.themeStack,
       };
 
       const layerCtx = createDSLContext(
@@ -422,6 +491,10 @@ function createDirectBoxRenderer(
       boxOptions.height !== undefined &&
       boxOptions.height !== 'auto';
 
+    // 'blank' resolves to WCAG auto-contrast black/white vs the box bg.
+    const boxFg = resolveBoxFg(boxOptions);
+    const fgStyle: Partial<Cell> = boxFg !== undefined ? { fg: boxFg } : {};
+
     if (hasFixedSize) {
       const preArea = resolveBoxArea(base.area, boxOptions, 0, 0);
       const innerArea = resolveBoxInnerArea(preArea, boxOptions);
@@ -430,12 +503,12 @@ function createDirectBoxRenderer(
         rect(state, preArea.x, preArea.y, preArea.width, preArea.height, {
           char: ' ',
           bg: boxOptions.bgColor,
-          fg: boxOptions.color === 'blank' ? undefined : boxOptions.color,
+          fg: boxFg,
         });
       }
 
       const styledBox = layoutBox('', boxOptions, base.width, base.height);
-      layoutBlit(state, preArea.x, preArea.y, styledBox);
+      layoutBlit(state, preArea.x, preArea.y, styledBox, fgStyle);
 
       const subContents: string[] = [];
       dslState.stack.push(dslState.activeContents);
@@ -469,7 +542,7 @@ function createDirectBoxRenderer(
           innerArea.width,
           innerArea.height,
         );
-        layoutBlit(state, innerArea.x, innerArea.y, styledContent);
+        layoutBlit(state, innerArea.x, innerArea.y, styledContent, fgStyle);
       }
 
       return styledBox;
@@ -520,11 +593,11 @@ function createDirectBoxRenderer(
       rect(state, boxArea.x, boxArea.y, boxArea.width, boxArea.height, {
         char: ' ',
         bg: boxOptions.bgColor,
-        fg: boxOptions.color === 'blank' ? undefined : boxOptions.color,
+        fg: boxFg,
       });
     }
 
-    layoutBlit(state, boxArea.x, boxArea.y, styledBox);
+    layoutBlit(state, boxArea.x, boxArea.y, styledBox, fgStyle);
     return styledBox;
   };
 }
@@ -550,6 +623,7 @@ export function createScreenContext(state: ScreenState): BuntiContext {
     stack: [],
     layers: [],
     layerOrder: 0,
+    themeStack: [],
   };
 
   const base = createDSLContext(
@@ -575,12 +649,34 @@ export function createScreenContext(state: ScreenState): BuntiContext {
 
   const boxOverride = createDirectBoxRenderer(state, dslState, base);
 
-  return {
+  const screenCtx: BuntiContext = {
     ...base,
     box: boxOverride as any,
     flushFlow,
     requestStop: () => {
       state.requestStop?.();
     },
+    // Rebound so callbacks receive the screen context (direct box renderer),
+    // not the flow-mode base it was originally defined against.
+    themed(theme: Theme | ThemeInput, callback: (sub: BuntiContext) => void) {
+      const next = resolveTheme(theme, activeTheme(dslState, state));
+      dslState.themeStack.push(next);
+      try {
+        callback(screenCtx);
+      } finally {
+        dslState.themeStack.pop();
+      }
+      return screenCtx;
+    },
   };
+
+  // Spreading `base` snapshots getter values; re-declare theme as a live
+  // getter so themed() overrides are visible on the screen context too.
+  Object.defineProperty(screenCtx, 'theme', {
+    configurable: true,
+    enumerable: true,
+    get: () => activeTheme(dslState, state),
+  });
+
+  return screenCtx;
 }

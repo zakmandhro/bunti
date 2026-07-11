@@ -7,16 +7,40 @@ import * as icons from './icons';
 import * as layout from './layout';
 import * as render from './render';
 import * as state from './state';
+import * as theme from './theme';
 import * as utils from './utils';
 
-export { bg, createGradient, fade, fg, hexToRGB, PALETTE, rgb } from './colors';
+export type { ColorValue, Gradient } from './colors';
+export {
+  ansi256ToRGB,
+  bg,
+  contrastText,
+  createGradient,
+  fade,
+  fg,
+  hexToRGB,
+  isThemeColor,
+  PALETTE,
+  relativeLuminance,
+  resolveColor,
+  resolveColorToRGB,
+  rgb,
+  rgbTo16,
+  rgbTo256,
+  rgbToHex,
+} from './colors';
 // Full Nerd Fonts name union (type-only; the glyph map itself is only
 // loaded via the '@zakmandhro/bunti/icons-full' subpath).
 export type { IconName } from './data/nf-names';
 // Type Exports
-export type { TerminalCapabilities } from './detect';
+export type { ColorTier, TerminalCapabilities } from './detect';
 // Functional API Individual Exports
-export { detectCapabilities } from './detect';
+export {
+  colorTier,
+  detectCapabilities,
+  detectColorTier,
+  setColorTier,
+} from './detect';
 export type {
   BuntiContext,
   DSLBoxOptions,
@@ -85,6 +109,23 @@ export {
   createScreenState,
   resizeScreen,
 } from './state';
+export type {
+  Theme,
+  ThemeColor,
+  ThemeColorInput,
+  ThemeInput,
+  ThemeMode,
+  ThemeToken,
+} from './theme';
+export {
+  createTheme,
+  darkTheme,
+  isTheme,
+  lightTheme,
+  resolveTheme,
+  THEME_TOKENS,
+  themeColor,
+} from './theme';
 export {
   charWidth,
   indentBlock,
@@ -106,6 +147,7 @@ export const bunti = {
   ...dsl,
   ...easing,
   ...geometry,
+  ...theme,
 };
 
 export default bunti;

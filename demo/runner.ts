@@ -33,6 +33,7 @@ const internalDemos: Record<string, string> = {
   colors: './colors.ts',
   responsive: './responsive.ts',
   'color-isolation': './color-isolation.ts',
+  'theme-preview': './theme-preview.ts',
 };
 
 const registry = { ...publicDemos, ...internalDemos };

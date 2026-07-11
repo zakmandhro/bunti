@@ -10,6 +10,83 @@ export interface TerminalCapabilities {
 }
 
 /**
+ * Color capability tiers, from full 24-bit RGB down to no color at all.
+ * `resolveColor()` quantizes RGB values to the active tier automatically.
+ */
+export type ColorTier = 'truecolor' | '256' | '16' | 'mono';
+
+/** TERM_PROGRAM values known to render 24-bit color. */
+const TRUECOLOR_PROGRAMS = [
+  'Ghostty',
+  'WezTerm',
+  'iTerm.app',
+  'WarpTerminal',
+  'vscode',
+  'Hyper',
+  'Rio',
+  'Term7',
+];
+
+/**
+ * Pure tier detection from an environment map (defaults to process.env).
+ *
+ * Rules, in order:
+ * 1. NO_COLOR set to a non-empty value -> 'mono' (https://no-color.org spec).
+ * 2. TERM=dumb -> 'mono'.
+ * 3. COLORTERM=truecolor|24bit -> 'truecolor'.
+ * 4. Known truecolor TERM_PROGRAM, or a truecolor/direct TERM -> 'truecolor'.
+ * 5. TERM containing "256color" -> '256'.
+ * 6. Legacy TERM families (xterm, screen, vt100, linux, ...) -> '16'.
+ * 7. Otherwise -> 'truecolor' (optimistic: modern terminals rarely set hints).
+ */
+export function detectColorTier(
+  env: Record<string, string | undefined> = process.env,
+): ColorTier {
+  if (env.NO_COLOR !== undefined && env.NO_COLOR !== '') return 'mono';
+  const term = env.TERM || '';
+  if (term === 'dumb') return 'mono';
+
+  const colorterm = (env.COLORTERM || '').toLowerCase();
+  if (colorterm === 'truecolor' || colorterm === '24bit') return 'truecolor';
+  if (TRUECOLOR_PROGRAMS.includes(env.TERM_PROGRAM || '')) return 'truecolor';
+  if (
+    term.includes('truecolor') ||
+    term.includes('24bit') ||
+    term.includes('direct')
+  ) {
+    return 'truecolor';
+  }
+  if (term.includes('256color')) return '256';
+  if (/^(xterm|screen|tmux|vt(1|2)\d\d|rxvt|linux|ansi|cygwin)/.test(term)) {
+    return '16';
+  }
+  return 'truecolor';
+}
+
+let tierOverride: ColorTier | undefined;
+let detectedTier: ColorTier | undefined;
+
+/**
+ * Returns the active color tier. Detection runs lazily on first call and is
+ * cached; `setColorTier()` overrides it (used by ScreenOptions.colorTier and
+ * tests).
+ */
+export function colorTier(): ColorTier {
+  if (tierOverride !== undefined) return tierOverride;
+  if (detectedTier === undefined) detectedTier = detectColorTier();
+  return detectedTier;
+}
+
+/**
+ * Forces a color tier (pass undefined to clear the override and re-detect
+ * lazily on the next `colorTier()` call).
+ */
+export function setColorTier(tier?: ColorTier) {
+  tierOverride = tier;
+  if (tier === undefined) detectedTier = undefined;
+}
+
+/**
  * Detects terminal capabilities using environment variables and
  * modern protocol handshakes.
  */

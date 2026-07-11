@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Semantic theme system** (`src/theme.ts`): `Theme` with 15 semantic tokens
+  (`background`, `surface`, `surfaceRaised`, `foreground`, `muted`, `primary`, `onPrimary`,
+  `accent`, `border`, `focus`, `selection`, `success`, `warning`, `danger`, `info`) plus
+  optional named `gradients`. Every token is a `ThemeColor` — callable as an fg-styler
+  (`theme.primary('text')`) *and* usable as a color value anywhere (`bgColor`,
+  `borderColor`, `wallpaper`, gradient stops) via `.rgb`/`.hex`.
+- `createTheme(partial)` derives missing tokens from sparse specs (surface shifts,
+  WCAG auto-contrast foreground/onPrimary, mode from background luminance) — the
+  foundation for the VS Code theme converter. Built-in `darkTheme` + `lightTheme`.
+- Theme threading: `bunti.render(cb, { theme })` → `ctx.theme`; `ctx.setTheme()` swaps the
+  theme live and rerenders; `ctx.themed(partialOrTheme, cb)` overrides tokens for a subtree.
+- Color capability tiers: `colorTier()` detects `truecolor | 256 | 16 | mono` from
+  `COLORTERM`/`TERM`/`NO_COLOR` (NO_COLOR → mono per spec); `resolveColor()` quantizes RGB
+  to the active tier (nearest 256 cube/gray-ramp or base-16 match); `ScreenOptions.colorTier`
+  forces a tier for tests.
+- Exact xterm 256-color table (`ansi256ToRGB`, `rgbTo256`, `rgbTo16`) — fixes the silent
+  mid-gray fallback so `darken`/`lighten`/`fade`/gradients work on ANSI-256 codes.
+- `hexToRGB` now supports `#RGBA`/`#RRGGBBAA` (alpha composited over an optional base color).
+- WCAG helpers `relativeLuminance()` / `contrastText()`, and the documented `color: 'blank'`
+  box option now actually picks black/white text by background luminance.
+- Internal `theme-preview` demo (`bun demo theme-preview`): three token-driven boxes with
+  live dark/light switching on keys 1/2.
 - Vendored ANSI color engine (`src/vendor/colors.ts`, adapted from picocolors, MIT) with an
   exported `BuntiColor` interface describing the `ctx.color` surface. Bunti now has **zero
   runtime dependencies** — the `picocolors` peer dependency is gone.

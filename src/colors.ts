@@ -2,12 +2,36 @@
  * Bunti Semantic & Palette Color System
  */
 
+import { colorTier } from './detect';
 import type { RGB } from './state';
+import type { ThemeColor } from './theme';
 
 export interface Gradient {
   colors: RGB[];
   direction: 'vertical' | 'horizontal';
   steps: number;
+}
+
+/**
+ * Any value Bunti accepts where a color is expected.
+ */
+export type ColorValue = string | number | RGB | ThemeColor;
+
+/**
+ * Internal brand carried by ThemeColor instances so callable theme tokens can
+ * be distinguished from plain function-style border wrappers.
+ */
+export const THEME_COLOR: unique symbol = Symbol.for('bunti.theme-color');
+
+/**
+ * Returns true when the value is a ThemeColor (callable fg-styler carrying
+ * `.rgb` and `.hex`), detected via the internal brand symbol.
+ */
+export function isThemeColor(value: unknown): value is ThemeColor {
+  return (
+    typeof value === 'function' &&
+    (value as unknown as Record<symbol, unknown>)[THEME_COLOR] === true
+  );
 }
 
 export const PALETTE = {
@@ -89,52 +113,177 @@ const NAME_TO_ANSI: Record<string, string> = {
 export type PaletteColor = keyof typeof PALETTE;
 
 /**
- * Parses a hex color string (#RRGGBB or #RGB) to an RGB object.
+ * Parses a hex color string (#RGB, #RGBA, #RRGGBB, or #RRGGBBAA) to an RGB
+ * object. Alpha channels are composited over `base` (defaults to black), so
+ * `#ffffff80` over black resolves to mid-gray.
  */
-export function hexToRGB(hex: string): RGB {
-  const h = hex.replace('#', '');
-  if (h.length === 3) {
+export function hexToRGB(hex: string, base: RGB = { r: 0, g: 0, b: 0 }): RGB {
+  let h = hex.replace('#', '');
+  if (h.length === 3 || h.length === 4) {
+    let expanded = '';
+    for (const c of h) expanded += c + c;
+    h = expanded;
+  }
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  if (h.length === 8) {
+    const a = parseInt(h.substring(6, 8), 16) / 255;
     return {
-      r: parseInt(h[0]! + h[0]!, 16),
-      g: parseInt(h[1]! + h[1]!, 16),
-      b: parseInt(h[2]! + h[2]!, 16),
+      r: Math.round(r * a + base.r * (1 - a)),
+      g: Math.round(g * a + base.g * (1 - a)),
+      b: Math.round(b * a + base.b * (1 - a)),
     };
   }
-  return {
-    r: parseInt(h.substring(0, 2), 16),
-    g: parseInt(h.substring(2, 4), 16),
-    b: parseInt(h.substring(4, 6), 16),
-  };
+  return { r, g, b };
 }
 
 /**
- * Resolves a palette name, color code, or RGB object to a string for ANSI.
+ * Formats an RGB object as a #rrggbb hex string.
+ */
+export function rgbToHex(rgb: RGB): string {
+  const h = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`;
+}
+
+// Exact xterm 256-color model: 16 base colors + 6x6x6 cube + 24-step gray ramp.
+const CUBE_LEVELS = [0, 95, 135, 175, 215, 255] as const;
+
+const BASE16: readonly RGB[] = [
+  { r: 0, g: 0, b: 0 },
+  { r: 128, g: 0, b: 0 },
+  { r: 0, g: 128, b: 0 },
+  { r: 128, g: 128, b: 0 },
+  { r: 0, g: 0, b: 128 },
+  { r: 128, g: 0, b: 128 },
+  { r: 0, g: 128, b: 128 },
+  { r: 192, g: 192, b: 192 },
+  { r: 128, g: 128, b: 128 },
+  { r: 255, g: 0, b: 0 },
+  { r: 0, g: 255, b: 0 },
+  { r: 255, g: 255, b: 0 },
+  { r: 0, g: 0, b: 255 },
+  { r: 255, g: 0, b: 255 },
+  { r: 0, g: 255, b: 255 },
+  { r: 255, g: 255, b: 255 },
+];
+
+/**
+ * Converts an ANSI-256 code to its exact xterm RGB value
+ * (16 base + 6x6x6 color cube + 24-step gray ramp).
+ */
+export function ansi256ToRGB(code: number): RGB {
+  const c = Math.max(0, Math.min(255, Math.trunc(code)));
+  if (c < 16) return { ...BASE16[c]! };
+  if (c < 232) {
+    const n = c - 16;
+    return {
+      r: CUBE_LEVELS[Math.floor(n / 36)]!,
+      g: CUBE_LEVELS[Math.floor(n / 6) % 6]!,
+      b: CUBE_LEVELS[n % 6]!,
+    };
+  }
+  const v = 8 + (c - 232) * 10;
+  return { r: v, g: v, b: v };
+}
+
+function nearestCubeIndex(v: number): number {
+  return v < 48 ? 0 : v < 115 ? 1 : Math.min(5, Math.floor((v - 35) / 40));
+}
+
+/**
+ * Quantizes an RGB value to the nearest ANSI-256 code
+ * (best of the 6x6x6 cube vs the gray ramp).
+ */
+export function rgbTo256(rgb: RGB): number {
+  const ri = nearestCubeIndex(rgb.r);
+  const gi = nearestCubeIndex(rgb.g);
+  const bi = nearestCubeIndex(rgb.b);
+  const cr = CUBE_LEVELS[ri]!;
+  const cg = CUBE_LEVELS[gi]!;
+  const cb = CUBE_LEVELS[bi]!;
+  const cubeDist = (cr - rgb.r) ** 2 + (cg - rgb.g) ** 2 + (cb - rgb.b) ** 2;
+
+  const avg = (rgb.r + rgb.g + rgb.b) / 3;
+  const grayIdx = Math.max(0, Math.min(23, Math.round((avg - 8) / 10)));
+  const gv = 8 + grayIdx * 10;
+  const grayDist = (gv - rgb.r) ** 2 + (gv - rgb.g) ** 2 + (gv - rgb.b) ** 2;
+
+  return grayDist < cubeDist ? 232 + grayIdx : 16 + 36 * ri + 6 * gi + bi;
+}
+
+/**
+ * Quantizes an RGB value to the nearest of the 16 base ANSI colors.
+ */
+export function rgbTo16(rgb: RGB): number {
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < 16; i++) {
+    const c = BASE16[i]!;
+    const dist = (c.r - rgb.r) ** 2 + (c.g - rgb.g) ** 2 + (c.b - rgb.b) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  return best;
+}
+
+function quantizeRGB(
+  rgb: RGB,
+  tier: 'truecolor' | '256' | '16',
+): string | number {
+  if (tier === 'truecolor') return `2;${rgb.r};${rgb.g};${rgb.b}`;
+  return tier === '256' ? rgbTo256(rgb) : rgbTo16(rgb);
+}
+
+/**
+ * Resolves a palette name, color code, RGB object, or ThemeColor to an ANSI
+ * color code, quantized to the active color tier. Returns undefined on the
+ * 'mono' tier (NO_COLOR), which suppresses color output entirely.
  */
 export function resolveColor(
-  color: PaletteColor | string | number | RGB,
-): string | number {
-  if (typeof color === 'object' && 'r' in color) {
-    return `2;${color.r};${color.g};${color.b}`;
+  color: PaletteColor | ColorValue,
+): string | number | undefined {
+  const tier = colorTier();
+  if (tier === 'mono') return undefined;
+
+  const value: string | number | RGB = isThemeColor(color)
+    ? color.rgb
+    : (color as string | number | RGB);
+
+  if (typeof value === 'object' && 'r' in value) {
+    return quantizeRGB(value, tier);
   }
-  if (typeof color === 'string') {
-    if (color.startsWith('#')) {
-      const rgb = hexToRGB(color);
-      return `2;${rgb.r};${rgb.g};${rgb.b}`;
+  if (typeof value === 'string') {
+    if (value.startsWith('#')) {
+      return quantizeRGB(hexToRGB(value), tier);
     }
-    return (PALETTE as any)[color] || NAME_TO_ANSI[color] || color;
+    const resolved = (PALETTE as any)[value] || NAME_TO_ANSI[value] || value;
+    if (tier === '16') {
+      const code = Number.parseInt(String(resolved), 10);
+      if (Number.isFinite(code) && code > 15) {
+        return rgbTo16(ansi256ToRGB(code));
+      }
+    }
+    return resolved;
   }
-  return color;
+  if (tier === '16' && value > 15) return rgbTo16(ansi256ToRGB(value));
+  return value;
 }
 
 /**
  * Creates a multi-stop gradient (array of RGB objects) between multiple colors.
  */
 export function createGradient(
-  arg1: (string | number | RGB)[] | string | number | RGB,
-  arg2?: string | number | RGB | number,
+  arg1: ColorValue[] | ColorValue,
+  arg2?: ColorValue | number,
   arg3?: number,
 ): RGB[] {
-  let colors: (string | number | RGB)[] = [];
+  let colors: ColorValue[] = [];
   let steps = 5;
 
   if (Array.isArray(arg1)) {
@@ -176,27 +325,49 @@ export function createGradient(
 }
 
 /**
- * Helper to resolve any color type to an RGB object.
+ * Resolves any color value (name, hex, ANSI-256 code, RGB, ThemeColor) to an
+ * exact RGB object. Numeric codes use the exact xterm 256-color table.
  */
-function resolveColorToRGB(color: any): RGB {
-  if (typeof color === 'object' && 'r' in color) return color;
-  if (typeof color === 'string' && color.startsWith('#'))
-    return hexToRGB(color);
-
-  // 1. Check registry
-  if (typeof color === 'string' && RGB_REGISTRY[color])
-    return RGB_REGISTRY[color];
-
-  // 2. Check Palette
-  const paletteValue = (PALETTE as any)[color];
-  if (paletteValue) {
-    // If palette value is a name, look it up in registry
-    const registered = RGB_REGISTRY[color];
-    if (registered) return registered;
+export function resolveColorToRGB(color: unknown): RGB {
+  if (isThemeColor(color)) return color.rgb;
+  if (typeof color === 'object' && color !== null && 'r' in color) {
+    return color as RGB;
+  }
+  if (typeof color === 'number') return ansi256ToRGB(color);
+  if (typeof color === 'string') {
+    if (color.startsWith('#')) return hexToRGB(color);
+    if (RGB_REGISTRY[color]) return RGB_REGISTRY[color];
+    const paletteValue =
+      (PALETTE as Record<string, string>)[color] ?? NAME_TO_ANSI[color];
+    const code = Number.parseInt(paletteValue ?? color, 10);
+    if (Number.isFinite(code)) return ansi256ToRGB(code);
   }
 
   // Fallback
   return { r: 128, g: 128, b: 128 };
+}
+
+/**
+ * WCAG 2.x relative luminance (0 = black, 1 = white) of any color value.
+ */
+export function relativeLuminance(color: ColorValue): number {
+  const { r, g, b } = resolveColorToRGB(color);
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/**
+ * Picks pure black or pure white text for maximum WCAG contrast against the
+ * given background color. (White wins below luminance ~0.179, the point where
+ * both contrast ratios are equal.)
+ */
+export function contrastText(bgColor: ColorValue): RGB {
+  return relativeLuminance(bgColor) < 0.1791
+    ? { r: 255, g: 255, b: 255 }
+    : { r: 0, g: 0, b: 0 };
 }
 
 /**
@@ -215,11 +386,7 @@ export function adjustBrightness(color: any, amount: number): RGB {
 /**
  * Interpolates between two colors and returns an RGB value.
  */
-export function fade(
-  from: string | number | RGB,
-  to: string | number | RGB,
-  progress: number,
-): RGB {
+export function fade(from: ColorValue, to: ColorValue, progress: number): RGB {
   const start = resolveColorToRGB(from);
   const end = resolveColorToRGB(to);
   const t = Math.max(0, Math.min(1, progress));
@@ -255,20 +422,21 @@ export function rgb(r: number, g: number, b: number) {
 }
 
 /**
- * Returns an ANSI escape sequence for a color.
+ * Returns an ANSI escape sequence for a color. On the 'mono' tier the text is
+ * returned unstyled.
  */
 export function fg(color: any, text: string): string {
   const code = resolveColor(color);
+  if (code === undefined) return text;
   const codeStr = String(code);
-  const prefix =
-    typeof color === 'object' || codeStr.startsWith('2;') ? '38' : '38;5';
+  const prefix = codeStr.startsWith('2;') ? '38' : '38;5';
   return `\x1b[${prefix};${codeStr}m${text}\x1b[0m`;
 }
 
 export function bg(color: any, text: string): string {
   const code = resolveColor(color);
+  if (code === undefined) return text;
   const codeStr = String(code);
-  const prefix =
-    typeof color === 'object' || codeStr.startsWith('2;') ? '48' : '48;5';
+  const prefix = codeStr.startsWith('2;') ? '48' : '48;5';
   return `\x1b[${prefix};${codeStr}m${text}\x1b[0m`;
 }
