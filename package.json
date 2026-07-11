@@ -47,6 +47,9 @@
     "format": "biome format --write .",
     "demo": "bun demo/runner.ts",
     "example": "bun demo/runner.ts",
+    "record": "vhs tapes/2048.tape",
+    "record:animation": "vhs tapes/animation.tape",
+    "record:all": "vhs tapes/2048.tape && vhs tapes/animation.tape",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
