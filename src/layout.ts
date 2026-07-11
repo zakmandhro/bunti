@@ -30,6 +30,10 @@ export function setCell(
       target!.fg = undefined;
       target!.fgCode = undefined;
       target!.bold = false;
+      target!.italic = false;
+      target!.underline = false;
+      target!.dim = false;
+      target!.strike = false;
     }
     if (cell.fg !== undefined) {
       target!.fg = cell.fg;
@@ -40,6 +44,10 @@ export function setCell(
       target!.bgCode = resolveColor(cell.bg);
     }
     if (cell.bold !== undefined) target!.bold = cell.bold;
+    if (cell.italic !== undefined) target!.italic = cell.italic;
+    if (cell.underline !== undefined) target!.underline = cell.underline;
+    if (cell.dim !== undefined) target!.dim = cell.dim;
+    if (cell.strike !== undefined) target!.strike = cell.strike;
     target!.skip = cell.skip ?? false;
 
     for (let dx = 1; dx < displayWidth; dx++) {
@@ -52,6 +60,10 @@ export function setCell(
       skip.fgCode = target!.fgCode;
       skip.bgCode = target!.bgCode;
       skip.bold = target!.bold;
+      skip.italic = target!.italic;
+      skip.underline = target!.underline;
+      skip.dim = target!.dim;
+      skip.strike = target!.strike;
       skip.skip = true;
     }
   }
@@ -129,6 +141,10 @@ export function blit(
     let x = startX;
     let currentFg: any, currentBg: any;
     let currentBold = false;
+    let currentItalic = false;
+    let currentUnderline = false;
+    let currentDim = false;
+    let currentStrike = false;
     const regex = /\x1B\[([0-9;]*)m|([^\x1B]+)/g;
     let match: RegExpExecArray | null = null;
     while ((match = regex.exec(line!)) !== null) {
@@ -140,8 +156,22 @@ export function blit(
             currentFg = undefined;
             currentBg = undefined;
             currentBold = false;
+            currentItalic = false;
+            currentUnderline = false;
+            currentDim = false;
+            currentStrike = false;
           } else if (code === 1) currentBold = true;
-          else if (code === 22) currentBold = false;
+          else if (code === 2) currentDim = true;
+          else if (code === 3) currentItalic = true;
+          else if (code === 4) currentUnderline = true;
+          else if (code === 9) currentStrike = true;
+          else if (code === 22) {
+            // SGR 22 resets intensity: clears BOTH bold and dim.
+            currentBold = false;
+            currentDim = false;
+          } else if (code === 23) currentItalic = false;
+          else if (code === 24) currentUnderline = false;
+          else if (code === 29) currentStrike = false;
           else if (code >= 30 && code <= 37) currentFg = (code - 30).toString();
           else if (code >= 40 && code <= 47) currentBg = (code - 40).toString();
           else if (code >= 90 && code <= 97)
@@ -192,6 +222,10 @@ export function blit(
           else if (style.bg !== undefined) cell.bg = style.bg;
 
           if (currentBold) cell.bold = true;
+          if (currentItalic) cell.italic = true;
+          if (currentUnderline) cell.underline = true;
+          if (currentDim) cell.dim = true;
+          if (currentStrike) cell.strike = true;
 
           setCell(state, x, startY + row, cell);
           x += w;

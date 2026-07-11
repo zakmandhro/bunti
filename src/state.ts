@@ -31,6 +31,11 @@ export interface Cell {
   bgCode?: string | number;
   skip?: boolean;
   raw?: boolean; // Bypasses automatic emoji-to-NF replacement
+  // --- SGR text attributes ---
+  italic?: boolean;
+  underline?: boolean;
+  dim?: boolean;
+  strike?: boolean;
 }
 
 export interface Hitbox {
@@ -82,9 +87,19 @@ export interface ScreenState {
   componentState: Map<string, any>;
   hookCounter?: number;
   startTime: number;
+  /** Timestamp of the previous render tick (loop() owns this). */
+  lastFrameAt?: number;
+  /** Render tick counter (loop() owns this; exposed as ctx.frame). */
+  frameCount?: number;
+  /** Ms since the previous tick, clamped to 100 (exposed as ctx.dt). */
+  dt?: number;
   lastFg?: any;
   lastBg?: any;
   lastBold?: boolean;
+  lastItalic?: boolean;
+  lastUnderline?: boolean;
+  lastDim?: boolean;
+  lastStrike?: boolean;
   needsFullRedraw?: boolean;
   id?: string;
   options: ScreenOptions;
@@ -220,6 +235,10 @@ export function resizeScreen(state: ScreenState) {
   state.lastFg = undefined;
   state.lastBg = undefined;
   state.lastBold = false;
+  state.lastItalic = false;
+  state.lastUnderline = false;
+  state.lastDim = false;
+  state.lastStrike = false;
   state.needsFullRedraw = true;
   state.isResizing = true;
   state.resizeSettlesAt = Date.now() + (state.options.resizeDebounceMs ?? 1);
@@ -237,6 +256,10 @@ export function clearBackBuffer(state: ScreenState) {
     cell.fgCode = undefined;
     cell.bgCode = undefined;
     cell.bold = false;
+    cell.italic = false;
+    cell.underline = false;
+    cell.dim = false;
+    cell.strike = false;
     cell.skip = false;
   }
 }

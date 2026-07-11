@@ -129,15 +129,38 @@ export function clearTerminalForResize(state: ScreenState) {
   state.needsFullRedraw = true;
 }
 
+/** Copies a back-buffer cell's fields onto its front-buffer counterpart. */
+function syncFrontCell(
+  front: NonNullable<ScreenState['frontBuffer'][number]>,
+  cell: NonNullable<ScreenState['backBuffer'][number]>,
+) {
+  front.char = cell.char;
+  front.fg = cell.fg;
+  front.bg = cell.bg;
+  front.fgCode = cell.fgCode;
+  front.bgCode = cell.bgCode;
+  front.bold = cell.bold;
+  front.italic = cell.italic;
+  front.underline = cell.underline;
+  front.dim = cell.dim;
+  front.strike = cell.strike;
+  front.skip = cell.skip;
+}
+
 /**
- * Diffs back and front buffers surgically.
+ * Diffs back and front buffers and assembles the ANSI update string.
+ * Mutates the front buffer and the state's SGR trackers exactly like a real
+ * flush, but performs no I/O — flush() writes the result, tests assert on it.
  */
-export function flush(state: ScreenState) {
-  const writer = Bun.stdout.writer();
+export function renderFrame(state: ScreenState): string {
   let renderString = state.needsFullRedraw ? ANSI.clear + ANSI.home : '';
   let lastFg: any = state.lastFg;
   let lastBg: any = state.lastBg;
   let lastBold: boolean = state.lastBold ?? false;
+  let lastItalic: boolean = state.lastItalic ?? false;
+  let lastUnderline: boolean = state.lastUnderline ?? false;
+  let lastDim: boolean = state.lastDim ?? false;
+  let lastStrike: boolean = state.lastStrike ?? false;
 
   const width = state.width;
   const height = state.height;
@@ -156,6 +179,10 @@ export function flush(state: ScreenState) {
         b!.fg !== f!.fg ||
         b!.bg !== f!.bg ||
         !!b!.bold !== !!f!.bold ||
+        !!b!.italic !== !!f!.italic ||
+        !!b!.underline !== !!f!.underline ||
+        !!b!.dim !== !!f!.dim ||
+        !!b!.strike !== !!f!.strike ||
         !!b!.skip !== !!f!.skip
       ) {
         if (firstDirty === -1) firstDirty = x;
@@ -171,43 +198,58 @@ export function flush(state: ScreenState) {
         const cell = state.backBuffer[idx];
         const front = state.frontBuffer[idx];
 
-        if (cell!.skip) {
-          front!.char = cell!.char;
-          front!.fg = cell!.fg;
-          front!.bg = cell!.bg;
-          front!.fgCode = cell!.fgCode;
-          front!.bgCode = cell!.bgCode;
-          front!.bold = cell!.bold;
-          front!.skip = cell!.skip;
-          continue;
-        }
-
-        if (cell!.char === '') {
-          front!.char = '';
-          front!.fg = cell!.fg;
-          front!.bg = cell!.bg;
-          front!.fgCode = cell!.fgCode;
-          front!.bgCode = cell!.bgCode;
-          front!.bold = cell!.bold;
-          front!.skip = cell!.skip;
+        if (cell!.skip || cell!.char === '') {
+          syncFrontCell(front!, cell!);
           continue;
         }
 
         const fg = cell!.fgCode;
         const bg = cell!.bgCode;
         const bold = !!cell!.bold;
+        const dim = !!cell!.dim;
+        const italic = !!cell!.italic;
+        const underline = !!cell!.underline;
+        const strike = !!cell!.strike;
 
-        if (bold !== lastBold) {
-          renderString += bold ? '\x1b[1m' : '\x1b[22m';
+        if (bold !== lastBold || dim !== lastDim) {
+          // SGR 22 clears BOTH bold and dim, so they are emitted jointly:
+          // if either must turn off, emit 22 and re-assert the survivor.
+          if ((lastBold && !bold) || (lastDim && !dim)) {
+            renderString += '\x1b[22m';
+            if (bold) renderString += '\x1b[1m';
+            if (dim) renderString += '\x1b[2m';
+          } else {
+            if (bold && !lastBold) renderString += '\x1b[1m';
+            if (dim && !lastDim) renderString += '\x1b[2m';
+          }
           lastBold = bold;
+          lastDim = dim;
+        }
+
+        if (italic !== lastItalic) {
+          renderString += italic ? '\x1b[3m' : '\x1b[23m';
+          lastItalic = italic;
+        }
+
+        if (underline !== lastUnderline) {
+          renderString += underline ? '\x1b[4m' : '\x1b[24m';
+          lastUnderline = underline;
+        }
+
+        if (strike !== lastStrike) {
+          renderString += strike ? '\x1b[9m' : '\x1b[29m';
+          lastStrike = strike;
         }
 
         if (fg !== lastFg || bg !== lastBg) {
           if (fg === undefined && bg === undefined) {
             renderString += '\x1b[0m';
-            if (lastBold) {
-              renderString += '\x1b[1m';
-            }
+            // SGR 0 wipes every attribute; re-assert the active ones.
+            if (lastBold) renderString += '\x1b[1m';
+            if (lastDim) renderString += '\x1b[2m';
+            if (lastItalic) renderString += '\x1b[3m';
+            if (lastUnderline) renderString += '\x1b[4m';
+            if (lastStrike) renderString += '\x1b[9m';
           } else {
             // Foreground
             if (fg !== lastFg) {
@@ -241,18 +283,31 @@ export function flush(state: ScreenState) {
         }
 
         renderString += cell!.char;
-        front!.char = cell!.char;
-        front!.fg = cell!.fg;
-        front!.bg = cell!.bg;
-        front!.fgCode = cell!.fgCode;
-        front!.bgCode = cell!.bgCode;
-        front!.bold = cell!.bold;
-        front!.skip = cell!.skip;
+        syncFrontCell(front!, cell!);
       }
     }
   }
 
+  state.needsFullRedraw = false;
+  state.lastFg = lastFg;
+  state.lastBg = lastBg;
+  state.lastBold = lastBold;
+  state.lastItalic = lastItalic;
+  state.lastUnderline = lastUnderline;
+  state.lastDim = lastDim;
+  state.lastStrike = lastStrike;
+
+  return renderString;
+}
+
+/**
+ * Diffs back and front buffers surgically and writes the update to stdout.
+ */
+export function flush(state: ScreenState) {
+  const renderString = renderFrame(state);
+
   if (renderString) {
+    const writer = Bun.stdout.writer();
     // Synchronized-output wrap (mode 2026) is gated on the detected profile:
     // emitted unless the terminal was positively identified as lacking it
     // (state.syncOutput === false). Absent/unknown profiles keep the wrap.
@@ -265,11 +320,6 @@ export function flush(state: ScreenState) {
     );
     writer.flush();
   }
-
-  state.needsFullRedraw = false;
-  state.lastFg = lastFg;
-  state.lastBg = lastBg;
-  state.lastBold = lastBold;
 }
 
 /**
@@ -377,6 +427,15 @@ export function loop(
           state.isResizing = false;
           if (stopped || state.isStopped) return;
           drainFrameInput(state);
+          // Frame timing: loop() owns the clock. dt is clamped so a
+          // suspended process doesn't produce a giant catch-up step.
+          const now = Date.now();
+          state.dt =
+            state.lastFrameAt === undefined
+              ? 0
+              : Math.min(100, now - state.lastFrameAt);
+          state.lastFrameAt = now;
+          state.frameCount = (state.frameCount ?? 0) + 1;
           renderCallback(state);
           if (stopped || state.isStopped) return;
           flush(state);
