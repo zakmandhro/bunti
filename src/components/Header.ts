@@ -6,20 +6,24 @@ export interface HeaderProps {
   title: string;
   leftIcon?: string;
   rightLabel?: string;
+  /**
+   * @deprecated Colors now derive from `ctx.theme` tokens; wrap the Header
+   * in `ctx.themed(...)` to restyle it. This prop is ignored.
+   */
   theme?: 'light' | 'dark';
 }
 
 /**
  * Enterprise Tactical Header
- * A full-width, high-signal branding bar.
+ * A full-width, high-signal branding bar. Colors derive from ctx.theme:
+ * bar `theme.surfaceRaised`, title `theme.foreground`, brand icon
+ * `theme.accent`, right label `theme.muted`.
  */
 export function Header(ctx: BuntiContext, props: HeaderProps) {
-  const { color, joinHorizontal } = ctx;
+  const { color, joinHorizontal, theme } = ctx;
 
-  // Resolve Theme Colors
-  const isLight = props.theme !== 'dark';
-  const bg = isLight ? 'white' : 'midnight';
-  const fg = isLight ? 236 : 'silver';
+  const bg = theme.surfaceRaised;
+  const fg = theme.foreground;
 
   // Master Background Box
   Box(
@@ -39,7 +43,9 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
       });
 
       // 1. Left: Branding
-      const leftStr = props.leftIcon ? color.fg('plasma', props.leftIcon) : '';
+      const leftStr = props.leftIcon
+        ? color.fg(theme.accent, props.leftIcon)
+        : '';
       const leftNode = engineBox(leftStr, {
         width: leftArea?.width ?? 0,
         align: 'left',
@@ -57,7 +63,9 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
       });
 
       // 3. Right: Telemetry / Exit
-      const rightStr = props.rightLabel ? color.dim(props.rightLabel) : '';
+      const rightStr = props.rightLabel
+        ? color.fg(theme.muted, props.rightLabel)
+        : '';
       const rightNode = engineBox(rightStr, {
         width: rightArea?.width ?? 0,
         align: 'right',

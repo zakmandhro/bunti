@@ -64,7 +64,7 @@ demo('AUTHENTICATION', (ctx, bounds) => {
         width: card.width,
         height: card.height,
         title: 'Welcome back',
-        theme: 'accent',
+        variant: 'accent',
         bgColor: { r: 250, g: 249, b: 246 },
       },
       (sub) => {
@@ -104,7 +104,7 @@ demo('AUTHENTICATION', (ctx, bounds) => {
       width: form.width,
       height: form.height,
       border: 'rounded',
-      theme: error ? 'danger' : 'accent',
+      variant: error ? 'danger' : 'accent',
       bgColor: { r: 250, g: 249, b: 246 },
     },
     (sub) => {

@@ -267,13 +267,21 @@ function createDSLContext(
           setSelectedIndex(Math.min(items.length - 1, selectedIndex + 1));
       }
 
+      // Theme-token fallbacks: focused rows highlight with theme.selection /
+      // theme.focus, unfocused lists mute their selected row via theme.muted.
+      // Explicit options always win.
+      const theme = activeTheme(dslState, state);
       const content = layoutList(
         items,
         {
           ...options,
           focusedIndex: selectedIndex,
-          focusStyle: isFocused ? options.focusStyle : (s) => colors.dim(s),
-          selectedBg: isFocused ? options.selectedBg : undefined,
+          focusStyle: isFocused
+            ? (options.focusStyle ?? ((s) => theme.focus(s)))
+            : (s) => theme.muted(s),
+          selectedBg: isFocused
+            ? (options.selectedBg ?? theme.selection)
+            : undefined,
         },
         availableW,
       );

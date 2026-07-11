@@ -1,6 +1,10 @@
-import { adjustBrightness } from '../colors';
+import { adjustBrightness, contrastText } from '../colors';
 import type { BuntiContext, DSLBoxOptions } from '../dsl';
+import type { RGB } from '../state';
+import type { ThemeColor } from '../theme';
 import { indentBlock } from '../utils';
+
+type ButtonColor = string | number | RGB | ThemeColor | undefined;
 
 export interface ButtonProps extends DSLBoxOptions {
   id: string;
@@ -44,32 +48,38 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const isHovered = interaction.hovered;
   const isActive = isSelected || isHovered;
 
-  // 3. Resolve Theme & State
-  let bg: any = 254; // Near white
-  let fg: any = 'black';
-  let borderCol: any = { r: 217, g: 216, b: 213 };
+  // 3. Resolve Theme & State — every color derives from ctx.theme tokens so
+  // a live theme swap restyles the button. Hover/pressed shifts are
+  // mode-aware: brighten on dark themes, darken on light themes.
+  const theme = ctx.theme;
+  const shiftDir = theme.mode === 'dark' ? 1 : -1;
+  const hover = (base: ButtonColor) => adjustBrightness(base, 15 * shiftDir);
+  const press = (base: ButtonColor) => adjustBrightness(base, 30 * shiftDir);
+
+  let bg: ButtonColor = theme.surface;
+  let fg: ButtonColor = theme.foreground;
+  let borderCol: ButtonColor = theme.border;
 
   if (props.variant === 'primary') {
-    bg = isActive ? 'sky' : 'bunti-blue';
-    fg = 'white';
+    bg = isActive ? hover(theme.primary) : theme.primary;
+    if (interaction.pressed) bg = press(theme.primary);
+    fg = theme.onPrimary;
     borderCol = bg;
   } else if (props.variant === 'danger') {
-    bg = 'error';
-    borderCol = adjustBrightness('error', 20);
-    fg = 'white';
+    bg = isActive ? hover(theme.danger) : theme.danger;
+    if (interaction.pressed) bg = press(theme.danger);
+    fg = contrastText(bg);
+    borderCol = bg;
   } else if (isGhost) {
     bg = undefined;
-    fg = isActive ? 'white' : 'silver';
-    borderCol = 'ash';
+    fg = isActive ? hover(theme.foreground) : theme.foreground;
+  } else if (isActive) {
+    // Default variant: focus ring + mode-aware surface shift.
+    borderCol = theme.focus;
+    bg = interaction.pressed ? press(theme.surface) : hover(theme.surface);
   }
-
-  if (isActive) {
-    if (props.variant !== 'primary' && !isGhost) {
-      borderCol = 'black';
-      if (interaction.pressed) {
-        bg = adjustBrightness(bg, -5); // Pressed state
-      }
-    }
+  if (isSelected && props.variant !== 'primary' && !isGhost) {
+    borderCol = theme.focus; // Keyboard focus ring
   }
 
   // 4. Handle Interaction — clicks fire once, on mouse release at the
@@ -95,7 +105,7 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
       height: area.height,
       border: filled || isGhost ? 'none' : props.border || 'rounded',
       borderColor: borderCol,
-      bgColor: filled && !isPill ? bg : undefined,
+      bgColor: isPill || isGhost ? undefined : bg,
       align: props.align || 'center',
       valign: props.valign || 'middle',
       padding: props.padding || [0, isGhost ? 0 : 1],

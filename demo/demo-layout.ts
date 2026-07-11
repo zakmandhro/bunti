@@ -28,7 +28,6 @@ export interface DemoOptions extends ScreenOptions {
   wallpaper?: Parameters<BuntiContext['wallpaper']>[0];
   exitHint?: string;
   padding?: number | [x: number, y: number];
-  headerTheme?: 'light' | 'dark';
 }
 
 const DEFAULT_DEMO_OPTIONS = {
@@ -44,7 +43,6 @@ const DEFAULT_DEMO_OPTIONS = {
   wallpaper: '#0a0a0b',
   exitHint: 'q',
   padding: 0,
-  headerTheme: 'light',
 } satisfies DemoOptions;
 
 function viewportPadding(padding: DemoOptions['padding']) {
@@ -65,7 +63,6 @@ export async function demo(
     wallpaper: wallpaperColor,
     exitHint,
     padding,
-    headerTheme,
     ...screenOptions
   } = config;
 
@@ -80,7 +77,6 @@ export async function demo(
         title: title.toUpperCase(),
         leftIcon: icon('bunti'),
         rightLabel: exitHint,
-        theme: headerTheme,
       });
     }
 

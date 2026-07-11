@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { Box, Button, Input } from '../src/components';
+import { Box, Button, Card, Input } from '../src/components';
 import { setColorTier } from '../src/detect';
 import { createScreenContext } from '../src/dsl';
 import {
@@ -20,6 +20,7 @@ import {
   syncScreenSize,
 } from '../src/render';
 import { createScreenState, resizeScreen } from '../src/state';
+import { darkTheme, lightTheme } from '../src/theme';
 import { colors as pc } from '../src/vendor/colors';
 
 // Pin the color tier so expectations don't depend on the host terminal env.
@@ -609,8 +610,12 @@ describe('Bunti Core Engine', () => {
       (cell) => cell.char === 'A',
     )?.fgCode;
 
-    expect(String(placeholderFg)).toBe('240');
-    expect(String(valueFg)).toBe('255');
+    // Input colors now derive from theme tokens (placeholder -> muted,
+    // value -> foreground) instead of the old hardcoded ash/white codes.
+    const muted = darkTheme.muted.rgb;
+    const fgTok = darkTheme.foreground.rgb;
+    expect(String(placeholderFg)).toBe(`2;${muted.r};${muted.g};${muted.b}`);
+    expect(String(valueFg)).toBe(`2;${fgTok.r};${fgTok.g};${fgTok.b}`);
   });
 
   test('Button invokes onClick from keyboard activation and mouse clicks', () => {
@@ -789,6 +794,91 @@ describe('Bunti Core Engine', () => {
     });
 
     expect(renderedRows.size).toBe(1);
+  });
+
+  test('Button primary derives pill colors from theme tokens', () => {
+    const state = createScreenState();
+    state.width = 80;
+    state.focusedId = 'other'; // keep the button idle (no auto-focus)
+
+    const ctx = createScreenContext(state);
+    Button(ctx, { id: 'deploy', label: 'Deploy', variant: 'primary' });
+
+    const labelCell = state.backBuffer.find((cell) => cell.char === 'D');
+    expect(labelCell?.bg).toEqual(darkTheme.primary.rgb);
+    expect(labelCell?.fg).toEqual(darkTheme.onPrimary.rgb);
+  });
+
+  test('Button hover shift is mode-aware (brighter on dark, darker on light)', () => {
+    const luminance = (rgb: { r: number; g: number; b: number }) =>
+      0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+
+    const hoverBg = (theme: typeof darkTheme) => {
+      const state = createScreenState({ theme });
+      state.width = 80;
+      state.focusedId = 'other';
+      state.mouseX = 34;
+      state.mouseY = 0;
+      const ctx = createScreenContext(state);
+      Button(ctx, { id: 'deploy', label: 'Deploy', variant: 'primary' });
+      const cell = state.backBuffer.find((c) => c.char === 'D');
+      return cell?.bg as { r: number; g: number; b: number };
+    };
+
+    expect(luminance(hoverBg(darkTheme))).toBeGreaterThan(
+      luminance(darkTheme.primary.rgb),
+    );
+    expect(luminance(hoverBg(lightTheme))).toBeLessThan(
+      luminance(lightTheme.primary.rgb),
+    );
+  });
+
+  test('focused list defaults its selected row bg to theme.selection', () => {
+    const state = createScreenState();
+    state.width = 40;
+    state.height = 6;
+
+    const ctx = createScreenContext(state);
+    ctx.list('mylist', ['alpha', 'beta'], { width: 20 });
+    ctx.flushFlow();
+
+    const selected = state.backBuffer.find((cell) => cell.char === 'l'); // a[l]pha
+    expect(selected?.bg).toEqual(darkTheme.selection.rgb);
+    const unselected = state.backBuffer.find((cell) => cell.char === 'b');
+    expect(unselected?.bg).toBeUndefined();
+  });
+
+  test("Card 'variant' maps to theme tokens and 'theme' stays a deprecated alias", () => {
+    const renderCard = (props: Record<string, unknown>) => {
+      const state = createScreenState();
+      state.width = 40;
+      state.height = 8;
+      const ctx = createScreenContext(state);
+      Card(ctx, { title: 'Status', width: 30, ...props }, () => {});
+      ctx.flushFlow();
+      return state;
+    };
+
+    const viaVariant = renderCard({ variant: 'danger' });
+    const titleCell = viaVariant.backBuffer.find((cell) => cell.char === 'S');
+    expect(titleCell?.fg).toEqual(darkTheme.danger.rgb);
+
+    const viaAlias = renderCard({ theme: 'danger' });
+    const aliasTitle = viaAlias.backBuffer.find((cell) => cell.char === 'S');
+    expect(aliasTitle?.fg).toEqual(darkTheme.danger.rgb);
+  });
+
+  test('ctx.terminal exposes the detected TerminalProfile', () => {
+    const state = createScreenState();
+    const ctx = createScreenContext(state);
+
+    expect(ctx.terminal).toBe(state.terminal!);
+    expect(typeof ctx.terminal.app).toBe('string');
+    expect(typeof ctx.terminal.truecolor).toBe('boolean');
+    expect(typeof ctx.terminal.syncOutput).toBe('boolean');
+    expect(['yes', 'no', 'assumed-yes', 'assumed-no']).toContain(
+      ctx.terminal.nerdFont,
+    );
   });
 
   test('box respects maxWidth and truncates content', () => {

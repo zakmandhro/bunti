@@ -25,6 +25,7 @@ export function Modal(
   props: ModalProps,
   callback: (sub: BuntiContext) => void,
 ) {
+  const theme = ctx.theme;
   const parentW = ctx.width;
   const parentH = ctx.height;
   const modalW = props.width;
@@ -35,10 +36,11 @@ export function Modal(
   const x = ctx.offsetX + localX;
   const y = ctx.offsetY + localY;
 
-  // 1. Draw solid background rect for the modal
+  // 1. Draw solid background rect for the modal. Defaults to the raised
+  // surface token so the dialog reads as floating above the screen.
   ctx.rect(x, y, modalW, modalH, {
     char: ' ',
-    bg: props.bgColor || { r: 0, g: 0, b: 0 },
+    bg: props.bgColor || theme.surfaceRaised,
   });
 
   // 2. Draw the Box enclosing the modal content
@@ -49,7 +51,9 @@ export function Modal(
       width: modalW,
       height: modalH,
       border: props.border ?? 'double',
-      borderColor: props.borderColor,
+      borderColor: props.borderColor ?? theme.border,
+      // Content fallback fg: explicit ANSI styling in content still wins.
+      color: theme.foreground,
       align: props.align ?? 'center',
       valign: props.valign,
       padding: props.padding,

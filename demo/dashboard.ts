@@ -83,8 +83,7 @@ bunti.render(
             `${color.green('✔')} ${p.name.padEnd(10)} ${color.fg(muted, p.branch.padEnd(15))} ${p.status}`,
         );
         sub.list('planets', planetLines, {
-          width: '100%',
-          selectedBg: 236,
+          width: '100%', // selectedBg defaults to theme.selection
         });
       },
     );
@@ -110,8 +109,7 @@ bunti.render(
           return `${number}  ${title} ${labels}`;
         });
         sub.list('issues', issueLines, {
-          width: '100%',
-          selectedBg: 236,
+          width: '100%', // selectedBg defaults to theme.selection
         });
       },
     );

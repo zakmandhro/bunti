@@ -78,12 +78,17 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     }
   }
 
-  // 5. Resolve Theme
-  const neutralGray = { r: 217, g: 216, b: 213 };
-  const borderCol = isSelected ? 'bunti-blue' : isHovered ? 'ash' : neutralGray;
-  const labelColor = 'silver';
-  const placeholderColor = 'ash';
-  const textColor = 'white';
+  // 5. Resolve Theme — all colors come from ctx.theme tokens so the field
+  // restyles on live theme swaps.
+  const theme = ctx.theme;
+  const borderCol = isSelected
+    ? theme.focus
+    : isHovered
+      ? theme.muted
+      : theme.border;
+  const labelColor = theme.foreground;
+  const placeholderColor = theme.muted;
+  const textColor = theme.foreground;
 
   let fieldValue = '';
   if (value.length === 0 && props.placeholder) {
@@ -94,7 +99,7 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     fieldValue = color.fg(textColor, displayValue);
   }
   if (isSelected) {
-    fieldValue += color.fg('silver', '█');
+    fieldValue += color.fg(theme.foreground, '█');
   }
 
   const field = box(
@@ -105,6 +110,7 @@ export function Input(ctx: BuntiContext, props: InputProps) {
       height: area.height,
       border: 'rounded',
       borderColor: borderCol,
+      bgColor: theme.surface,
       padding: [0, 1],
       align: 'left',
       valign: 'middle',
