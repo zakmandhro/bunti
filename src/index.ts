@@ -56,7 +56,9 @@ export type {
   TypewriterOptions,
   TypewriterState,
 } from './dsl';
-export { KEYS, render } from './dsl';
+/** createScreenContext is the headless-testing entry point: pair it with
+ *  createScreenState + renderFrame to assert on frames without a TTY. */
+export { createScreenContext, KEYS, render } from './dsl';
 export {
   clamp01,
   easeInCubic,

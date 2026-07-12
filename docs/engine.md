@@ -1,81 +1,65 @@
-# ⚙️ The Core Engine & Lifecycle
+# Engine & Lifecycle
 
-Bunti's rendering lifecycle is managed by a high-performance, double-buffered diffing loop. This document covers the configuration options for initializing the engine, as well as the low-level utilities exposed for text manipulation and icons.
+`bunti.render(callback, options)` starts the loop: each tick clears the back buffer, runs your callback, composites layers, and diffs against the front buffer — only dirty spans reach the terminal, wrapped in synchronized-output markers on terminals that support them.
 
-## `bunti.render(callback, options)`
-
-To start a Bunti application, you invoke the `render` function. It takes your UI declaration (the DSL closure) and a set of structural options.
-
-```typescript
-import { bunti } from '@zakmandhro/bunti';
-
-bunti.render((ctx) => {
-  // Your layout here
-}, {
-  fps: 60,
-  alternateBuffer: true,
-  hideCursor: true,
-  keyboard: true,
-  mouse: true
-});
-```
-
-### Render Options (`ScreenOptions`)
+## Render options
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **`fps`** | `number` | `60` | The target frames per second for the event loop. If focus is lost, Bunti automatically throttles to `5` FPS to save CPU. |
-| **`alternateBuffer`** | `boolean` | `false` | When true, switches to the terminal's alternate screen buffer. This ensures that when the app exits, the user's previous terminal history is restored perfectly (like `vim` or `nano`). |
-| **`hideCursor`** | `boolean` | `false` | Sends ANSI sequences to hide the blinking TTY cursor during operation. |
-| **`keyboard`** | `boolean` | `false` | Enables `raw` mode on `stdin` to capture individual keystrokes (required for `Input`, `Button`, or `list` interaction). |
-| **`mouse`** | `boolean` | `false` | Enables SGR Mouse tracking for click and hover events. |
-| **`focus`** | `boolean` | `false` | Requests the terminal to report Focus In/Out events. |
+| `fps` | `number` | `60` | Target frame rate (auto-throttles to 5 when the terminal loses focus) |
+| `keyboard` | `boolean` | `false` | Raw-mode key capture (required for `lastKey`/`keys`/Input) |
+| `mouse` | `boolean` | `false` | SGR mouse tracking (hitboxes, hover, clicks, pointer cursor) |
+| `focus` | `boolean` | `false` | Terminal focus-in/out tracking |
+| `alternateBuffer` | `boolean` | `false` | vim-style alternate screen; prior terminal content restored on exit |
+| `hideCursor` | `boolean` | `false` | Hide the TTY cursor while running |
+| `theme` | `Theme` | `darkTheme` | Semantic theme exposed as `ctx.theme` |
+| `defaultFg` | color | — | Fallback foreground for plain text |
+| `colorTier` | `'truecolor' \| '256' \| '16' \| 'mono'` | detected | Force a color depth (useful in tests) |
+| `nerdFont` | `boolean` | detected | Force the icon tier |
+| `once` | `boolean` | `false` | Render a single frame, then resolve (no loop, no `process.exit`) |
+| `onError` | `(err) => void \| 'continue'` | — | Frame-error boundary; return `'continue'` to keep the loop alive |
+| `escTimeoutMs` / `holdWindowMs` | `number` | `30` / `150` | Input tokenizer tuning |
+| `resizeDebounceMs` | `number` | `1` | Resize settle window |
 
----
+## Crash safety
 
-## 🔤 Utilities & Text Mathematics
+A crashing app must never leave the terminal broken. Bunti guarantees restoration (raw mode off, mouse off, alternate buffer exited, cursor shown) on **every** exit path:
 
-Building a TUI requires strict mathematical understanding of string widths, as ANSI color codes and emojis disrupt standard `string.length` calculations. Bunti exposes its internal utilities for you to use.
+- clean stop (`ctx.requestStop()`, SIGINT/SIGTERM)
+- a throw inside the render callback — the loop tears down, restores the terminal, and **rejects the `render()` promise** with your error (catch it with `try { await render(…) }`, or pass `onError`)
+- `uncaughtException` / `unhandledRejection` / `SIGHUP` / process exit — restore first; the error prints on the *main* screen
 
-### `bunti.visibleWidth(str)`
-Calculates the exact visible character width of a string in the terminal, ignoring hidden ANSI color codes and handling wide graphemes.
+## Headless testing {#headless-testing}
 
-```typescript
-const w = bunti.visibleWidth("\x1b[31mHello 🥟\x1b[0m"); // Returns 8
-```
+Two recipes cover CI and agent-driven verification.
 
-### `bunti.truncate(str, length, tail = '…')`
-Truncates a string to an exact visible width while safely preserving and re-applying ANSI color codes. **Crucial** for preventing layout overflow.
-
-```typescript
-const safe = bunti.truncate(color.red("Danger: Core meltdown imminent!"), 15);
-// Result visually fits in 15 cols, and keeps the text red.
-```
-
-### `bunti.stripAnsi(str)`
-Strips all ANSI escape sequences from a string, returning pure text.
-
----
-
-## 🎭 Typography & Icons
-
-Bunti includes a centralized tactical icon map and an automatic emoji-replacement engine. This ensures layouts do not break when rendered in different terminal emulators with varying emoji width support.
-
-### The Nerd-Emoji Swapper
-By default, Bunti safely intercepts known emojis in your `text()` streams and swaps them for width-1 Nerd Font icons *before* layout math is calculated.
+**Single frame, no TTY needed** — Bunti renders happily into a pipe:
 
 ```typescript
-box({}, ({ text }) => {
-  text("Status: 🥟 Launching"); 
-  // Internally translates to "Status:  Launching" keeping width math 100% stable.
-});
+await bunti.render((ctx) => {
+  ctx.box({ width: 20, border: 'rounded' }, (b) => b.text('snapshot me'));
+}, { once: true });
+// stdout now contains the full ANSI frame; the promise resolves, your script continues
 ```
 
-### `bunti.icon(name)`
-You can directly retrieve Nerd Font codes from the registry using standard semantic names.
+**Buffer-level assertions** — drive the engine directly:
 
 ```typescript
-text(` ${bunti.icon('rocket')} BOOSTER IGNITION`);
+import {
+  createScreenState,
+  createScreenContext,
+  renderFrame,
+} from '@zakmandhro/bunti';
+
+const state = createScreenState({ colorTier: 'truecolor' });
+const ctx = createScreenContext(state);
+ctx.box({ x: 0, y: 0, width: 12, height: 3, border: 'rounded' }, (b) => b.text('hi'));
+ctx.flushFlow();
+const ansi = renderFrame(state); // the exact bytes a terminal would receive
 ```
 
-*Common Icons:* `rocket`, `play`, `pause`, `stop`, `info`, `warning`, `error`, `success`, `cpu`, `ram`.
+Keyboard interaction needs a real PTY — see the macOS-safe recipe in [Input & Mouse](/input-and-mouse#the-pty-caveat).
+
+## Performance
+
+The full draw path (clear → gradient wallpaper → content → diff) measures **~0.4ms per full-screen frame at 120×40** on Apple Silicon — roughly 40× headroom inside the 16.7ms/60fps budget. The diff renderer tracks fg/bg and all five text attributes across cells and emits minimal SGR transitions.

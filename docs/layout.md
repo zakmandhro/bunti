@@ -1,6 +1,19 @@
-# 🥟 Bunti Box Model
+# Box Model & Layout
 
 Bunti features a zero-dependency, mathematically absolute layout engine designed specifically for terminal environments. It guarantees 100% precision in width, padding, and border alignment, preventing the "Jagged Border" artifacts common in traditional TUI libraries.
+
+## The coordinate model
+
+- `box()` without `x`/`y` joins the **flow** (stacks after previous content) and centers when it has no placement; with `x`/`y` it positions **relative to its parent context**.
+- Inside a box callback, the sub-context's `offsetX`/`offsetY` convert local coordinates to absolute screen cells — and hitboxes always share the painted rect.
+- `box()` both draws *and* returns its string (compose with `joinHorizontal`/`joinVertical`, or pass `detach: true` to render manually).
+- Direct-draw primitives (`rect`, `blit`) take absolute coordinates; responsive tracks come from `ctx.split()`:
+
+```typescript
+const [sidebar, main] = ctx.split({ direction: 'horizontal', constraints: [30, '1fr'], gap: 2 });
+ctx.box({ ...sidebar, border: 'rounded' }, drawSidebar);
+ctx.box({ ...main, border: 'rounded' }, drawMain);
+```
 
 ---
 

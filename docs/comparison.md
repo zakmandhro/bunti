@@ -1,36 +1,27 @@
-# 🥟 Bunti vs. The TUI Ecosystem
+# Bunti vs the Ecosystem
 
-Bunti is a high-performance, functional TUI engine built for the age of Bun. This document outlines how it compares to established standards in other languages and why it represents a new "Surgical" standard for terminal development.
+An honest comparison — every library below is good software with different priorities.
 
-## 🏁 Comparison Matrix
+| | **Bunti** | **Ink** | **blessed / neo-blessed** |
+| :--- | :--- | :--- | :--- |
+| Runtime | Bun only | Node (+Bun) | Node |
+| Paradigm | Immediate-mode functional DSL | React (JSX, reconciler, hooks) | Retained widget tree |
+| Runtime dependencies | **0** | React + transitive tree | 0 (single large lib) |
+| Rendering | Double-buffered cell diff, dirty spans only | Element re-render → output diff | Manual screen damage |
+| Theming | Semantic tokens, live swap, VS Code presets | Bring your own | Style objects |
+| Icons | 10,763 Nerd Font glyphs by name, typed | Bring your own | Bring your own |
+| Mouse | Hitboxes, hover, pointer cursor, click-on-release | Community addons | Built-in (dated protocols) |
+| Motion | Transitions, stagger, 14 easings, `dt` | Bring your own | Bring your own |
+| Crash safety | Guaranteed terminal restore on any exit path | Partial | Partial |
+| Agent ergonomics | JSDoc'd types, `llms.txt`, dev hints, eval-tested | React knowledge transfers | Sparse types |
 
-| Feature | **Bunti** (Bun) | **Ink** (TS/Node) | **Ratatui** (Rust) | **Lipgloss** (Go) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Paradigm** | Functional DSL | React (JSX) | Immediate Mode | Utility-First |
-| **API Style** | Scoped Closures | Hooks/JSX | Builder Pattern | Fluent Strings |
-| **Rendering** | Double-Buffered Diff | Virtual DOM | Double-Buffered Diff | Full-Frame Swap |
-| **Performance** | 60-120 FPS | 30-60 FPS | 120+ FPS | 60 FPS |
-| **Width-Aware** | Yes (Native) | Yes | Yes | Yes |
-| **Dependencies** | Zero | High (React) | Low | Low |
+## The one-line positioning
 
----
+**Ink needs React and Node; Bunti is Bun-native, zero-dependency, and built for coding agents.**
 
-## 🏗️ Architectural Advantages
+If your team thinks in React and ships to Node, Ink is a fine choice with a large ecosystem. Bunti trades that familiarity for a smaller mental model (a render function and a context — no reconciler), a faster pipeline, and batteries included: themes, icons, mouse, and motion out of the box.
 
-### 1. The Scoped Closure Pattern
-Unlike **Ink**, which brings the heavy overhead of the React reconciler to the terminal, Bunti uses **Scoped Closures with Contextual Capabilities**. This gives you the same "declarative" feel but runs on a lightweight functional core. There is no Virtual DOM—only a surgical diff between two memory buffers.
+## Also worth knowing
 
-### 2. Double-Buffered Diffing
-Inspired by **Ratatui** and **Notcurses**, Bunti maintains a Front and Back buffer. Instead of redrawing the whole screen (which causes flickering), Bunti calculates the "damage" and only sends the changed cells to the terminal. This is critical for high-fidelity animations and low-latency SSH sessions.
-
-### 3. Bun-Native DirectWriter
-Bunti leverages `Bun.stdout.writer()` to bypass the traditional Node.js stream overhead. Combined with our diffing engine, Bunti achieves extreme throughput with near-zero CPU usage.
-
-### 4. Emoji & Nerd Font Correctness
-Bunti treats character width as a first-class citizen using `Bun.stringWidth`. It automatically handles the "Jagged Border" problem by tracking wide-character placeholders in the buffer, ensuring your layouts never cave in.
-
-## 🎯 The Bunti Philosophy
-Bunti is designed for **Surgical Engineering**. We prioritize:
-- **Zero Bloat**: Small, functional traits instead of heavy classes.
-- **High Signal**: Scoped APIs that provide only what you need.
-- **Fidelity**: 60FPS visuals with perfect Unicode alignment.
+- **OpenTUI** and other Bun-adjacent TUI projects are emerging in the same space — healthy competition; evaluate them for your use case.
+- **Ratatui** (Rust) and **Bubble Tea** (Go) are excellent outside the JS/TS world; Bunti's buffer model takes inspiration from Ratatui's approach.

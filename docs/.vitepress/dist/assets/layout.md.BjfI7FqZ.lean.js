@@ -1,1 +1,0 @@
-import{_ as t,o,c as i,a0 as a}from"./chunks/framework.DvNw9GNH.js";const h=JSON.parse('{"title":"🛰️ Bunti Box Model","description":"","frontmatter":{},"headers":[],"relativePath":"layout.md","filePath":"layout.md"}'),n={name:"layout.md"};function r(l,e,d,c,s,g){return o(),i("div",null,[...e[0]||(e[0]=[a("",13)])])}const p=t(n,[["render",r]]);export{h as __pageData,p as default};

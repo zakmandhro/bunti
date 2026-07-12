@@ -83,17 +83,20 @@ For rapid prototyping, Bunti ships with several higher-order tactical components
 
 To use them, import them from `bunti/components` (or `src/components`) and pass the current `ctx` as the first argument.
 
+All components style themselves from `ctx.theme` tokens — swap the theme and they restyle live.
+
 ### `Card(ctx, props, callback)`
-A structural panel that integrates a styled top header/title with a content body. Automatically applies standard padding and contrast logic.
+A structural panel that integrates a styled top header/title with a content body. Pass an `id` to make it hoverable (border lifts to the focus color under the mouse).
 
 ```typescript
 import { Card } from '@zakmandhro/bunti/components';
 
 bunti.render((ctx) => {
-  Card(ctx, { 
-    title: "SYSTEM STATUS", 
-    theme: "accent",
-    width: 60 
+  Card(ctx, {
+    title: "SYSTEM STATUS",
+    variant: "accent",     // 'default' | 'accent' | 'danger'
+    id: "status-card",     // optional: enables hover
+    width: 60
   }, (sub) => {
     sub.text("All systems nominal.");
   });
@@ -119,8 +122,10 @@ bunti.render((ctx) => {
 });
 ```
 
+Variants differ in height: `default` is a 3-row outlined box; `primary`, `ghost`, and `danger` are 1-row pills. `onClick` fires exactly once per click (on mouse release) or on <kbd>enter</kbd>/<kbd>space</kbd> when focused.
+
 ### `Input(ctx, props)`
-A fully-featured single-line text input field. It handles internal cursor tracking, backspace/delete, horizontal scrolling for long text, and focus states.
+A single-line text input with real cursor editing: insert-at-cursor, arrow/home/end movement (plus readline-style <kbd>ctrl+a</kbd>/<kbd>ctrl+e</kbd>), grapheme-aware emoji handling, and a horizontal scroll window that keeps the cursor visible in narrow fields.
 
 ```typescript
 import { Input } from '@zakmandhro/bunti/components';
@@ -151,6 +156,43 @@ bunti.render((ctx) => {
     status: "ONLINE"
   });
 });
+```
+
+### `Modal(ctx, props, callback)`
+A dialog rendered on its own layer with web-grade depth: a dimmed backdrop (default `0.55`), a drop shadow, and a 150ms slide/fade entrance — all overridable.
+
+```typescript
+import { Modal } from '@zakmandhro/bunti/components';
+
+if (confirming) {
+  Modal(ctx, { width: 40, height: 8, title: ' Confirm ' }, (m) => {
+    m.text('Delete 3 files?\n\n');
+    Button(m, { id: 'yes', label: 'Delete', variant: 'danger', onClick: doDelete });
+    m.text('\n');
+    Button(m, { id: 'no', label: 'Cancel', onClick: close });
+  });
+}
+```
+
+### `Spinner(ctx, props)`
+A braille-frame activity indicator driven by elapsed time.
+
+```typescript
+Spinner(ctx, { x: 2, y: 1, label: 'fleet live' });
+```
+
+### `Progress(ctx, props)`
+A themed progress bar; supports gradients across the fill.
+
+```typescript
+Progress(ctx, { x: 2, y: 3, width: 30, value: 0.72, showPercent: true });
+```
+
+### `Link(ctx, props)`
+Underlined, hoverable, clickable text — the pointer cursor appears on supporting terminals.
+
+```typescript
+Link(ctx, { id: 'forgot', label: 'Forgot password?', x: 4, y: 12, onClick: showReset });
 ```
 
 ---
