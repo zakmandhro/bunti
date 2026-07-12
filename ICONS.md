@@ -8,7 +8,7 @@ Bunti features a surgical icon engine designed for the age of agentic engineerin
 
 | Tier | Names | Size | How it loads |
 | --- | --- | --- | --- |
-| **Curated** | 89 short names (`rocket`, `branch`, `pr`, ...) | built into core | always available |
+| **Curated** | 88 short names (`rocket`, `branch`, `pr`, ...) | built into core | always available |
 | **Full Nerd Fonts** | 10,763 names (`fa-rocket`, `md-robot`, `cod-account`, ...) | ~280 KB map (75 KB gzipped) | opt-in subpath import |
 
 Resolution order for `icon(name)`:
@@ -72,6 +72,8 @@ To ensure layout stability across all terminals, Bunti implements a **Nerd-Emoji
 
 1. **Nerd Font (default)**: high-resolution tactical symbols (e.g. `󰡯`, ``).
 2. **ASCII (fallback)**: surgical *single-character* fallbacks for legacy TTYs (e.g. `R`, `*`). The curated set is width-audited — switching tiers never shifts layout.
+
+On the ASCII tier, raw emoji in your strings pass through **unchanged** — tier degradation applies to Bunti's curated icons (and the Nerd-Emoji Swap only runs on the Nerd Font tier), not to emoji you print yourself.
 
 ### Forcing a tier
 

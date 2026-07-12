@@ -3,7 +3,7 @@
  * Purely tactical: Nerd Fonts or ASCII fallbacks.
  *
  * Two tiers of names resolve through icon()/getIcon():
- *   1. The curated ICON_MAP below (89 short names with ASCII fallbacks).
+ *   1. The curated ICON_MAP below (88 short names with ASCII fallbacks).
  *   2. A runtime registry filled via register()/registerAll() — most notably
  *      by `import '@zakmandhro/bunti/icons-full'`, which installs the full
  *      Nerd Fonts v3.4.0 glyph set (~10.7k names like 'fa-rocket').
@@ -132,7 +132,7 @@ export type BuntiIconName =
   | IconName
   | (string & Record<never, never>);
 
-/** The curated icon table: 89 width-audited names with ASCII fallbacks. */
+/** The curated icon table: 88 width-audited names with ASCII fallbacks. */
 export const ICON_MAP: Record<string, IconDefinition> = CURATED_ICONS;
 
 /**
