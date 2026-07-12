@@ -217,10 +217,16 @@ export function renderFrame(state: ScreenState): string {
       const idx = rowOffset + x;
       const b = state.backBuffer[idx];
       const f = state.frontBuffer[idx];
+      // Dirty check compares the RESOLVED codes (string | number | undefined,
+      // value-equal), never raw fg/bg: raw values can be RGB objects rebuilt
+      // every frame (blit's truecolor SGR parse, fade(), theme washes), and
+      // reference inequality would repaint visually identical cells forever.
+      // The emitter below only reads fgCode/bgCode, so codes are exactly the
+      // output-affecting values.
       if (
         b!.char !== f!.char ||
-        b!.fg !== f!.fg ||
-        b!.bg !== f!.bg ||
+        b!.fgCode !== f!.fgCode ||
+        b!.bgCode !== f!.bgCode ||
         !!b!.bold !== !!f!.bold ||
         !!b!.italic !== !!f!.italic ||
         !!b!.underline !== !!f!.underline ||
