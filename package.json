@@ -63,7 +63,8 @@
     "record": "vhs tapes/2048.tape",
     "record:animation": "vhs tapes/animation.tape",
     "record:mission-control": "vhs tapes/mission-control.tape",
-    "record:all": "vhs tapes/2048.tape && vhs tapes/animation.tape && vhs tapes/mission-control.tape",
+    "record:platformer": "vhs tapes/platformer.tape",
+    "record:all": "vhs tapes/2048.tape && vhs tapes/animation.tape && vhs tapes/mission-control.tape && vhs tapes/platformer.tape",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

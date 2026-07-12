@@ -31,6 +31,12 @@ export const PUBLIC_DEMOS: DemoEntry[] = [
     description: 'The classic game - keyboard input, merge animations',
   },
   {
+    name: 'platformer',
+    file: 'platformer.ts',
+    description:
+      'STARHOP - 60fps side-scroller, pixel sprites, parallax, coyote jumps',
+  },
+  {
     name: 'animation',
     file: 'animation.ts',
     description: 'Motion engine tour - easings, stagger, transitions',
@@ -61,7 +67,7 @@ export const PUBLIC_DEMOS: DemoEntry[] = [
  * Non-demo helper modules that public demos import; copied alongside them
  * into dist/demos/ by scripts/build-demos.ts.
  */
-export const DEMO_HELPERS = ['demo-layout.ts'];
+export const DEMO_HELPERS = ['demo-layout.ts', 'platformer-physics.ts'];
 
 /** Looks up a public demo by registry name. */
 export function findDemo(name: string): DemoEntry | undefined {
