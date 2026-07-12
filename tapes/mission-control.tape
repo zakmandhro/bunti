@@ -29,6 +29,8 @@ Sleep 3s
 # Cycle themes live: dark -> dracula -> catppuccin -> github-light -> dark.
 Type "3"
 Sleep 1.2s
+Type "4"
+Sleep 1.2s
 Type "5"
 Sleep 1.2s
 Type "8"
