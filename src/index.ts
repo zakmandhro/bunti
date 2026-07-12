@@ -6,6 +6,7 @@ import * as geometry from './geometry';
 import * as icons from './icons';
 import * as input from './input';
 import * as layout from './layout';
+import * as pixels from './pixels';
 import * as render from './render';
 import * as state from './state';
 import * as theme from './theme';
@@ -117,6 +118,7 @@ export type {
 } from './input';
 export { createKeyEvent, HeldKeyTracker, InputTokenizer } from './input';
 export type {
+  BlitStyle,
   BorderStyle,
   ListOptions,
   StyleOptions,
@@ -139,6 +141,10 @@ export {
   viewport,
   wallpaper,
 } from './layout';
+/** Halfblock pixel canvas: 2x vertical resolution via '▀'/'▄' cells.
+ *  @example createPixelCanvas(16, 16).blitTo(ctx.state, 2, 1); */
+export type { PixelCanvas } from './pixels';
+export { createPixelCanvas } from './pixels';
 export {
   applyInputToState,
   drainFrameInput,
@@ -191,6 +197,7 @@ export const bunti = {
   ...icons,
   ...input,
   ...layout,
+  ...pixels,
   ...render,
   ...utils,
   ...colors,

@@ -32,6 +32,7 @@ import {
 } from '../geometry';
 import { icon, replaceEmojis } from '../icons';
 import {
+  type BlitStyle,
   type BoxMeasure,
   dimRect,
   getWindow,
@@ -450,7 +451,7 @@ function createDSLContext(
       return icon(name);
     },
 
-    blit(x: number, y: number, content: string, style: Partial<Cell> = {}) {
+    blit(x: number, y: number, content: string, style: BlitStyle = {}) {
       layoutBlit(state, x, y, content, style);
       return ctx;
     },

@@ -13,6 +13,7 @@ import type {
 } from '../geometry';
 import type { KeyEvent } from '../input';
 import type {
+  BlitStyle,
   ListOptions,
   SideColors,
   StyleOptions,
@@ -289,15 +290,11 @@ export interface BuntiContext {
   /**
    * Paints a (possibly multi-line, ANSI-styled) string directly into the
    * screen buffer at absolute cell coordinates — exact-position text,
-   * sprites, labels, and ASCII art.
+   * sprites, labels, and ASCII art. Pass `transparent: ' '` to skip
+   * space cells so irregular sprites composite over the background.
    * @example ctx.blit(2, 1, 'FPS 60', { fg: 'gold' });
    */
-  blit(
-    x: number,
-    y: number,
-    content: string,
-    style?: Partial<Cell>,
-  ): BuntiContext;
+  blit(x: number, y: number, content: string, style?: BlitStyle): BuntiContext;
   /**
    * Fills a w×h cell rectangle at absolute coordinates with a style —
    * bars, panels, charts, and backgrounds. Pure-background fills keep the

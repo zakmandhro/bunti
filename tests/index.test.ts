@@ -9,6 +9,7 @@ import {
   fade,
   joinHorizontal,
   list,
+  rect,
   splitRect,
   stripAnsi,
   truncate,
@@ -116,6 +117,64 @@ describe('Bunti Core Engine', () => {
     expect(state.backBuffer[0]?.fg).toBeUndefined();
     expect(state.backBuffer[0]?.fgCode).toBeUndefined();
     expect(state.backBuffer[0]?.bg).toEqual({ r: 10, g: 10, b: 10 });
+  });
+
+  test('blit with transparent skips sprite holes so the background shows', () => {
+    const state = createScreenState();
+    state.width = 10;
+    state.height = 3;
+
+    // Colored backdrop the sprite composites over.
+    rect(state, 0, 0, 10, 3, { char: '.', bg: { r: 0, g: 0, b: 128 } });
+    const backdropBg = state.backBuffer[0]?.bg;
+
+    // Irregular multi-row sprite: spaces are holes.
+    blit(state, 1, 0, ' A \nBBB', {
+      transparent: ' ',
+      fg: { r: 255, g: 0, b: 0 },
+    });
+
+    // Row 0: holes at (1,0) and (3,0) keep the backdrop char AND bg.
+    expect(state.backBuffer[1]?.char).toBe('.');
+    expect(state.backBuffer[1]?.bg).toEqual(backdropBg);
+    expect(state.backBuffer[3]?.char).toBe('.');
+    // The solid pixel painted with the sprite style.
+    expect(state.backBuffer[2]?.char).toBe('A');
+    expect(state.backBuffer[2]?.fg).toEqual({ r: 255, g: 0, b: 0 });
+    // Row 1: fully solid — every cell painted.
+    expect(state.backBuffer[10 + 1]?.char).toBe('B');
+    expect(state.backBuffer[10 + 2]?.char).toBe('B');
+    expect(state.backBuffer[10 + 3]?.char).toBe('B');
+    // Cells outside the sprite are untouched.
+    expect(state.backBuffer[0]?.char).toBe('.');
+    expect(state.backBuffer[4]?.char).toBe('.');
+  });
+
+  test('blit without transparent still paints spaces (regression guard)', () => {
+    const state = createScreenState();
+    state.width = 10;
+    state.height = 2;
+
+    rect(state, 0, 0, 10, 2, { char: '.', bg: { r: 0, g: 0, b: 128 } });
+    blit(state, 0, 0, ' A ');
+
+    expect(state.backBuffer[0]?.char).toBe(' ');
+    expect(state.backBuffer[1]?.char).toBe('A');
+    expect(state.backBuffer[2]?.char).toBe(' ');
+  });
+
+  test('ctx.blit forwards the transparent option', () => {
+    const state = createScreenState();
+    state.width = 10;
+    state.height = 2;
+    const ctx = createScreenContext(state);
+
+    rect(state, 0, 0, 10, 2, { char: '#', bg: { r: 20, g: 20, b: 20 } });
+    ctx.blit(0, 0, ' X ', { transparent: ' ' });
+
+    expect(state.backBuffer[0]?.char).toBe('#');
+    expect(state.backBuffer[1]?.char).toBe('X');
+    expect(state.backBuffer[2]?.char).toBe('#');
   });
 
   test('blit applies configured default foreground to plain text', () => {

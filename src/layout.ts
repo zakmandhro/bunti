@@ -197,10 +197,23 @@ export function rect(
   }
 }
 
+/** Style argument for blit(): per-cell attributes plus blit-only options. */
+export type BlitStyle = Partial<Cell> & {
+  /**
+   * Transparency key: cells whose char equals this string (typically ' ')
+   * are SKIPPED — not painted — so whatever is already in the buffer shows
+   * through. Lets irregular multi-row ASCII sprites composite over
+   * backgrounds without stamping their bounding box.
+   */
+  transparent?: string;
+};
+
 /**
  * Paints a multi-line, ANSI-styled string into the back buffer at absolute
  * cell coordinates, parsing SGR codes into per-cell attributes. Grapheme-
- * aware: emoji and wide glyphs occupy their real column width.
+ * aware: emoji and wide glyphs occupy their real column width. Pass
+ * `transparent` (usually ' ') to skip matching cells so sprites with holes
+ * composite over the existing background.
  * @example blit(state, 2, 1, fg('gold', 'FPS 60'));
  */
 export function blit(
@@ -208,8 +221,9 @@ export function blit(
   startX: number,
   startY: number,
   content: string,
-  style: Partial<Cell> = {},
+  style: BlitStyle = {},
 ) {
+  const { transparent, ...cellStyle } = style;
   const lines = content.split('\n');
   for (let row = 0; row < lines.length; row++) {
     const line = lines[row];
@@ -285,7 +299,14 @@ export function blit(
           const w = charWidth(segment);
           if (w === 0) continue;
 
-          const cell: Partial<Cell> = { char: segment, ...style };
+          // Transparency key: leave the underlying cell untouched, but keep
+          // the cursor advancing so the sprite's shape stays intact.
+          if (transparent !== undefined && segment === transparent) {
+            x += w;
+            continue;
+          }
+
+          const cell: Partial<Cell> = { char: segment, ...cellStyle };
 
           // Only overwrite buffer colors if explicitly set in the string or style
           if (currentFg !== undefined) cell.fg = currentFg;
