@@ -445,7 +445,21 @@ export function loop(
       }
     };
 
-    const stop = () => finish(null);
+    /**
+     * Requests loop shutdown. Called mid-frame (ctx.requestStop() inside the
+     * render callback), teardown is DEFERRED until the current tick has
+     * flushed — the final painted frame reaches the terminal before the
+     * restore sequence. Called outside a tick (Ctrl+C, SIGINT/SIGTERM), it
+     * tears down immediately (the last completed frame was already flushed).
+     */
+    const stop = () => {
+      if (stopped) return;
+      if (ticking) {
+        stopPending = true;
+        return;
+      }
+      finish(null);
+    };
 
     const resizeHandler = () => {
       resizeScreen(state);
@@ -455,6 +469,7 @@ export function loop(
 
     let ticking = false;
     let tickAgain = false;
+    let stopPending = false;
 
     const tick = () => {
       if (ticking) {
@@ -488,6 +503,12 @@ export function loop(
           renderCallback(state);
           if (stopped || state.isStopped) return;
           flush(state);
+          // A mid-frame requestStop was deferred so the frame above could
+          // paint and flush; the final frame is on screen — tear down now.
+          if (stopPending) {
+            finish(null);
+            return;
+          }
           // OSC 22 mouse-cursor shape reacts to this frame's hitboxes.
           updatePointerShape(state);
         } while (tickAgain);

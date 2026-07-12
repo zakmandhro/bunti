@@ -160,6 +160,22 @@ describe('crash safety (subprocess fixtures)', () => {
     expect(stdout.endsWith('CLEAN_EXIT\n')).toBe(true);
   });
 
+  test('final frame before requestStop is flushed and visible', async () => {
+    const { exitCode, stdout, stderr } = await runFixture('final-frame.ts');
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toBe('');
+    // The frame painted on the same tick as requestStop reached the
+    // terminal: both the flow text and the direct blit are on stdout.
+    expect(stdout).toContain('FINAL-FRAME-MARKER');
+    expect(stdout).toContain('FINAL-BLIT-MARKER');
+    // ...and it was flushed BEFORE the restore sequence tore the screen down.
+    expect(stdout.lastIndexOf(RESTORE_TAIL)).toBeGreaterThan(
+      stdout.indexOf('FINAL-FRAME-MARKER'),
+    );
+    expect(stdout.endsWith('FINAL_EXIT\n')).toBe(true);
+  });
+
   test("onError returning 'continue' keeps the loop alive after a frame error", async () => {
     const { exitCode, stdout } = await runFixture('onerror-continue.ts');
 
