@@ -109,6 +109,9 @@ describe('crash safety (subprocess fixtures)', () => {
     // library calling process.exit — code after the await never ran.
     expect(stdout).not.toContain('UNREACHABLE');
     // Exactly one clean report on the main screen.
+    if (countOccurrences(stderr, 'render-crash-marker') !== 1) {
+      console.log('DEBUG_STDERR_START' + JSON.stringify(stderr) + 'DEBUG_STDERR_END');
+    }
     expect(countOccurrences(stderr, 'render-crash-marker')).toBe(1);
   });
 
