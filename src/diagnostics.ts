@@ -155,6 +155,22 @@ export function hintKeyboardStdinNotTTY(
   );
 }
 
+/**
+ * Hint: mouse requested in the classic Windows console. conhost reports
+ * clicks as MOUSE_EVENT input records, which Node/Bun stdin never sees;
+ * SGR mouse sequences only arrive through ConPTY (Windows Terminal, VS Code).
+ */
+export function hintMouseInConhost(
+  mouseRequested: boolean,
+  app: string | undefined,
+): void {
+  if (!mouseRequested || app !== 'conhost') return;
+  recordHint(
+    'mouse requested in the classic Windows console, which does not deliver ' +
+      'mouse input to Node/Bun; run in Windows Terminal or VS Code',
+  );
+}
+
 // --- Hint 3: keyless hook-order drift between frames ---
 
 interface HookFrameLog {

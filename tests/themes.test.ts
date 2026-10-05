@@ -7,6 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { fileURLToPath } from 'node:url';
 import {
   contrastRatio,
   convertVSCodeTheme,
@@ -136,10 +137,9 @@ describe('stripJsonc', () => {
 
   test('parses every vendored theme source', async () => {
     for (const preset of PRESETS) {
-      const path = new URL(
-        `../scripts/vscode-themes/${preset.source}`,
-        import.meta.url,
-      ).pathname;
+      const path = fileURLToPath(
+        new URL(`../scripts/vscode-themes/${preset.source}`, import.meta.url),
+      );
       const parsed = JSON.parse(stripJsonc(await Bun.file(path).text())) as {
         colors?: Record<string, string>;
       };

@@ -37,6 +37,7 @@ export type { IconName } from './data/nf-names';
 // Type Exports
 export type {
   ColorTier,
+  HostInfo,
   NerdFontPolicy,
   TerminalApp,
   TerminalCapabilities,

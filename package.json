@@ -48,7 +48,7 @@
     "bun": ">=1.0.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun scripts/fix-esm-imports.ts && bun scripts/build-demos.ts",
+    "build": "bun scripts/clean.ts && tsc -p tsconfig.build.json && bun scripts/fix-esm-imports.ts && bun scripts/build-demos.ts",
     "gen:llms": "bun scripts/gen-llms.ts",
     "prepublishOnly": "bun run typecheck && bun run lint && bun run test && bun run gen:llms && bun run build",
     "test": "bun test",

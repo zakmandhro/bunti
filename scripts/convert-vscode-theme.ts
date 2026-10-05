@@ -17,6 +17,8 @@
  *   bun scripts/convert-vscode-theme.ts --audit     # resolved hexes + WCAG table
  */
 
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { ColorValue } from '../src/colors';
 import {
   hexToRGB,
@@ -512,14 +514,13 @@ function buildPresetInput(spec: PresetSpec, json: unknown): ThemeInput {
 }
 
 async function regeneratePresets(): Promise<void> {
-  const themesDir = new URL('../src/themes/', import.meta.url).pathname;
+  const themesDir = fileURLToPath(new URL('../src/themes/', import.meta.url));
   for (const spec of PRESETS) {
-    const sourcePath = new URL(
-      `./vscode-themes/${spec.source}`,
-      import.meta.url,
-    ).pathname;
+    const sourcePath = fileURLToPath(
+      new URL(`./vscode-themes/${spec.source}`, import.meta.url),
+    );
     const input = buildPresetInput(spec, await loadThemeJson(sourcePath));
-    const outPath = `${themesDir}${spec.slug}.ts`;
+    const outPath = join(themesDir, `${spec.slug}.ts`);
     await Bun.write(outPath, emitPresetModule(spec, input));
     console.log(`  wrote ${outPath}`);
   }

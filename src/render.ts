@@ -2,7 +2,7 @@
  * Bunti Functional Rendering & Diffing
  */
 
-import { hintKeyboardStdinNotTTY } from './diagnostics';
+import { hintKeyboardStdinNotTTY, hintMouseInConhost } from './diagnostics';
 import {
   createKeyEvent,
   HeldKeyTracker,
@@ -397,6 +397,7 @@ export function loop(
     options.keyboard === true,
     process.stdin.isTTY === true,
   );
+  hintMouseInConhost(options.mouse === true, state.terminal?.app);
 
   state.isRestored = false;
   activeScreens.add(state);
@@ -559,7 +560,13 @@ export function loop(
       requestTick();
     };
 
-    if (options.mouse || options.focus || options.keyboard) setupInput();
+    // On Windows, libuv only learns about console resizes from input records
+    // it reads in raw mode, so attach stdin there even without keyboard input
+    // (Ctrl+C still stops the loop via the input path).
+    const windowsConsole = process.platform === 'win32' && process.stdin.isTTY;
+    if (options.mouse || options.focus || options.keyboard || windowsConsole) {
+      setupInput();
+    }
 
     process.on('SIGWINCH', resizeHandler);
     process.on('SIGINT', stop);

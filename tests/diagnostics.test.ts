@@ -18,6 +18,7 @@ import {
   flushHints,
   hintInputReadWithoutKeyboard,
   hintKeyboardStdinNotTTY,
+  hintMouseInConhost,
   hintOverlappingBoxes,
   hintsSuppressed,
   nearestMatch,
@@ -165,6 +166,24 @@ describe('hint 1: input read without keyboard/mouse enabled', () => {
     expect(__bufferedHints()).toEqual([]);
     hintInputReadWithoutKeyboard({});
     expect(__bufferedHints()).toContain(HINT);
+  });
+});
+
+describe('hint: mouse requested in the classic Windows console', () => {
+  const HINT =
+    'mouse requested in the classic Windows console, which does not deliver ' +
+    'mouse input to Node/Bun; run in Windows Terminal or VS Code';
+
+  test('buffers when mouse is requested under conhost', () => {
+    hintMouseInConhost(true, 'conhost');
+    expect(__bufferedHints()).toContain(HINT);
+  });
+
+  test('silent in other terminals or without mouse', () => {
+    hintMouseInConhost(true, 'windows-terminal');
+    hintMouseInConhost(false, 'conhost');
+    hintMouseInConhost(true, undefined);
+    expect(__bufferedHints()).toEqual([]);
   });
 });
 
