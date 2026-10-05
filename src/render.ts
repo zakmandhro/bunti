@@ -560,7 +560,13 @@ export function loop(
       requestTick();
     };
 
-    if (options.mouse || options.focus || options.keyboard) setupInput();
+    // On Windows, libuv only learns about console resizes from input records
+    // it reads in raw mode, so attach stdin there even without keyboard input
+    // (Ctrl+C still stops the loop via the input path).
+    const windowsConsole = process.platform === 'win32' && process.stdin.isTTY;
+    if (options.mouse || options.focus || options.keyboard || windowsConsole) {
+      setupInput();
+    }
 
     process.on('SIGWINCH', resizeHandler);
     process.on('SIGINT', stop);
