@@ -440,6 +440,7 @@ export function loop(
       // 1. Remove Listeners
       state.inputTokenizer?.dispose();
       process.stdin.removeListener('data', inputHandler);
+      process.stdout.removeListener('resize', resizeHandler);
       process.removeListener('SIGWINCH', resizeHandler);
       process.removeListener('SIGINT', stop);
       process.removeListener('SIGTERM', stop);
@@ -561,7 +562,10 @@ export function loop(
 
     if (options.mouse || options.focus || options.keyboard) setupInput();
 
-    process.on('SIGWINCH', resizeHandler);
+    // Windows has no SIGWINCH; libuv reports console resizes via stdout.
+    if (process.platform === 'win32')
+      process.stdout.on('resize', resizeHandler);
+    else process.on('SIGWINCH', resizeHandler);
     process.on('SIGINT', stop);
     process.on('SIGTERM', stop);
 

@@ -15,10 +15,12 @@
  * Regenerate with: bun scripts/gen-icons.ts
  */
 
+import { fileURLToPath } from 'node:url';
+
 const NF_VERSION = 'v3.4.0';
 const SOURCE_URL = `https://raw.githubusercontent.com/ryanoasis/nerd-fonts/${NF_VERSION}/glyphnames.json`;
 
-const OUT_DIR = new URL('../src/data/', import.meta.url).pathname;
+const OUT_DIR = fileURLToPath(new URL('../src/data/', import.meta.url));
 const GLYPHS_OUT = `${OUT_DIR}nf-glyphs.ts`;
 const NAMES_OUT = `${OUT_DIR}nf-names.ts`;
 

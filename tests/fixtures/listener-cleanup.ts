@@ -17,8 +17,13 @@ const EVENTS = [
   'SIGWINCH',
 ] as const;
 
-const counts = () =>
-  Object.fromEntries(EVENTS.map((e) => [e, process.listenerCount(e)]));
+// Windows has no SIGWINCH; render() listens for stdout 'resize' instead.
+const listeners = (e: (typeof EVENTS)[number]) =>
+  e === 'SIGWINCH' && process.platform === 'win32'
+    ? process.stdout.listenerCount('resize')
+    : process.listenerCount(e);
+
+const counts = () => Object.fromEntries(EVENTS.map((e) => [e, listeners(e)]));
 
 const baseline = counts();
 let during: Record<string, number> | undefined;

@@ -8,6 +8,7 @@
 import assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const distDir = resolve(import.meta.dirname, '..', 'dist');
 
@@ -25,14 +26,14 @@ const [
   renderMod,
   themes,
 ] = await Promise.all([
-  import(resolve(distDir, 'index.js')),
-  import(resolve(distDir, 'components/index.js')),
-  import(resolve(distDir, 'geometry.js')),
-  import(resolve(distDir, 'icons.js')),
-  import(resolve(distDir, 'icons-full.js')),
-  import(resolve(distDir, 'layout.js')),
-  import(resolve(distDir, 'render.js')),
-  import(resolve(distDir, 'themes/index.js')),
+  import(pathToFileURL(resolve(distDir, 'index.js')).href),
+  import(pathToFileURL(resolve(distDir, 'components/index.js')).href),
+  import(pathToFileURL(resolve(distDir, 'geometry.js')).href),
+  import(pathToFileURL(resolve(distDir, 'icons.js')).href),
+  import(pathToFileURL(resolve(distDir, 'icons-full.js')).href),
+  import(pathToFileURL(resolve(distDir, 'layout.js')).href),
+  import(pathToFileURL(resolve(distDir, 'render.js')).href),
+  import(pathToFileURL(resolve(distDir, 'themes/index.js')).href),
 ]);
 
 assert.ok(main.render, 'main.render should be defined');
