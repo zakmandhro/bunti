@@ -5,7 +5,19 @@ All notable changes to Bunti are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-10-04
+
+### Added
+
+- **Dual-runtime support for Node.js (>= 22/24+ LTS)** alongside Bun:
+  - **Zero-dependency string measurement fallback**: Pure TypeScript grapheme and codepoint width calculation via `Intl.Segmenter` and Unicode East Asian Width + Extended Pictographic tables.
+  - **Bun SIMD speed prioritization**: Retains `Bun.stringWidth()` native SIMD vectorization and `Bun.stdout.writer()` buffered writes when running under Bun, falling back gracefully under Node.js.
+  - **Node.js ESM compliance**: Automated post-build pass (`scripts/fix-esm-imports.ts`) ensures explicit `.js` import extensions in `dist/` required by Node's ESM loader.
+  - **Transpiled public demos**: Public demos now ship companion `.js` versions in `dist/demos/`, allowing `npx @zakmandhro/bunti demo <name>` and `bunti demo` to run in plain Node without a TypeScript loader.
+  - **CLI dual-runtime shebang**: Changed to `#!/usr/bin/env node` (executable under both Node and Bun); `bunti doctor` reports the detected runtime and version.
+  - **Node smoke suite**: `bun run smoke:node` verifies all 8 package subpaths, headless layouts, CLI, and demos under Node.js.
+
+## [0.2.1] - 2026-07-12
 
 ### Fixed
 
