@@ -1,17 +1,19 @@
 # Bunti
 
-> A Bun-native terminal UI engine with zero dependencies: 60fps
+> A terminal UI engine optimized for Bun and Node.js with zero dependencies: 60fps
 > double-buffered diff rendering, an immediate-mode contextual DSL,
 > semantic themes (6 VS Code presets), mouse + keyboard input, motion
 > helpers, and a 10.7k-name Nerd Font icon registry. Built to be the
 > easiest TUI library for coding agents.
 
-Requires the Bun runtime (>= 1.0); Node.js is not supported.
+Requires Bun (>= 1.0, with native SIMD vectorization for speed) or Node.js (>= 22.0.0 LTS); zero runtime dependencies.
 
 ## Install
 
 ```bash
 bun add @zakmandhro/bunti
+# or
+npm install @zakmandhro/bunti
 ```
 
 ## Mental model

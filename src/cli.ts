@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 /**
  * The `bunti` CLI — the zero-install front door:
@@ -13,6 +13,7 @@
  * starts its render loop in-process.
  */
 
+import { existsSync, readFileSync } from 'node:fs';
 import { findDemo, PUBLIC_DEMOS } from './demo-registry';
 import {
   type ColorTier,
@@ -105,8 +106,12 @@ export function doctorReport(
     'assumed-no': 'assumed no - ascii fallback',
     no: 'no - ascii fallback',
   };
+  const runtimeDesc =
+    bunVersion.startsWith('bun') || bunVersion.startsWith('node')
+      ? bunVersion
+      : `bun ${bunVersion}`;
   const lines = [
-    `bunti        v${version} (bun ${bunVersion})`,
+    `bunti        v${version} (${runtimeDesc})`,
     `terminal     ${terminal}`,
   ];
   if (profile.multiplexer) lines.push(`multiplexer  ${profile.multiplexer}`);
@@ -122,9 +127,12 @@ export function doctorReport(
 
 async function packageVersion(): Promise<string> {
   try {
-    const pkg = await Bun.file(
-      new URL('../package.json', import.meta.url),
-    ).json();
+    const pkgUrl = new URL('../package.json', import.meta.url);
+    if (typeof Bun !== 'undefined' && typeof Bun.file === 'function') {
+      const pkg = await Bun.file(pkgUrl).json();
+      return typeof pkg.version === 'string' ? pkg.version : 'unknown';
+    }
+    const pkg = JSON.parse(readFileSync(pkgUrl, 'utf-8'));
     return typeof pkg.version === 'string' ? pkg.version : 'unknown';
   } catch {
     return 'unknown';
@@ -132,11 +140,23 @@ async function packageVersion(): Promise<string> {
 }
 
 async function runDemo(file: string): Promise<void> {
-  // Published layout: dist/cli.js + dist/demos/*.ts. Dev layout (running
+  // Published layout: dist/cli.js + dist/demos/*.js (or *.ts under Bun). Dev layout (running
   // src/cli.ts directly): ../demo/*.ts. Prefer the packaged copy.
-  const packaged = new URL(`./demos/${file}`, import.meta.url);
+  const base = file.replace(/\.ts$/, '');
+  const packagedJs = new URL(`./demos/${base}.js`, import.meta.url);
+  const packagedTs = new URL(`./demos/${base}.ts`, import.meta.url);
   const dev = new URL(`../demo/${file}`, import.meta.url);
-  const target = (await Bun.file(packaged).exists()) ? packaged : dev;
+
+  let target: URL;
+  if (typeof Bun === 'undefined') {
+    target = existsSync(packagedJs) ? packagedJs : dev;
+  } else {
+    target = existsSync(packagedJs)
+      ? packagedJs
+      : existsSync(packagedTs)
+        ? packagedTs
+        : dev;
+  }
   await import(target.href);
 }
 
@@ -150,11 +170,15 @@ async function main(): Promise<void> {
       console.log(await packageVersion());
       return;
     case 'doctor': {
+      const runtimeVersion =
+        typeof Bun !== 'undefined'
+          ? `bun ${Bun.version}`
+          : `node ${process.version}`;
       const report = doctorReport(
         identifyTerminal(),
         detectColorTier(),
         await packageVersion(),
-        Bun.version,
+        runtimeVersion,
       );
       console.log(report.join('\n'));
       return;

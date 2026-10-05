@@ -181,6 +181,7 @@ export {
 export {
   charWidth,
   indentBlock,
+  stringWidthFallback,
   stripAnsi,
   truncate,
   visibleWidth,

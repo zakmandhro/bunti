@@ -11,6 +11,7 @@ import {
   list,
   rect,
   splitRect,
+  stringWidthFallback,
   stripAnsi,
   truncate,
   visibleWidth,
@@ -37,6 +38,15 @@ describe('Bunti Core Engine', () => {
   test('visibleWidth calculates correct length', () => {
     const colored = `${pc.bold(pc.green('✓'))} Done`;
     expect(visibleWidth(colored)).toBe(6);
+  });
+
+  test('stringWidthFallback calculates correct length on wide characters and emoji', () => {
+    expect(stringWidthFallback('hello')).toBe(5);
+    expect(stringWidthFallback('🍭')).toBe(2);
+    expect(stringWidthFallback('你好世界')).toBe(8);
+    expect(stringWidthFallback('👨‍👩‍👧‍👦')).toBe(2);
+    expect(stringWidthFallback('\uf067')).toBe(1);
+    expect(stringWidthFallback('\x1b[31mred\x1b[0m')).toBe(3);
   });
 
   test('fade interpolates colors and clamps progress', () => {

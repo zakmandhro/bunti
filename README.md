@@ -1,11 +1,12 @@
 # 🥟 Bunti (Bun Terminal Interface)
 
-**A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API.**
+**A terminal layout engine optimized for Bun and Node.js with zero dependencies, 60fps rendering, and an agent-optimized functional API.**
 
-Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine for building terminal user interfaces. Unlike traditional TUI libraries, Bunti uses a **functional, state-driven architecture** and a **surgical diff-renderer** to deliver 60+ FPS layouts with minimal CPU and TTY overhead.
+Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine for building terminal user interfaces, optimized for Bun and Node.js. Unlike traditional TUI libraries, Bunti uses a **functional, state-driven architecture** and a **surgical diff-renderer** to deliver 60+ FPS layouts with minimal CPU and TTY overhead.
 
 ## ✨ Features
 
+- ⚡ **Bun SIMD Acceleration**: Uses Bun's native SIMD vectorization (`Bun.stringWidth`) and buffered I/O for peak rendering speed, with automatic zero-dependency fallback on Node.js.
 - 🏗️ **Contextual DSL**: Build complex UIs with a declarative, nested closure API.
 - 🏎️ **Double-Buffered Diffing**: Only dirty row spans are sent to the terminal. Zero flicker.
 - 📏 **Mathematically Absolute**: 100% precision in width, padding, and border alignment.
@@ -16,13 +17,13 @@ Bunti (pronounced *Bun-ty*) is a zero-dependency, double-buffered layout engine 
 
 ## 📦 Installation
 
-Bunti is Bun-native and ships compiled ESM plus TypeScript declarations — with zero runtime dependencies.
+Bunti ships compiled ESM plus TypeScript declarations with zero runtime dependencies. It runs on both **Bun** and **Node.js** (>= 22.0.0 LTS) — leveraging **Bun's native SIMD-accelerated string width APIs** (`Bun.stringWidth`) for maximum throughput, with an automatic zero-dependency fallback under Node.js.
 
 ```bash
 bun add @zakmandhro/bunti
+# or
+npm install @zakmandhro/bunti
 ```
-
-> Bunti requires the [Bun](https://bun.sh) runtime (>= 1.0). It uses Bun-native APIs for rendering, so Node.js is not supported.
 
 ## 🚀 Quick Start
 

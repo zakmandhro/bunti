@@ -56,7 +56,12 @@ export async function demo(
   options: DemoOptions = {},
 ) {
   await bunti.init({ nerdFont: true });
-  const config = { ...DEFAULT_DEMO_OPTIONS, ...options };
+  const once = process.argv.includes('--once');
+  const config = {
+    ...DEFAULT_DEMO_OPTIONS,
+    ...options,
+    ...(once ? { once: true } : {}),
+  };
   const {
     header,
     footer,

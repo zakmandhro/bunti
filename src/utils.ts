@@ -10,8 +10,74 @@ export function stripAnsi(str: string): string {
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
 }
 
+let segmenter: Intl.Segmenter | null = null;
+
+function getSegmenter(): Intl.Segmenter {
+  if (!segmenter) {
+    segmenter = new Intl.Segmenter();
+  }
+  return segmenter;
+}
+
+function graphemeWidth(segment: string): number {
+  const cp = segment.codePointAt(0);
+  if (cp === undefined) return 0;
+
+  // Zero-width control codes and format characters
+  if (cp <= 0x1f || (cp >= 0x7f && cp <= 0x9f)) return 0;
+  if (cp === 0x200b || cp === 0xfeff || cp === 0xad) return 0; // zero-width space, BOM, soft hyphen
+
+  // Emoji / Extended Pictographic (Intl.Segmenter groups whole emoji grapheme clusters)
+  if (/\p{Extended_Pictographic}/u.test(segment)) {
+    return 2;
+  }
+
+  // East Asian Wide / Fullwidth characters
+  if (
+    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+    (cp >= 0x2e80 && cp <= 0xa4cf && cp !== 0x303f) || // CJK Radicals, Kangxi, Ideographic, Hiragana, Katakana, Bopomofo, Hangul, CJK Unified
+    (cp >= 0xac00 && cp <= 0xd7a3) || // Hangul Syllables
+    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
+    (cp >= 0xfe10 && cp <= 0xfe19) || // Vertical forms
+    (cp >= 0xfe30 && cp <= 0xfe6f) || // CJK Compatibility Forms
+    (cp >= 0xff01 && cp <= 0xff60) || // Fullwidth Forms
+    (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth signs
+    (cp >= 0x20000 && cp <= 0x3fffd) // CJK Unified Ideographs Extension
+  ) {
+    return 2;
+  }
+
+  // Combining characters
+  if (
+    (cp >= 0x0300 && cp <= 0x036f) ||
+    (cp >= 0x1ab0 && cp <= 0x1aff) ||
+    (cp >= 0x1dc0 && cp <= 0x1dff) ||
+    (cp >= 0x20d0 && cp <= 0x20ff) ||
+    (cp >= 0xfe20 && cp <= 0xfe2f)
+  ) {
+    return 0;
+  }
+
+  return 1;
+}
+
 /**
- * Calculates the visible width of a string using Bun's SIMD-optimized API.
+ * Calculates string width using Intl.Segmenter and Unicode tables when Bun.stringWidth is unavailable.
+ */
+export function stringWidthFallback(str: string): number {
+  if (!str) return 0;
+  const clean = stripAnsi(str);
+  const seg = getSegmenter();
+  let width = 0;
+  for (const { segment } of seg.segment(clean)) {
+    width += graphemeWidth(segment);
+  }
+  return width;
+}
+
+/**
+ * Calculates the visible width of a string (using Bun's SIMD API when on Bun,
+ * falling back to Intl.Segmenter unicode width on Node).
  */
 export function visibleWidth(str: string): number {
   if (!str) return 0;
@@ -20,7 +86,12 @@ export function visibleWidth(str: string): number {
     return Math.max(...lines.map(visibleWidth));
   }
 
-  return Bun.stringWidth(stripAnsi(str));
+  const clean = stripAnsi(str);
+  if (typeof Bun !== 'undefined' && typeof Bun.stringWidth === 'function') {
+    return Bun.stringWidth(clean);
+  }
+
+  return stringWidthFallback(clean);
 }
 
 /**
@@ -29,7 +100,10 @@ export function visibleWidth(str: string): number {
 export function charWidth(char: string): number {
   const clean = stripAnsi(char);
   if (clean.length === 0) return 0;
-  return Bun.stringWidth(clean);
+  if (typeof Bun !== 'undefined' && typeof Bun.stringWidth === 'function') {
+    return Bun.stringWidth(clean);
+  }
+  return stringWidthFallback(clean);
 }
 
 /**

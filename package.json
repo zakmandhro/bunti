@@ -1,7 +1,7 @@
 {
   "name": "@zakmandhro/bunti",
-  "version": "0.2.1",
-  "description": "A Bun-native terminal layout engine with zero dependencies, 60fps rendering, and an agent-optimized functional API.",
+  "version": "0.3.0",
+  "description": "A zero-dependency terminal layout engine for Bun and Node.js with 60fps diff rendering and an agent-optimized functional API.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,14 +44,16 @@
     "bunti": "dist/cli.js"
   },
   "engines": {
+    "node": ">=22.0.0",
     "bun": ">=1.0.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun scripts/build-demos.ts",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun scripts/fix-esm-imports.ts && bun scripts/build-demos.ts",
     "gen:llms": "bun scripts/gen-llms.ts",
     "prepublishOnly": "bun run typecheck && bun run lint && bun run test && bun run gen:llms && bun run build",
     "test": "bun test",
     "smoke": "bun scripts/smoke-demos.ts",
+    "smoke:node": "node scripts/smoke-node.mjs",
     "bench": "bun scripts/bench.ts",
     "typecheck": "tsc --noEmit",
     "type-check": "tsc --noEmit",
@@ -75,6 +77,7 @@
     "terminal",
     "layout",
     "bun",
+    "node",
     "bunti"
   ],
   "author": "Zak Mandhro <zakmandhro@gmail.com>",

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Bunti"
   text: "Terminal UIs that feel like the web."
-  tagline: "A Bun-native, zero-dependency TUI engine with live themes, 10,763 icons, mouse & motion — designed so coding agents write it fluently."
+  tagline: "A zero-dependency TUI engine optimized for Bun and Node.js with live themes, 10,763 icons, mouse & motion — designed so coding agents write it fluently."
   actions:
     - theme: brand
       text: Get Started
@@ -39,7 +39,7 @@ features:
     link: /animations
   - icon: 🛟
     title: Fast, safe, zero-dep
-    details: ~0.4ms full-screen draw at 120×40 via a double-buffered diff renderer. Guaranteed terminal restore on any crash. Zero runtime dependencies, Bun-native.
+    details: ~0.4ms full-screen draw at 120×40 via a double-buffered diff renderer. Guaranteed terminal restore on any crash. Zero runtime dependencies, with Bun SIMD vectorization for speed.
     link: /engine
 ---
 

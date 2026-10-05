@@ -37,7 +37,13 @@ function rewriteImports(source: string, file: string): string {
         return `from '../${p}/index.js'`;
       }
       return `from '../${p}.js'`;
-    });
+    })
+    // Local demo helpers: './demo-layout' -> './demo-layout.js'
+    .replace(/from '\.\/demo-layout'/g, "from './demo-layout.js'")
+    .replace(
+      /from '\.\/platformer-physics'/g,
+      "from './platformer-physics.js'",
+    );
 
   if (rewritten.includes("'../src")) {
     console.error(`build-demos: unrewritten src import left in ${file}`);
@@ -48,20 +54,33 @@ function rewriteImports(source: string, file: string): string {
 
 mkdirSync(outDir, { recursive: true });
 
+const transpiler = new Bun.Transpiler({ loader: 'ts' });
 const files = [...PUBLIC_DEMOS.map((d) => d.file), ...DEMO_HELPERS];
 for (const file of files) {
   const source = readFileSync(join(demoDir, file), 'utf-8');
-  writeFileSync(join(outDir, file), rewriteImports(source, file));
+  const rewritten = rewriteImports(source, file);
+  writeFileSync(join(outDir, file), rewritten);
+
+  // Emit .js companion for Node execution
+  const jsFile = file.replace(/\.ts$/, '.js');
+  const jsSource = transpiler.transformSync(rewritten);
+  writeFileSync(join(outDir, jsFile), jsSource);
 }
 
 if (!existsSync(cliPath)) {
   console.error('build-demos: dist/cli.js missing — run tsc first');
   process.exit(1);
 }
-if (!readFileSync(cliPath, 'utf-8').startsWith('#!/usr/bin/env bun')) {
-  console.error('build-demos: dist/cli.js lost its bun shebang');
+const shebang = readFileSync(cliPath, 'utf-8').slice(0, 30);
+if (
+  !shebang.startsWith('#!/usr/bin/env node') &&
+  !shebang.startsWith('#!/usr/bin/env bun')
+) {
+  console.error('build-demos: dist/cli.js lost its shebang');
   process.exit(1);
 }
 chmodSync(cliPath, 0o755);
 
-console.log(`build-demos: packaged ${files.length} files into dist/demos/`);
+console.log(
+  `build-demos: packaged ${files.length} demos (.ts + .js) into dist/demos/`,
+);

@@ -6,9 +6,11 @@ Bunti is a Bun-native terminal UI engine: you describe each frame with a functio
 
 ```bash
 bun add @zakmandhro/bunti
+# or
+npm install @zakmandhro/bunti
 ```
 
-> Bunti requires the [Bun](https://bun.sh) runtime (≥ 1.0). It uses Bun-native APIs for rendering, so Node.js is not supported — you'll get a friendly error instead of a crash if you try.
+> Bunti runs on both [Bun](https://bun.sh) (≥ 1.0) and [Node.js](https://nodejs.org) (≥ 22.0.0 LTS) with zero runtime dependencies. Bun delivers maximum speed via native SIMD string and grapheme width measurement.
 
 ## Try it in one line
 

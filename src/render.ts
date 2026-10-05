@@ -356,18 +356,23 @@ export function flush(state: ScreenState) {
   const renderString = renderFrame(state);
 
   if (renderString) {
-    const writer = Bun.stdout.writer();
     // Synchronized-output wrap (mode 2026) is gated on the detected profile:
     // emitted unless the terminal was positively identified as lacking it
     // (state.syncOutput === false). Absent/unknown profiles keep the wrap.
     const sync = state.syncOutput !== false;
-    writer.write(
+    const output =
       (sync ? ANSI.syncStart : '') +
-        (state.options.hideCursor ? ANSI.hideCursor : '') +
-        renderString +
-        (sync ? ANSI.syncEnd : ''),
-    );
-    writer.flush();
+      (state.options.hideCursor ? ANSI.hideCursor : '') +
+      renderString +
+      (sync ? ANSI.syncEnd : '');
+
+    if (typeof Bun !== 'undefined' && Bun.stdout?.writer) {
+      const writer = Bun.stdout.writer();
+      writer.write(output);
+      writer.flush();
+    } else {
+      process.stdout.write(output);
+    }
   }
 }
 
