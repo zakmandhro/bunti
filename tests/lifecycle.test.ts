@@ -37,11 +37,24 @@ interface FixtureResult {
   stderr: string;
 }
 
+// Bun >= 1.4.2 echoes uncaught errors as `::error` annotations under GitHub
+// Actions, which would double-count the crash reports these tests assert on.
+// The preload's FORCE_COLOR/BUNTI_NO_HINTS are dropped too: the default spawn
+// env never carried them, and FORCE_COLOR would colorize the JSON on stderr.
+const DROPPED_ENV = new Set(['CI', 'FORCE_COLOR', 'BUNTI_NO_HINTS']);
+const fixtureEnv = () =>
+  Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !DROPPED_ENV.has(key) && !key.startsWith('GITHUB_'),
+    ),
+  );
+
 async function runFixture(
   name: string,
   timeoutMs = 15000,
 ): Promise<FixtureResult> {
   const proc = Bun.spawn(['bun', resolve(FIXTURES_DIR, name)], {
+    env: fixtureEnv(),
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',
@@ -109,11 +122,6 @@ describe('crash safety (subprocess fixtures)', () => {
     // library calling process.exit — code after the await never ran.
     expect(stdout).not.toContain('UNREACHABLE');
     // Exactly one clean report on the main screen.
-    if (countOccurrences(stderr, 'render-crash-marker') !== 1) {
-      console.log(
-        'DEBUG_STDERR_START' + JSON.stringify(stderr) + 'DEBUG_STDERR_END',
-      );
-    }
     expect(countOccurrences(stderr, 'render-crash-marker')).toBe(1);
   });
 
