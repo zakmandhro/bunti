@@ -2,7 +2,7 @@
  * Bunti Functional Rendering & Diffing
  */
 
-import { hintKeyboardStdinNotTTY } from './diagnostics';
+import { hintKeyboardStdinNotTTY, hintMouseInConhost } from './diagnostics';
 import {
   createKeyEvent,
   HeldKeyTracker,
@@ -397,6 +397,7 @@ export function loop(
     options.keyboard === true,
     process.stdin.isTTY === true,
   );
+  hintMouseInConhost(options.mouse === true, state.terminal?.app);
 
   state.isRestored = false;
   activeScreens.add(state);
@@ -440,7 +441,6 @@ export function loop(
       // 1. Remove Listeners
       state.inputTokenizer?.dispose();
       process.stdin.removeListener('data', inputHandler);
-      process.stdout.removeListener('resize', resizeHandler);
       process.removeListener('SIGWINCH', resizeHandler);
       process.removeListener('SIGINT', stop);
       process.removeListener('SIGTERM', stop);
@@ -562,10 +562,7 @@ export function loop(
 
     if (options.mouse || options.focus || options.keyboard) setupInput();
 
-    // Windows has no SIGWINCH; libuv reports console resizes via stdout.
-    if (process.platform === 'win32')
-      process.stdout.on('resize', resizeHandler);
-    else process.on('SIGWINCH', resizeHandler);
+    process.on('SIGWINCH', resizeHandler);
     process.on('SIGINT', stop);
     process.on('SIGTERM', stop);
 
