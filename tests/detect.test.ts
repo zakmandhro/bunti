@@ -2,13 +2,19 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import {
   detectCapabilities,
   detectColorTier,
+  type HostInfo,
   identifyTerminal,
   type TerminalProfile,
 } from '../src/detect';
 import { icon, init } from '../src/icons';
 
 // All tests pass explicit env objects — identifyTerminal is a pure function,
-// so nothing here mutates process.env.
+// so nothing here mutates process.env. Host-sensitive cases pass a fixed
+// HostInfo so results don't depend on the machine running the suite.
+
+const LINUX: HostInfo = { platform: 'linux', release: '6.8.0' };
+const WIN11: HostInfo = { platform: 'win32', release: '10.0.26100' };
+const WIN10: HostInfo = { platform: 'win32', release: '10.0.19045' };
 
 const GHOSTTY_ENV = {
   GHOSTTY_RESOURCES_DIR: '/Applications/Ghostty.app/Contents/Resources',
@@ -187,12 +193,127 @@ describe('identifyTerminal env matrix', () => {
 
   for (const { name, env, expected } of matrix) {
     test(name, () => {
-      const profile = identifyTerminal(env);
+      const profile = identifyTerminal(env, LINUX);
       for (const [key, value] of Object.entries(expected)) {
         expect(profile[key as keyof TerminalProfile]).toEqual(value as never);
       }
     });
   }
+});
+
+describe('identifyTerminal on Windows', () => {
+  const matrix: {
+    name: string;
+    env: Record<string, string | undefined>;
+    host: HostInfo;
+    expected: Partial<TerminalProfile>;
+  }[] = [
+    {
+      name: 'Windows Terminal (WT_SESSION)',
+      env: { WT_SESSION: 'a1b2c3d4-0000-0000-0000-000000000000' },
+      host: WIN10,
+      expected: {
+        app: 'windows-terminal',
+        truecolor: true,
+        syncOutput: false,
+        nerdFont: 'assumed-no',
+      },
+    },
+    {
+      // Default-terminal handoff sets no env (microsoft/terminal#13006).
+      name: 'Windows 11 with no env signal assumes Windows Terminal',
+      env: {},
+      host: WIN11,
+      expected: { app: 'windows-terminal', truecolor: true },
+    },
+    {
+      name: 'Windows 10 with no env signal is conhost',
+      env: {},
+      host: WIN10,
+      expected: { app: 'conhost', truecolor: true, nerdFont: 'assumed-no' },
+    },
+    {
+      name: 'VS Code launched from a Windows Terminal tab stays vscode',
+      env: {
+        WT_SESSION: 'a1b2c3d4-0000-0000-0000-000000000000',
+        TERM_PROGRAM: 'vscode',
+        TERM_PROGRAM_VERSION: '1.105.0',
+      },
+      host: WIN11,
+      expected: { app: 'vscode', version: '1.105.0', truecolor: true },
+    },
+    {
+      name: 'JetBrains terminal',
+      env: {
+        TERMINAL_EMULATOR: 'JetBrains-JediTerm',
+        TERM: 'xterm-256color',
+      },
+      host: WIN11,
+      expected: { app: 'jetbrains', truecolor: true, nerdFont: 'assumed-no' },
+    },
+    {
+      // mintty defaults to TERM=xterm, which alone would read as 16-color.
+      name: 'mintty (Git Bash)',
+      env: {
+        TERM_PROGRAM: 'mintty',
+        TERM_PROGRAM_VERSION: '3.7.4',
+        TERM: 'xterm',
+        MSYSTEM: 'MINGW64',
+      },
+      host: WIN11,
+      expected: { app: 'mintty', version: '3.7.4', truecolor: true },
+    },
+    {
+      name: 'ConEmu (version from ConEmuBuild)',
+      env: { ConEmuANSI: 'ON', ConEmuPID: '4242', ConEmuBuild: '230724' },
+      host: WIN10,
+      expected: { app: 'conemu', version: '230724', truecolor: true },
+    },
+    {
+      name: 'WSL inside Windows Terminal (WT_SESSION forwarded)',
+      env: {
+        WT_SESSION: 'a1b2c3d4-0000-0000-0000-000000000000',
+        WSL_DISTRO_NAME: 'Ubuntu',
+        TERM: 'xterm-256color',
+      },
+      host: { platform: 'linux', release: '6.6.87.2-microsoft-standard-WSL2' },
+      expected: { app: 'windows-terminal', truecolor: true },
+    },
+    {
+      name: 'psmux is reported as tmux',
+      env: { TMUX: 'psmux,1234,0', WT_SESSION: 'x' },
+      host: WIN11,
+      expected: { app: 'windows-terminal', multiplexer: 'tmux' },
+    },
+  ];
+
+  for (const { name, env, host, expected } of matrix) {
+    test(name, () => {
+      const profile = identifyTerminal(env, host);
+      for (const [key, value] of Object.entries(expected)) {
+        expect(profile[key as keyof TerminalProfile]).toEqual(value as never);
+      }
+    });
+  }
+
+  test('conhost color tier follows the Windows build like Node', () => {
+    const win = (build: number): HostInfo => ({
+      platform: 'win32',
+      release: `10.0.${build}`,
+    });
+    expect(detectColorTier({}, win(15063))).toBe('truecolor');
+    expect(detectColorTier({}, win(14931))).toBe('truecolor');
+    expect(detectColorTier({}, win(10586))).toBe('256');
+    expect(detectColorTier({}, win(10240))).toBe('16');
+    expect(
+      detectColorTier({}, { platform: 'win32', release: '6.3.9600' }),
+    ).toBe('16');
+  });
+
+  test('NO_COLOR and an explicit TERM still win on Windows', () => {
+    expect(detectColorTier({ NO_COLOR: '1' }, WIN11)).toBe('mono');
+    expect(detectColorTier({ TERM: 'xterm-256color' }, WIN11)).toBe('256');
+  });
 });
 
 describe('nerd font override precedence', () => {

@@ -407,7 +407,9 @@ describe('color capability tiers', () => {
     expect(detectColorTier({ TERM: 'xterm' })).toBe('16');
     expect(detectColorTier({ TERM: 'dumb' })).toBe('mono');
     expect(detectColorTier({ TERM: 'xterm-direct' })).toBe('truecolor');
-    expect(detectColorTier({})).toBe('truecolor');
+    expect(detectColorTier({}, { platform: 'linux', release: '6.8.0' })).toBe(
+      'truecolor',
+    );
   });
 
   test('resolveColor quantizes RGB to 256 below truecolor', () => {
