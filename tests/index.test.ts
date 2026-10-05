@@ -512,6 +512,7 @@ describe('Bunti Core Engine', () => {
 
     try {
       const state = createScreenState();
+      const before = Date.now();
       resizeScreen(state);
 
       expect(state.width).toBe(42);
@@ -520,7 +521,9 @@ describe('Bunti Core Engine', () => {
       expect(state.backBuffer).toHaveLength(42 * 11);
       expect(state.needsFullRedraw).toBe(true);
       expect(state.isResizing).toBe(true);
-      expect(state.resizeSettlesAt).toBeGreaterThan(Date.now());
+      // Settles strictly after the resize began (debounce >= 1ms); comparing
+      // to a later Date.now() flakes when a millisecond ticks in between.
+      expect(state.resizeSettlesAt).toBeGreaterThan(before);
     } finally {
       if (columns) Object.defineProperty(process.stdout, 'columns', columns);
       else delete (process.stdout as { columns?: number }).columns;
