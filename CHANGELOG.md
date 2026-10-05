@@ -5,6 +5,24 @@ All notable changes to Bunti are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-04
+
+### Added
+
+- **Windows support** (Windows Terminal, VS Code, JetBrains, and other ConPTY hosts):
+  - **Terminal detection**: new `TerminalApp` values `windows-terminal` (`WT_SESSION`), `conhost`, `mintty` (`TERM_PROGRAM`), `conemu` (`ConEmuANSI`/`ConEmuPID`, version from `ConEmuBuild`), and `jetbrains` (`TERMINAL_EMULATOR`). `WT_SESSION` is checked after `TERM_PROGRAM` apps because it leaks into terminals launched from a Windows Terminal tab.
+  - **No-signal fallback**: Windows Terminal sets no env at all when it takes over as the default console (microsoft/terminal#13006), so Windows with no signal is treated as Windows Terminal on Windows 11 and conhost on Windows 10.
+  - **Color tier**: a Windows console with no `TERM` follows the build number like Node's `getColorDepth()` (14931+ truecolor, 10586+ 256, else 16). mintty (was 16-color) and JetBrains (was 256) are now truecolor.
+  - **`HostInfo`**: `identifyTerminal()`, `detectColorTier()`, and `detectCapabilities()` take an optional `{ platform, release }` second argument (defaults to the running process) so detection stays pure and testable.
+  - **Dev hint** when `mouse: true` runs in the classic Windows console, which delivers clicks as input records that Node/Bun never see.
+- CI now runs on `windows-latest`.
+
+### Fixed
+
+- **Resize on Windows without keyboard input**: libuv only learns about console resizes from input records read in raw mode, so Bunti now attaches raw stdin on a Windows TTY even when `keyboard`/`mouse`/`focus` are off. Ctrl+C still stops the loop.
+- Build and test scripts on Windows: file URLs are converted with `fileURLToPath`/`pathToFileURL` instead of `.pathname`; `rm -rf dist` is replaced by a cross-platform clean script; `.gitattributes` pins LF so `core.autocrlf` checkouts pass lint.
+- CI on Bun 1.4.2: crash-safety fixtures no longer count Bun's GitHub Actions `::error` annotation as a second error report (this also failed the v0.3.0 publish workflow).
+
 ## [0.3.0] - 2026-10-04
 
 ### Added
