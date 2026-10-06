@@ -71,13 +71,23 @@ export function createMotion(
         : state.startTime;
       const elapsed = now - start - (options.delay || 0);
       const ease = options.easing ?? identity;
-      if (elapsed < 0 || duration <= 0) return ease(0);
-      if (options.loop === 'yoyo') {
-        // 0 -> 1 -> 0 over two durations; easing applies to each leg.
-        const phase = (elapsed % (duration * 2)) / duration;
-        return ease(phase <= 1 ? phase : 2 - phase);
+      if (elapsed < 0) {
+        (state as { requestTick?: () => void }).requestTick?.();
+        return ease(0);
       }
-      if (options.loop) return ease((elapsed % duration) / duration);
+      if (duration <= 0) return ease(1);
+      if (options.loop) {
+        (state as { requestTick?: () => void }).requestTick?.();
+        if (options.loop === 'yoyo') {
+          // 0 -> 1 -> 0 over two durations; easing applies to each leg.
+          const phase = (elapsed % (duration * 2)) / duration;
+          return ease(phase <= 1 ? phase : 2 - phase);
+        }
+        return ease((elapsed % duration) / duration);
+      }
+      if (elapsed < duration) {
+        (state as { requestTick?: () => void }).requestTick?.();
+      }
       return ease(Math.min(1, elapsed / duration));
     },
 
@@ -133,6 +143,10 @@ export function createMotion(
       }
 
       const raw = rawAt(rec);
+      const isTransitioning = rec.visible ? raw < 1 : raw > 0;
+      if (isTransitioning) {
+        (state as { requestTick?: () => void }).requestTick?.();
+      }
       return {
         progress: ease(raw),
         mounted: visible || raw > 0,
@@ -161,6 +175,9 @@ export function createMotion(
       const elapsed = now - start - index * options.delay;
       const ease = options.easing ?? identity;
       if (options.duration <= 0) return ease(elapsed >= 0 ? 1 : 0);
+      if (elapsed < options.duration) {
+        (state as { requestTick?: () => void }).requestTick?.();
+      }
       return ease(clamp01(elapsed / options.duration));
     },
 
@@ -190,10 +207,15 @@ export function createMotion(
         Math.floor(elapsed / blinkRate) % 2 === 0 ||
         index < chars.length;
 
+      const done = index >= chars.length;
+      if (!done || options.loop || options.blink !== false) {
+        (state as { requestTick?: () => void }).requestTick?.();
+      }
+
       return {
         text: chars.slice(0, index).join(''),
         cursor: showCursor ? (options.cursor ?? '█') : ' ',
-        done: index >= chars.length,
+        done,
         index,
         progress: chars.length === 0 ? 1 : index / chars.length,
       };
@@ -208,6 +230,7 @@ export function createMotion(
       intensity: number = 0.5,
       options: { id?: string; interval?: number } = {},
     ) {
+      (state as { requestTick?: () => void }).requestTick?.();
       const interval = Math.max(1, options.interval ?? 50);
       const bucket = Math.floor((Date.now() - state.startTime) / interval);
       return hash01(`${options.id ?? ''}:${bucket}`) > 1 - intensity;

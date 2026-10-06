@@ -18,7 +18,7 @@ npm install @zakmandhro/bunti
 
 ## Mental model
 
-- render — Starts a Bunti app: runs `callback` every frame (immediate mode — redraw the whole screen from state each call) and flushes only the changed cells to the terminal.
+- render — Starts a Bunti app: runs `callback` every frame (or on-demand with `{ idle: 'on-demand' }` for ~0% idle CPU) and flushes only the changed cells to the terminal.
 - One frame = one callback: read input, derive state with
   ctx.useState(key, initial), draw everything. Never mutate the
   terminal yourself.
@@ -52,7 +52,7 @@ npm install @zakmandhro/bunti
 - ctx.hitbox — Registers a clickable region and returns its interaction snapshot for this frame.
 - ctx.isClicked — True exactly one frame per click (SGR release at the press origin) — fire actions here, not on isPressed.
 - ctx.isHovered — True while the mouse is inside the hitbox registered for `id`.
-- ctx.list — Renders a selectable list with built-in up/down keyboard navigation, mouse hover/click selection, and theme-token highlighting.
+- ctx.list — Renders a selectable list with built-in up/down keyboard navigation, mouse hover/click selection, and theme-token highlighting. Returns `{ index, item }`.
 - ctx.table — Renders rows of cells as an aligned table with shared borders.
 - ctx.theme — The active semantic theme for this subtree.
 - ctx.setTheme — Swaps the active theme live and requests a rerender.
@@ -60,6 +60,7 @@ npm install @zakmandhro/bunti
 - ctx.transition — Enter/exit progress keyed on a visibility flag.
 - ctx.stagger — Cascading entrance progress: item `index` starts index*delay ms into the timeline and animates for `duration` ms.
 - ctx.elapsedTime — Milliseconds elapsed since render() started.
+- ctx.requestRender / ctx.invalidate — Explicitly requests a render frame in `idle: 'on-demand'` mode.
 - ctx.requestStop — Stops the render loop and restores the terminal (the promise returned by render() then resolves).
 
 ## Components ('@zakmandhro/bunti/components')

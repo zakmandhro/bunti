@@ -157,6 +157,14 @@ export interface LayerOptions {
   backdrop?: number;
 }
 
+/** Selection state returned by `ctx.list()`. */
+export interface ListSelection<T = string> {
+  /** The 0-based index of the currently selected item. */
+  index: number;
+  /** The currently selected item (or undefined if items is empty). */
+  item: T | undefined;
+}
+
 /**
  * The contextual builder passed to every render closure. One frame = one
  * callback invocation: read input, derive state, draw.
@@ -454,9 +462,10 @@ export interface BuntiContext {
    * Renders a selectable list with built-in up/down keyboard navigation,
    * mouse hover/click selection, and theme-token highlighting. Selection
    * state lives in `useState(`${id}_index`)`.
-   * @example ctx.list('menu', ['Start', 'Options', 'Quit'], { maxVisible: 5 });
+   * Returns `{ index, item }` with the active selection.
+   * @example const { index, item } = ctx.list('menu', ['Start', 'Options', 'Quit'], { maxVisible: 5 });
    */
-  list(id: string, items: string[], options?: ListOptions): BuntiContext;
+  list(id: string, items: string[], options?: ListOptions): ListSelection;
   /**
    * Renders rows of cells as an aligned table with shared borders.
    * @example ctx.table([['NAME', 'STATUS'], ['api', 'ready']], { width: '100%' });
@@ -524,8 +533,18 @@ export interface BuntiContext {
    * @example if (ctx.lastKey === 'q') ctx.requestStop();
    */
   requestStop(): void;
+  /**
+   * Requests a new render frame. Essential in `idle: 'on-demand'` mode when
+   * state changes outside Bunti's built-in hooks (e.g. external events/sockets).
+   * @example ctx.requestRender();
+   */
+  requestRender(): void;
+  /** Alias for `requestRender()`. */
+  invalidate(): void;
   /** Flushes the pending flow to the buffer (called by render(); rare). */
   flushFlow(): void;
+  /** Custom JSON serializer to prevent serializing large buffer arrays when logging. */
+  toJSON?(): Record<string, unknown>;
 
   // --- motion & text attrs ---
   /** Milliseconds since the previous frame, clamped to 100 (0 outside loop()). */

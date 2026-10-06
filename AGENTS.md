@@ -42,6 +42,9 @@ outside the render callback.
 - `useState(key, initial)` for view state; `usePersistentState` only
   for values that must survive restarts; `useAsync(key, fetcher,
   { interval })` for data — never block the render loop.
+- Pass `{ idle: 'on-demand' }` to `render()` for always-open dashboards
+  to drop idle CPU to ~0%; Bunti repaints on input, resize, state changes,
+  or explicit `ctx.requestRender()`.
 - Components (`Card`, `Button`, `Input`, `Modal`, ...) for common
   controls; direct `rect()`/`blit()` for dense dashboards, charts,
   maps, and canvas-like regions.

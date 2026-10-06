@@ -6,7 +6,7 @@
  * Strips ANSI escape sequences from a string to allow accurate width measurement.
  */
 export function stripAnsi(str: string): string {
-  if (!str) return '';
+  if (!str || str.indexOf('\x1B') === -1) return str || '';
   return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
 }
 
@@ -20,6 +20,11 @@ function getSegmenter(): Intl.Segmenter {
 }
 
 function graphemeWidth(segment: string): number {
+  if (segment.length === 1) {
+    const cp = segment.charCodeAt(0);
+    if (cp >= 0x20 && cp <= 0x7e) return 1;
+    if (cp <= 0x1f || cp === 0x7f) return 0;
+  }
   const cp = segment.codePointAt(0);
   if (cp === undefined) return 0;
 
@@ -66,7 +71,17 @@ function graphemeWidth(segment: string): number {
  */
 export function stringWidthFallback(str: string): number {
   if (!str) return 0;
-  const clean = stripAnsi(str);
+  const clean = str.indexOf('\x1B') !== -1 ? stripAnsi(str) : str;
+  let isAscii = true;
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean.charCodeAt(i);
+    if (c < 0x20 || c > 0x7e) {
+      isAscii = false;
+      break;
+    }
+  }
+  if (isAscii) return clean.length;
+
   const seg = getSegmenter();
   let width = 0;
   for (const { segment } of seg.segment(clean)) {
@@ -86,6 +101,17 @@ export function visibleWidth(str: string): number {
     return Math.max(...lines.map(visibleWidth));
   }
 
+  // Fast path for printable ASCII (no escape codes, control codes, or wide chars)
+  let isAscii = true;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 0x20 || c > 0x7e) {
+      isAscii = false;
+      break;
+    }
+  }
+  if (isAscii) return str.length;
+
   const clean = stripAnsi(str);
   if (typeof Bun !== 'undefined' && typeof Bun.stringWidth === 'function') {
     return Bun.stringWidth(clean);
@@ -98,8 +124,18 @@ export function visibleWidth(str: string): number {
  * Returns the width of a single character or grapheme.
  */
 export function charWidth(char: string): number {
+  if (char.length === 1) {
+    const code = char.charCodeAt(0);
+    if (code >= 0x20 && code <= 0x7e) return 1;
+    if (code <= 0x1f || code === 0x7f) return 0;
+  }
   const clean = stripAnsi(char);
   if (clean.length === 0) return 0;
+  if (clean.length === 1) {
+    const code = clean.charCodeAt(0);
+    if (code >= 0x20 && code <= 0x7e) return 1;
+    if (code <= 0x1f || code === 0x7f) return 0;
+  }
   if (typeof Bun !== 'undefined' && typeof Bun.stringWidth === 'function') {
     return Bun.stringWidth(clean);
   }

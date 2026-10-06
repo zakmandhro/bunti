@@ -157,42 +157,75 @@ export function rect(
   const isGradient =
     style.bg && typeof style.bg === 'object' && 'colors' in style.bg;
 
+  const constantBgCode =
+    !isGradient && style.bg !== undefined
+      ? resolveColor(style.bg as string | number | RGB | ThemeColor)
+      : undefined;
+
+  const constantFgCode =
+    style.fg !== undefined ? resolveColor(style.fg) : undefined;
+
+  const isAsciiChar =
+    style.char !== undefined &&
+    style.char.length === 1 &&
+    style.char.charCodeAt(0) >= 0x20 &&
+    style.char.charCodeAt(0) <= 0x7e;
+
   for (let dy = 0; dy < h; dy++) {
     const row = y + dy;
     if (row < 0 || row >= state.height) continue;
+    const rowOffset = row * state.width;
 
     for (let dx = 0; dx < w; dx++) {
       const col = x + dx;
       if (col < 0 || col >= state.width) continue;
 
       let resolvedBg: string | number | RGB | undefined;
+      let resolvedBgCode: string | number | undefined;
 
       if (isGradient) {
         const grad = style.bg as any;
-        if (grad.direction === 'horizontal') {
-          resolvedBg = grad.colors[Math.floor((dx / w) * grad.colors.length)];
-        } else {
-          resolvedBg = grad.colors[Math.floor((dy / h) * grad.colors.length)];
-        }
+        const color =
+          grad.direction === 'horizontal'
+            ? grad.colors[Math.floor((dx / w) * grad.colors.length)]
+            : grad.colors[Math.floor((dy / h) * grad.colors.length)];
+        resolvedBg = color;
+        resolvedBgCode = resolveColor(color);
       } else {
-        resolvedBg =
-          style.bg !== undefined
-            ? resolveColor(style.bg as string | number | RGB | ThemeColor)
-            : undefined;
+        resolvedBg = style.bg as any;
+        resolvedBgCode = constantBgCode;
       }
 
-      const cell: Partial<Cell> = { bg: resolvedBg };
-      if (style.char) cell.char = style.char;
-      if (style.fg) cell.fg = resolveColor(style.fg) as any;
+      const idx = rowOffset + col;
+      const existing = state.backBuffer[idx]!;
 
-      const existing = state.backBuffer[row * state.width + col]!;
-      if (existing.char !== ' ' && !style.char) {
-        // Keep existing char/fg if drawing a pure background
-        cell.char = existing.char;
-        cell.fg = existing.fg;
+      if (isAsciiChar && !isGradient) {
+        existing.char = style.char!;
+        existing.fg = style.fg;
+        existing.fgCode = constantFgCode;
+        if (resolvedBg !== undefined) {
+          existing.bg = resolvedBg;
+          existing.bgCode = resolvedBgCode;
+        }
+        existing.bold = false;
+        existing.italic = false;
+        existing.underline = false;
+        existing.dim = false;
+        existing.strike = false;
+        existing.skip = false;
+      } else {
+        const cell: Partial<Cell> = { bg: resolvedBg };
+        if (style.char) cell.char = style.char;
+        if (style.fg) cell.fg = style.fg as any;
+
+        if (existing.char !== ' ' && !style.char) {
+          // Keep existing char/fg if drawing a pure background
+          cell.char = existing.char;
+          cell.fg = existing.fg;
+        }
+
+        setCell(state, col, row, cell);
       }
-
-      setCell(state, col, row, cell);
     }
   }
 }
@@ -207,6 +240,14 @@ export type BlitStyle = Partial<Cell> & {
    */
   transparent?: string;
 };
+
+let blitSegmenter: Intl.Segmenter | null = null;
+function getBlitSegmenter(): Intl.Segmenter {
+  if (!blitSegmenter) {
+    blitSegmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+  }
+  return blitSegmenter;
+}
 
 /**
  * Paints a multi-line, ANSI-styled string into the back buffer at absolute
@@ -291,40 +332,98 @@ export function blit(
           else if (code === 49) currentBg = undefined;
         }
       } else if (match[2]) {
-        const processedText = replaceEmojis(match[2]);
-        const segmenter = new Intl.Segmenter('en', {
-          granularity: 'grapheme',
-        });
-        for (const { segment } of segmenter.segment(processedText)) {
-          const w = charWidth(segment);
-          if (w === 0) continue;
+        const rawText = match[2];
 
-          // Transparency key: leave the underlying cell untouched, but keep
-          // the cursor advancing so the sprite's shape stays intact.
-          if (transparent !== undefined && segment === transparent) {
-            x += w;
-            continue;
+        // Fast path for printable ASCII text without emoji or wide characters
+        let isAscii = true;
+        for (let i = 0; i < rawText.length; i++) {
+          const c = rawText.charCodeAt(i);
+          if (c < 0x20 || c > 0x7e) {
+            isAscii = false;
+            break;
           }
+        }
 
-          const cell: Partial<Cell> = { char: segment, ...cellStyle };
+        if (isAscii) {
+          const resolvedFg =
+            currentFg !== undefined
+              ? currentFg
+              : style.fg !== undefined
+                ? style.fg
+                : state.options.defaultFg;
+          const resolvedBg = currentBg !== undefined ? currentBg : style.bg;
+          const fgCode =
+            resolvedFg !== undefined ? resolveColor(resolvedFg) : undefined;
+          const bgCode =
+            resolvedBg !== undefined ? resolveColor(resolvedBg) : undefined;
+          const targetY = startY + row;
 
-          // Only overwrite buffer colors if explicitly set in the string or style
-          if (currentFg !== undefined) cell.fg = currentFg;
-          else if (style.fg !== undefined) cell.fg = style.fg;
-          else if (state.options.defaultFg !== undefined)
-            cell.fg = state.options.defaultFg;
+          if (targetY >= 0 && targetY < state.height) {
+            const rowOffset = targetY * state.width;
+            for (let i = 0; i < rawText.length; i++) {
+              const ch = rawText[i]!;
+              if (transparent !== undefined && ch === transparent) {
+                x++;
+                continue;
+              }
+              const col = x;
+              x++;
+              if (col >= 0 && col < state.width) {
+                const target = state.backBuffer[rowOffset + col]!;
+                target.char = ch;
+                target.fg = resolvedFg;
+                target.fgCode = fgCode;
+                if (resolvedBg !== undefined) {
+                  target.bg = resolvedBg;
+                  target.bgCode = bgCode;
+                }
+                target.bold = currentBold || (cellStyle.bold ?? false);
+                target.italic = currentItalic || (cellStyle.italic ?? false);
+                target.underline =
+                  currentUnderline || (cellStyle.underline ?? false);
+                target.dim = currentDim || (cellStyle.dim ?? false);
+                target.strike = currentStrike || (cellStyle.strike ?? false);
+                target.skip = false;
+              }
+            }
+          } else {
+            x += rawText.length;
+          }
+        } else {
+          // General Unicode / emoji / multi-byte grapheme path
+          const processedText = replaceEmojis(rawText);
+          const segmenter = getBlitSegmenter();
+          for (const { segment } of segmenter.segment(processedText)) {
+            const w = charWidth(segment);
+            if (w === 0) continue;
 
-          if (currentBg !== undefined) cell.bg = currentBg;
-          else if (style.bg !== undefined) cell.bg = style.bg;
+            // Transparency key: leave the underlying cell untouched, but keep
+            // the cursor advancing so the sprite's shape stays intact.
+            if (transparent !== undefined && segment === transparent) {
+              x += w;
+              continue;
+            }
 
-          if (currentBold) cell.bold = true;
-          if (currentItalic) cell.italic = true;
-          if (currentUnderline) cell.underline = true;
-          if (currentDim) cell.dim = true;
-          if (currentStrike) cell.strike = true;
+            const cell: Partial<Cell> = { char: segment, ...cellStyle };
 
-          setCell(state, x, startY + row, cell);
-          x += w;
+            // Only overwrite buffer colors if explicitly set in the string or style
+            if (currentFg !== undefined) cell.fg = currentFg;
+            else if (style.fg !== undefined) cell.fg = style.fg;
+            else if (state.options.defaultFg !== undefined)
+              cell.fg = state.options.defaultFg;
+
+            if (currentBg !== undefined) cell.bg = currentBg;
+            else if (style.bg !== undefined) cell.bg = style.bg;
+
+            if (currentBold) cell.bold = true;
+            if (currentItalic) cell.italic = true;
+            if (currentUnderline) cell.underline = true;
+            if (currentDim) cell.dim = true;
+            if (currentStrike) cell.strike = true;
+
+            setCell(state, x, startY + row, cell);
+            x += w;
+          }
         }
       }
     }

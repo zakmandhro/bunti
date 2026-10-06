@@ -438,7 +438,10 @@ function createDSLContext(
       );
 
       dslState.activeContents.push(content);
-      return ctx;
+      return {
+        index: selectedIndex,
+        item: items[selectedIndex],
+      };
     },
 
     table(rows: string[][], options: TableOptions = {}) {
@@ -636,6 +639,26 @@ function createDSLContext(
 
     requestStop() {
       state.requestStop?.();
+    },
+
+    requestRender() {
+      (state as { requestTick?: () => void }).requestTick?.();
+    },
+
+    invalidate() {
+      (state as { requestTick?: () => void }).requestTick?.();
+    },
+
+    toJSON() {
+      return {
+        width: availableW,
+        height: availableH,
+        cursorX: ctx.cursorX,
+        cursorY: ctx.cursorY,
+        offsetX,
+        offsetY,
+        isRoot,
+      };
     },
 
     flushFlow() {},

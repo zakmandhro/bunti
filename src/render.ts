@@ -407,8 +407,10 @@ export function loop(
   if (options.hideCursor) process.stdout.write(ANSI.hideCursor);
 
   return new Promise((resolve, reject) => {
+    const isOnDemand = options.idle === 'on-demand';
     let stopped = false;
     let interval: ReturnType<typeof setInterval> | null = null;
+    let scheduledTimer: ReturnType<typeof setTimeout> | null = null;
 
     const setupInput = () => {
       let cmd = '';
@@ -436,7 +438,14 @@ export function loop(
       stopped = true;
       state.isStopped = true;
 
-      if (interval) clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+      if (scheduledTimer) {
+        clearTimeout(scheduledTimer);
+        scheduledTimer = null;
+      }
 
       // 1. Remove Listeners
       state.inputTokenizer?.dispose();
@@ -479,6 +488,29 @@ export function loop(
       requestTick();
     };
 
+    const scheduleNextTick = () => {
+      if (stopped || state.isStopped) return;
+      if (ticking) {
+        tickAgain = true;
+        return;
+      }
+      if (scheduledTimer !== null) {
+        return;
+      }
+      const fps = state.hasFocus ? options.fps || 60 : 5;
+      const minInterval = 1000 / fps;
+      const now = Date.now();
+      const elapsed =
+        state.lastFrameAt === undefined ? Infinity : now - state.lastFrameAt;
+      const delay = Math.max(0, Math.ceil(minInterval - elapsed));
+
+      scheduledTimer = setTimeout(() => {
+        scheduledTimer = null;
+        tick();
+      }, delay);
+      scheduledTimer.unref?.();
+    };
+
     let ticking = false;
     let tickAgain = false;
     let stopPending = false;
@@ -487,6 +519,10 @@ export function loop(
       if (ticking) {
         tickAgain = true;
         return;
+      }
+      if (scheduledTimer) {
+        clearTimeout(scheduledTimer);
+        scheduledTimer = null;
       }
 
       ticking = true;
@@ -498,6 +534,13 @@ export function loop(
             clearTerminalForResize(state);
           }
           if (!isResizeSettled(state)) {
+            if (isOnDemand) {
+              const remaining = Math.max(
+                1,
+                (state.resizeSettlesAt ?? Date.now()) - Date.now(),
+              );
+              setTimeout(() => requestTick(), remaining).unref?.();
+            }
             continue;
           }
           state.isResizing = false;
@@ -523,7 +566,7 @@ export function loop(
           }
           // OSC 22 mouse-cursor shape reacts to this frame's hitboxes.
           updatePointerShape(state);
-        } while (tickAgain);
+        } while (!isOnDemand && tickAgain);
       } catch (err) {
         // Never write errors into the alt screen and never keep looping over
         // a broken frame. Either the app opts into continuing via onError,
@@ -542,22 +585,41 @@ export function loop(
         }
       } finally {
         ticking = false;
+        if (isOnDemand && tickAgain) {
+          tickAgain = false;
+          scheduleNextTick();
+        }
       }
     };
 
     const requestTick = () => {
-      if (ticking) {
-        tickAgain = true;
+      if (isOnDemand) {
+        scheduleNextTick();
       } else {
-        tick();
+        if (ticking) {
+          tickAgain = true;
+        } else {
+          tick();
+        }
       }
     };
 
     const restartLoop = () => {
-      if (interval) clearInterval(interval);
-      const fps = state.hasFocus ? options.fps || 60 : 5;
-      interval = setInterval(tick, 1000 / fps);
-      requestTick();
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+      if (scheduledTimer) {
+        clearTimeout(scheduledTimer);
+        scheduledTimer = null;
+      }
+      if (isOnDemand) {
+        scheduleNextTick();
+      } else {
+        const fps = state.hasFocus ? options.fps || 60 : 5;
+        interval = setInterval(tick, 1000 / fps);
+        requestTick();
+      }
     };
 
     // On Windows, libuv only learns about console resizes from input records

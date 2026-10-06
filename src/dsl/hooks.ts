@@ -60,6 +60,8 @@ export function createHooks(state: ScreenState): Hooks {
         (lastFetch === undefined ||
           (interval > 0 && now - lastFetch >= interval));
 
+      const timerKey = `${key}_interval_timer`;
+
       if (shouldFetch) {
         state.componentState.set(fetchingKey, true);
         state.componentState.set(lastFetchKey, now);
@@ -77,6 +79,16 @@ export function createHooks(state: ScreenState): Hooks {
           })
           .finally(() => {
             state.componentState.set(fetchingKey, false);
+            if (interval > 0) {
+              const existing = state.componentState.get(timerKey);
+              if (existing) clearTimeout(existing);
+              const timer = setTimeout(() => {
+                state.componentState.delete(timerKey);
+                (state as any).requestTick?.();
+              }, interval);
+              timer.unref?.();
+              state.componentState.set(timerKey, timer);
+            }
           });
       }
 

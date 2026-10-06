@@ -18,6 +18,7 @@ export type {
   BuntiContext,
   DSLBoxOptions,
   LayerOptions,
+  ListSelection,
   TypewriterOptions,
   TypewriterState,
 } from './dsl/types';

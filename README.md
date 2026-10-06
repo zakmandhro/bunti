@@ -154,7 +154,8 @@ printf q)` — one `printf` per key, `sleep` between them. On Linux, swap
 the inner command for the `script -qec "bun app.ts" /dev/null` form.
 
 For pure rendering checks, skip the PTY entirely: `render(cb, { once:
-true })` draws one frame and returns.
+true })` draws one frame and returns. For always-open dashboards, pass `{ idle: 'on-demand' }`
+to drop idle CPU to ~0% while preserving full responsiveness.
 
 ## 🎮 Demos
 

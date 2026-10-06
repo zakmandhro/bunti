@@ -194,6 +194,15 @@ export interface ScreenState {
 export interface ScreenOptions {
   /** Target frames per second (default 60; throttles to 5 when unfocused). */
   fps?: number;
+  /**
+   * Render loop idling strategy:
+   * - 'continuous' (default): repaints at fixed fps (5fps when unfocused).
+   * - 'on-demand': renders frame 1, then only repaints when invalidated (input,
+   *   resize, state change, useAsync resolution/interval, active animation, or
+   *   ctx.requestRender()/ctx.invalidate()). fps acts as a rate cap. Idle CPU
+   *   drops to ~0%.
+   */
+  idle?: 'continuous' | 'on-demand';
   /** Enables SGR mouse tracking (hover/click/wheel, ctx.hitbox). */
   mouse?: boolean;
   /** Enables terminal focus-in/out tracking (drives the fps throttle). */

@@ -30,6 +30,7 @@ export interface SpinnerProps {
  * returns the styled string.
  */
 export function Spinner(ctx: BuntiContext, props: SpinnerProps = {}): string {
+  ctx.requestRender();
   const interval = Math.max(1, props.intervalMs ?? 80);
   const frame =
     SPINNER_FRAMES[
