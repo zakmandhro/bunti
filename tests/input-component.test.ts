@@ -247,3 +247,33 @@ describe('Input horizontal scroll window', () => {
     expect(rowText(state, 1)).toContain('abcdefg');
   });
 });
+
+describe('Input onSubmit callback', () => {
+  test('fires onSubmit with current value when enter is pressed', () => {
+    const state = makeState();
+    let submitted = '';
+    frame(
+      state,
+      [createKeyEvent('a'), createKeyEvent('b'), createKeyEvent('enter')],
+      {
+        onSubmit: (val: string) => {
+          submitted = val;
+        },
+      },
+    );
+
+    expect(submitted).toBe('ab');
+  });
+
+  test('does not fire onSubmit on non-enter keys', () => {
+    const state = makeState();
+    let called = false;
+    frame(state, [createKeyEvent('a'), createKeyEvent('tab')], {
+      onSubmit: () => {
+        called = true;
+      },
+    });
+
+    expect(called).toBe(false);
+  });
+});

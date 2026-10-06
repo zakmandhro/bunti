@@ -132,6 +132,10 @@ describe('InputTokenizer: sequences and modifiers', () => {
       key: 'backspace',
       ctrl: false,
     });
+    expect(pushKeys(tokenizer, '\x00')[0]).toMatchObject({
+      key: 'space',
+      ctrl: true,
+    });
   });
 
   test('alt-prefixed ESC+char and ESC+control', () => {

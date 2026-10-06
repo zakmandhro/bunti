@@ -86,6 +86,9 @@ export function Modal(
       record.lastSeen = now;
       progress = clamp01((now - record.openedAt) / ENTRANCE_MS);
     }
+    if (progress < 1) {
+      ctx.requestRender();
+    }
   }
   const eased = easeOutCubic(progress);
 

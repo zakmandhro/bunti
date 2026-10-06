@@ -10,7 +10,7 @@ import {
   resolveColorToRGB,
 } from './colors';
 import { colorTier } from './detect';
-import type { Rect } from './geometry';
+import { type Rect, splitRect } from './geometry';
 import { replaceEmojis } from './icons';
 import type { Cell, RGB, ScreenState } from './state';
 import type { ThemeColor } from './theme';
@@ -900,6 +900,10 @@ export interface TableOptions {
   columns?: { width?: SizeUnit; align?: 'left' | 'center' | 'right' }[];
   /** Outer border glyph set (default 'default'). */
   border?: BorderStyle;
+  /** Border color. */
+  borderColor?: string | number | RGB | ThemeColor;
+  /** Background surface color. */
+  bgColor?: string | number | RGB | ThemeColor;
   /** [vertical, horizontal] cell padding (default [0, 1]). */
   padding?: [number, number];
 }
@@ -922,18 +926,22 @@ export function table(
   // 1. Resolve Column Widths
   const resolvedWidth = resolveSize(options.width, parentW || 0, 80);
   const gutterW = 1;
-  const colWidth = Math.floor(
-    (resolvedWidth - (colCount - 1) * gutterW) / colCount,
+  const constraints = Array.from(
+    { length: colCount },
+    (_, i) => options.columns?.[i]?.width ?? '1fr',
+  );
+  const colRects = splitRect(
+    { x: 0, y: 0, width: resolvedWidth, height: 1 },
+    { direction: 'horizontal', constraints, gap: gutterW },
   );
 
   // 2. Render each cell as a rigid block
   const renderedRows = rows.map((row) => {
     const cells = row.map((content, i) => {
+      const colWidth = colRects[i]?.width ?? 0;
       // Explicitly pad empty content to ensure it occupies the full column width
-      const safeContent = content || ' '.repeat(colWidth);
-      const cellAlign = options.columns?.[i]?.align
-        ? options.columns[i].align
-        : 'left';
+      const safeContent = content || ' '.repeat(Math.max(0, colWidth));
+      const cellAlign = options.columns?.[i]?.align ?? 'left';
 
       return box(
         safeContent,
@@ -958,6 +966,8 @@ export function table(
 
   return box(joinVertical(...renderedRows), {
     border: borderStyle,
+    borderColor: options.borderColor,
+    bgColor: options.bgColor,
     padding: [0, 0],
     width: resolvedWidth,
     align: 'left',

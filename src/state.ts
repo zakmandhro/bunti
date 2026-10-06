@@ -247,8 +247,8 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
   if (options.colorTier !== undefined) setColorTier(options.colorTier);
 
   const terminal = identifyTerminal();
-  const width = process.stdout.columns || 80;
-  const height = process.stdout.rows || 24;
+  const width = Math.max(1, process.stdout.columns || 80);
+  const height = Math.max(1, process.stdout.rows || 24);
   const size = width * height;
 
   const state: ScreenState = {
@@ -301,8 +301,8 @@ export function createScreenState(options: ScreenOptions = {}): ScreenState {
  * Resizes the front/back buffers to match the new terminal size.
  */
 export function resizeScreen(state: ScreenState) {
-  const width = process.stdout.columns || 80;
-  const height = process.stdout.rows || 24;
+  const width = Math.max(1, process.stdout.columns || 80);
+  const height = Math.max(1, process.stdout.rows || 24);
   const size = width * height;
 
   state.width = width;

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { Modal } from '../src/components/Modal';
 import { Spinner } from '../src/components/Spinner';
 import { bunti, createScreenState, loop, render } from '../src/index';
 
@@ -125,6 +126,26 @@ describe('on-demand rendering (idle: "on-demand")', () => {
       (ctx) => {
         frameCount++;
         Spinner(ctx, { intervalMs: 20 });
+        if (frameCount >= 3) {
+          ctx.requestStop();
+        }
+      },
+      { fps: 60, idle: 'on-demand' },
+    );
+
+    await renderPromise;
+    expect(frameCount).toBeGreaterThanOrEqual(3);
+  });
+
+  test('Modal entrance ticks until settled in on-demand mode', async () => {
+    let frameCount = 0;
+
+    const renderPromise = render(
+      (ctx) => {
+        frameCount++;
+        Modal(ctx, { width: 30, height: 10, id: 'test-modal' }, (sub) => {
+          sub.text('Hello Modal');
+        });
         if (frameCount >= 3) {
           ctx.requestStop();
         }

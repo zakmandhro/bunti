@@ -110,8 +110,8 @@ function removeCrashHandlers() {
 }
 
 export function syncScreenSize(state: ScreenState) {
-  const width = process.stdout.columns || 80;
-  const height = process.stdout.rows || 24;
+  const width = Math.max(1, process.stdout.columns || 80);
+  const height = Math.max(1, process.stdout.rows || 24);
   if (state.width !== width || state.height !== height) {
     resizeScreen(state);
     return true;

@@ -16,6 +16,8 @@ export interface InputProps extends StyleOptions {
   type?: 'text' | 'password';
   /** Fires with the new value after every edit. */
   onChange?: (value: string) => void;
+  /** Fires with the current value when Enter is pressed while focused. */
+  onSubmit?: (value: string) => void;
 }
 
 /** Key names that must never insert as text. */
@@ -41,10 +43,12 @@ const NON_TEXT_KEYS = new Set([
 
 const FN_KEY_RE = /^f\d{1,2}$/;
 
+let inputSegmenter: Intl.Segmenter | undefined;
+
 function graphemes(text: string): string[] {
   if (text.length === 0) return [];
-  const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-  return Array.from(segmenter.segment(text), ({ segment }) => segment);
+  inputSegmenter ??= new Intl.Segmenter('en', { granularity: 'grapheme' });
+  return Array.from(inputSegmenter.segment(text), ({ segment }) => segment);
 }
 
 function isTextKey(key: string): boolean {
@@ -226,6 +230,7 @@ export function Input(ctx: BuntiContext, props: InputProps) {
   // 4. Keyboard interaction via the KeyEvent frame queue (only when focused)
   if (isSelected && ctx.keys.length > 0) {
     const edit = applyKeys(ctx.keys, value, cursor);
+    const nextVal = edit.changed ? edit.value : value;
     if (edit.changed) {
       setValue(edit.value);
       if (props.onChange) props.onChange(edit.value);
@@ -233,6 +238,15 @@ export function Input(ctx: BuntiContext, props: InputProps) {
     }
     if (edit.cursor !== storedCursor) setCursor(edit.cursor);
     cursor = edit.cursor;
+
+    if (props.onSubmit) {
+      const enterPressed = ctx.keys.some(
+        (e) => e.key === 'enter' && e.kind !== 'release',
+      );
+      if (enterPressed) {
+        props.onSubmit(nextVal);
+      }
+    }
   }
 
   // 5. Resolve Theme — all colors come from ctx.theme tokens so the field

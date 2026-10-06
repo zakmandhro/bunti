@@ -2,7 +2,7 @@ import { adjustBrightness, contrastText } from '../colors';
 import type { BuntiContext, DSLBoxOptions } from '../dsl';
 import type { RGB } from '../state';
 import type { ThemeColor } from '../theme';
-import { indentBlock } from '../utils';
+import { indentBlock, visibleWidth } from '../utils';
 
 type ButtonColor = string | number | RGB | ThemeColor | undefined;
 
@@ -42,7 +42,10 @@ export function Button(ctx: BuntiContext, props: ButtonProps) {
   const isGhost = props.variant === 'ghost';
   const isPill = props.variant === 'primary';
   const filled = isPill || props.variant === 'danger';
-  const contentWidth = Math.max(12, finalLabel.length + (isPill ? 6 : 4));
+  const contentWidth = Math.max(
+    12,
+    visibleWidth(finalLabel) + (isPill ? 6 : 4),
+  );
   const contentHeight = filled || isGhost ? 1 : 3;
   // Flow placement: without explicit coordinates, a non-detached button in
   // a box joins the text flow at the CURRENT cursor — several buttons can

@@ -1,5 +1,6 @@
 import type { BuntiContext } from '../dsl';
 import { box as engineBox } from '../layout';
+import { visibleWidth } from '../utils';
 import { Box } from './Box';
 
 /** Props for Header. */
@@ -41,9 +42,17 @@ export function Header(ctx: BuntiContext, props: HeaderProps) {
       padding: [0, 2],
     },
     ({ text, split }) => {
+      const leftW = Math.max(
+        12,
+        props.leftIcon ? visibleWidth(props.leftIcon) + 1 : 0,
+      );
+      const rightW = Math.max(
+        12,
+        props.rightLabel ? visibleWidth(props.rightLabel) + 1 : 0,
+      );
       const [leftArea, midArea, rightArea] = split({
         direction: 'horizontal',
-        constraints: [12, '1fr', 12],
+        constraints: [leftW, '1fr', rightW],
       });
 
       // 1. Left: Branding

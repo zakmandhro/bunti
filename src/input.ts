@@ -207,6 +207,10 @@ function normalizeControlChar(
       return { key: 'escape', ctrl: false };
     default: {
       const code = ch.charCodeAt(0);
+      // \x00 -> ctrl+space (standard terminal encoding)
+      if (code === 0) {
+        return { key: 'space', ctrl: true };
+      }
       // \x01-\x1a -> ctrl+a .. ctrl+z (\x03 = ctrl+c stays a key event here;
       // the render layer maps it to stop/SIGINT behavior).
       if (code >= 0x01 && code <= 0x1a) {
