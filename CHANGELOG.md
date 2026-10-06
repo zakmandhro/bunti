@@ -5,6 +5,30 @@ All notable changes to Bunti are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-05
+
+### Added
+
+- **On-demand rendering (`idle: 'on-demand'`)**: skips frame rendering at idle, dropping CPU usage from 11–26% down to ~0.0%. Loop sleeps until woken by user input, terminal resize, state/hook invalidations, motion ticks, or explicit `ctx.invalidate()` / `ctx.requestRender()`.
+- **`TableOptions.columns` sizing**: wired through `splitRect` with support for fixed column widths, percentages, and `fr` units.
+- **`TableOptions.borderColor` and `TableOptions.bgColor`** props for styled outer table containers.
+- **`InputProps.onSubmit`**: fires with current value when `Enter` is pressed while focused.
+- **`Ctrl+Space` (`\x00` NUL byte)** normalized to `{ key: 'space', ctrl: true }` for CLI autocomplete shortcuts.
+
+### Changed & Optimized
+
+- **Box fill & blit optimization**: hoisted color resolutions outside cell loops and added direct ASCII memory stamping in `rect()` and `blit()`, resulting in ~8x faster frame painting.
+- **`Input` performance**: cached `Intl.Segmenter` at module level, eliminating per-frame/keystroke allocator churn.
+- **`Button` label sizing**: uses `visibleWidth` to properly accommodate emojis, Nerd Font icons, and wide characters.
+- **`Header` responsive width**: replaced rigid constraints with dynamic widths derived from `leftIcon` and `rightLabel` visible widths.
+
+### Fixed
+
+- **`ctx.list()` selection & serialization**: returns `{ index, item }` selection object; added `ctx.toJSON()` to prevent terminal buffer serialization dumps when logging list returns.
+- **`Modal` on-demand entrance**: requests render ticks while `progress < 1` to prevent entrance animations from freezing on frame 0.
+- **`table()` small-terminal safety**: guarded cell padding against negative widths, preventing `RangeError` on small screens or 0-width splits.
+- **Screen dimensions**: clamped terminal width and height to `>= 1` in state and resize routines.
+
 ## [0.4.0] - 2026-10-04
 
 ### Added

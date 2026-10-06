@@ -1,6 +1,6 @@
 {
   "name": "@zakmandhro/bunti",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A zero-dependency terminal layout engine for Bun and Node.js with 60fps diff rendering and an agent-optimized functional API.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
